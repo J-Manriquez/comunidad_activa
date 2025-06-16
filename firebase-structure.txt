@@ -1,0 +1,62 @@
+ESTRUCTURA DE DATOS DE FIREBASE - COMUNIDAD ACTIVA
+==================================================
+
+cada vez que un adimistrador se registra crea una nueva colección principal: 
+
+{condominioId} (Collection - formato: nombre_condominio_XXX)
+    ├──── condominio (Document)
+    │      ├── id: String
+    │      ├── nombre: String
+    │      ├── direccion: String
+    │      ├── fechaCreacion: String (ISO 8601)
+    │      ├── pruebaActiva: Boolean
+    │      └── fechaFinPrueba: String (ISO 8601, nullable)
+    ├──── administrador (Document)
+    │       ├── uid: String
+    │       ├── nombre: String
+    │       ├── email: String
+    │       ├── condominioId: String
+    │       └── fechaRegistro: String (ISO 8601)
+    │
+    └─── usuarios (Document)
+            ├── residentes (Subcollection)
+            │   ├── {uid} (Document)
+            │   │   ├── uid: String
+            │   │   ├── nombre: String
+            │   │   ├── email: String
+            │   │   ├── condominioId: String
+            │   │   ├── codigo: String
+            │   │   ├── esComite: Boolean
+            │   │   └── fechaRegistro: String (ISO 8601)
+            │   └── _placeholder (Document - se elimina cuando se agrega el primer residente real)
+            │       └── created: String (ISO 8601)
+            ├── comite (Subcollection)
+            │   ├── {uid} (Document)
+            │   │   ├── uid: String
+            │   │   ├── nombre: String
+            │   │   ├── email: String
+            │   │   ├── condominioId: String
+            │   │   ├── codigo: String
+            │   │   ├── esComite: Boolean (true)
+            │   │   └── fechaRegistro: String (ISO 8601)
+            │   └── _placeholder (Document - se elimina cuando se agrega el primer miembro real)
+            │       └── created: String (ISO 8601)
+            └── trabajadores (Subcollection)
+                ├── {uid} (Document)
+                │   ├── uid: String
+                │   ├── nombre: String
+                │   ├── email: String
+                │   ├── condominioId: String
+                │   ├── codigo: String
+                │   ├── tipoTrabajador: String (conserje|guardia|personalAseo|otro)
+                │   ├── cargoEspecifico: String (nullable)
+                │   └── fechaRegistro: String (ISO 8601)
+                └── _placeholder (Document - se elimina cuando se agrega el primer trabajador real)
+                    └── created: String (ISO 8601)
+
+NOTAS:
+- Los códigos de condominio tienen el formato: nombre_condominio_XXX (donde XXX son 3 dígitos únicos)
+- Los residentes y trabajadores usan el ID del condominio como código de registro
+- Los miembros del comité se registran como residentes pero con un código especial (a implementar)
+- La prueba gratuita dura 14 días desde la creación del condominio
+- Los documentos _placeholder se crean para inicializar las subcolecciones y se eliminan automáticamente

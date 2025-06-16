@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "180084463240",
+    "project_id": "comunidadactiva-fb26c",
+    "storage_bucket": "comunidadactiva-fb26c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:180084463240:android:67ff4bee75ee61f776b13d",
+        "android_client_info": {
+          "package_name": "com.example.comunidad_activa"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBgF2M_bSHkHpQCTDKsnbLJzUV00LV0IjM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
