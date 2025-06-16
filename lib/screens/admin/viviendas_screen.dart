@@ -47,6 +47,58 @@ class _ViviendasScreenState extends State<ViviendasScreen> {
   String? _errorEtiquetas;
   String? _errorRangoCasas;
 
+  // Método para eliminar elemento de numeración y recalcular
+  void _eliminarNumeracion(String elemento) {
+    setState(() {
+      _numeracionExpandida.remove(elemento);
+      _numeracionController.text = _reconstruirTextoDesdeElementos(_numeracionExpandida);
+      
+      int? apartamentosPorTorre;
+      if (_apartamentosPorTorreController.text.isNotEmpty) {
+        apartamentosPorTorre = int.tryParse(_apartamentosPorTorreController.text);
+      }
+      
+      _errorNumeracion = _validarRangosEnTiempoReal(
+        _numeracionController.text,
+        apartamentosPorTorre,
+      );
+    });
+  }
+
+  // Método para eliminar elemento de etiquetas y recalcular
+  void _eliminarEtiqueta(String elemento) {
+    setState(() {
+      _etiquetasExpandidas.remove(elemento);
+      _etiquetasTorresController.text = _reconstruirTextoDesdeElementos(_etiquetasExpandidas);
+      
+      final cantidadEsperada = _numeroTorresController.text.isNotEmpty
+          ? int.tryParse(_numeroTorresController.text)
+          : null;
+      
+      _errorEtiquetas = _validarRangosEnTiempoReal(
+        _etiquetasTorresController.text,
+        cantidadEsperada,
+      );
+    });
+  }
+
+  // Método para eliminar elemento de rango casas y recalcular
+  void _eliminarRangoCasa(String elemento) {
+    setState(() {
+      _rangoCasasExpandido.remove(elemento);
+      _rangoCasasController.text = _reconstruirTextoDesdeElementos(_rangoCasasExpandido);
+      
+      final cantidadEsperada = _numeroCasasController.text.isNotEmpty
+          ? int.tryParse(_numeroCasasController.text)
+          : null;
+      
+      _errorRangoCasas = _validarRangosEnTiempoReal(
+        _rangoCasasController.text,
+        cantidadEsperada,
+      );
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -285,10 +337,10 @@ class _ViviendasScreenState extends State<ViviendasScreen> {
                     ),
                     deleteIcon: const Icon(Icons.close, size: 16),
                     onDeleted: () => onDelete(elemento),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     backgroundColor: Colors.white,
                     side: BorderSide(color: Colors.blue.shade300),
-                    elevation: 2,
+                    labelStyle: TextStyle(color: Colors.blue.shade800),
+                    deleteIconColor: Colors.blue.shade600,
                   ),
                 )
                 .toList(),
@@ -296,6 +348,103 @@ class _ViviendasScreenState extends State<ViviendasScreen> {
         ],
       ),
     );
+  }
+
+  // Método para reconstruir texto desde elementos expandidos (igual que en dialog_config_viviendas.dart)
+  String _reconstruirTextoDesdeElementos(List<String> elementos) {
+    if (elementos.isEmpty) return '';
+    
+    List<String> resultado = [];
+    List<String> elementosOrdenados = List.from(elementos);
+    
+    // Separar números y letras
+    List<int> numeros = [];
+    List<String> letras = [];
+    List<String> otros = [];
+    
+    for (String elemento in elementosOrdenados) {
+      if (RegExp(r'^[0-9]+$').hasMatch(elemento)) {
+        numeros.add(int.parse(elemento));
+      } else if (RegExp(r'^[A-Za-z]$').hasMatch(elemento)) {
+        letras.add(elemento.toUpperCase());
+      } else {
+        otros.add(elemento);
+      }
+    }
+    
+    // Procesar números
+    if (numeros.isNotEmpty) {
+      numeros.sort();
+      resultado.addAll(_crearRangosNumericos(numeros));
+    }
+    
+    // Procesar letras
+    if (letras.isNotEmpty) {
+      letras.sort();
+      resultado.addAll(_crearRangosLetras(letras));
+    }
+    
+    // Agregar otros elementos
+    resultado.addAll(otros);
+    
+    return resultado.join(',');
+  }
+
+  // Métodos auxiliares para crear rangos (iguales que en dialog_config_viviendas.dart)
+  List<String> _crearRangosNumericos(List<int> numeros) {
+    List<String> resultado = [];
+    int inicio = numeros[0];
+    int fin = numeros[0];
+    
+    for (int i = 1; i < numeros.length; i++) {
+      if (numeros[i] == fin + 1) {
+        fin = numeros[i];
+      } else {
+        if (inicio == fin) {
+          resultado.add(inicio.toString());
+        } else {
+          resultado.add('$inicio-$fin');
+        }
+        inicio = numeros[i];
+        fin = numeros[i];
+      }
+    }
+    
+    if (inicio == fin) {
+      resultado.add(inicio.toString());
+    } else {
+      resultado.add('$inicio-$fin');
+    }
+    
+    return resultado;
+  }
+
+  List<String> _crearRangosLetras(List<String> letras) {
+    List<String> resultado = [];
+    String inicio = letras[0];
+    String fin = letras[0];
+    
+    for (int i = 1; i < letras.length; i++) {
+      if (letras[i].codeUnitAt(0) == fin.codeUnitAt(0) + 1) {
+        fin = letras[i];
+      } else {
+        if (inicio == fin) {
+          resultado.add(inicio);
+        } else {
+          resultado.add('$inicio-$fin');
+        }
+        inicio = letras[i];
+        fin = letras[i];
+      }
+    }
+    
+    if (inicio == fin) {
+      resultado.add(inicio);
+    } else {
+      resultado.add('$inicio-$fin');
+    }
+    
+    return resultado;
   }
 
   // Método para agregar nueva configuración de edificio
@@ -834,9 +983,7 @@ class _ViviendasScreenState extends State<ViviendasScreen> {
                 ),
               ],
             ),
-            _buildExpandedChips(_rangoCasasExpandido, (elemento) {
-              // Implementar eliminación manual si es necesario
-            }),
+            _buildExpandedChips(_rangoCasasExpandido, _eliminarRangoCasa),
           ],
         ),
       ),
@@ -1135,9 +1282,7 @@ class _ViviendasScreenState extends State<ViviendasScreen> {
             });
           },
         ),
-        _buildExpandedChips(_etiquetasExpandidas, (elemento) {
-          // Implementar eliminación manual si es necesario
-        }),
+        _buildExpandedChips(_etiquetasExpandidas, _eliminarEtiqueta),
         const SizedBox(height: 16),
         TextFormField(
           controller: _numeracionController,
@@ -1187,9 +1332,7 @@ class _ViviendasScreenState extends State<ViviendasScreen> {
             });
           },
         ),
-        _buildExpandedChips(_numeracionExpandida, (elemento) {
-          // Implementar eliminación manual si es necesario
-        }),
+        _buildExpandedChips(_numeracionExpandida, _eliminarNumeracion),
       ],
     );
   }

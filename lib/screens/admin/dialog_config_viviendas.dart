@@ -581,7 +581,7 @@ class _ConfiguracionEdificioDialogState
                         },
                       ),
                       _buildExpandedChips(_etiquetasExpandidas, (elemento) {
-                        // Implementar eliminación manual si es necesario
+                        _eliminarEtiqueta(elemento);
                       }),
 
                       const SizedBox(height: 20),
@@ -640,7 +640,7 @@ class _ConfiguracionEdificioDialogState
                         },
                       ),
                       _buildExpandedChips(_numeracionExpandida, (elemento) {
-                        // Implementar eliminación manual si es necesario
+                        _eliminarNumeracion(elemento);
                       }),
 
                       const SizedBox(height: 20),
@@ -685,7 +685,7 @@ class _ConfiguracionEdificioDialogState
                       //   },
                       // ),
                       _buildExpandedChips(_rangoTorresExpandido, (elemento) {
-                        // Implementar eliminación manual si es necesario
+                        _eliminarRangoTorre(elemento);
                       }),
                     ],
                   ),
@@ -759,5 +759,164 @@ class _ConfiguracionEdificioDialogState
         ),
       ),
     );
+  }
+
+  // Método para eliminar elemento de etiquetas y recalcular
+  void _eliminarEtiqueta(String elemento) {
+    setState(() {
+      _etiquetasExpandidas.remove(elemento);
+      // Reconstruir el texto del controller sin el elemento eliminado
+      _etiquetasTorresController.text = _reconstruirTextoDesdeElementos(_etiquetasExpandidas);
+      
+      // Recalcular validación
+      final cantidadEsperada = _numeroTorresController.text.isNotEmpty
+          ? int.tryParse(_numeroTorresController.text)
+          : null;
+      
+      _errorEtiquetas = _validarRangosEnTiempoReal(
+        _etiquetasTorresController.text,
+        cantidadEsperada,
+      );
+    });
+  }
+
+  // Método para eliminar elemento de numeración y recalcular
+  void _eliminarNumeracion(String elemento) {
+    setState(() {
+      _numeracionExpandida.remove(elemento);
+      // Reconstruir el texto del controller sin el elemento eliminado
+      _numeracionController.text = _reconstruirTextoDesdeElementos(_numeracionExpandida);
+      
+      // Recalcular validación
+      int? apartamentosPorTorre;
+      if (_apartamentosPorTorreController.text.isNotEmpty) {
+        apartamentosPorTorre = int.tryParse(_apartamentosPorTorreController.text);
+      }
+      
+      _errorNumeracion = _validarRangosEnTiempoReal(
+        _numeracionController.text,
+        apartamentosPorTorre,
+      );
+    });
+  }
+
+  // Método para eliminar elemento de rango torres y recalcular
+  void _eliminarRangoTorre(String elemento) {
+    setState(() {
+      _rangoTorresExpandido.remove(elemento);
+      // Reconstruir el texto del controller sin el elemento eliminado
+      _rangoTorresController.text = _reconstruirTextoDesdeElementos(_rangoTorresExpandido);
+      
+      // Recalcular validación
+      final cantidadEsperada = _numeroTorresController.text.isNotEmpty
+          ? int.tryParse(_numeroTorresController.text)
+          : null;
+      
+      _errorRangoTorres = _validarRangosEnTiempoReal(
+        _rangoTorresController.text,
+        cantidadEsperada,
+      );
+    });
+  }
+
+  // Método para reconstruir texto desde elementos expandidos
+  String _reconstruirTextoDesdeElementos(List<String> elementos) {
+    if (elementos.isEmpty) return '';
+    
+    // Intentar crear rangos cuando sea posible
+    List<String> resultado = [];
+    List<String> elementosOrdenados = List.from(elementos);
+    
+    // Separar números y letras
+    List<int> numeros = [];
+    List<String> letras = [];
+    List<String> otros = [];
+    
+    for (String elemento in elementosOrdenados) {
+      if (RegExp(r'^[0-9]+$').hasMatch(elemento)) {
+        numeros.add(int.parse(elemento));
+      } else if (RegExp(r'^[A-Za-z]$').hasMatch(elemento)) {
+        letras.add(elemento.toUpperCase());
+      } else {
+        otros.add(elemento);
+      }
+    }
+    
+    // Procesar números
+    if (numeros.isNotEmpty) {
+      numeros.sort();
+      resultado.addAll(_crearRangosNumericos(numeros));
+    }
+    
+    // Procesar letras
+    if (letras.isNotEmpty) {
+      letras.sort();
+      resultado.addAll(_crearRangosLetras(letras));
+    }
+    
+    // Agregar otros elementos
+    resultado.addAll(otros);
+    
+    return resultado.join(',');
+  }
+
+  // Método auxiliar para crear rangos numéricos
+  List<String> _crearRangosNumericos(List<int> numeros) {
+    List<String> resultado = [];
+    int inicio = numeros[0];
+    int fin = numeros[0];
+    
+    for (int i = 1; i < numeros.length; i++) {
+      if (numeros[i] == fin + 1) {
+        fin = numeros[i];
+      } else {
+        if (inicio == fin) {
+          resultado.add(inicio.toString());
+        } else {
+          resultado.add('$inicio-$fin');
+        }
+        inicio = numeros[i];
+        fin = numeros[i];
+      }
+    }
+    
+    // Agregar el último rango
+    if (inicio == fin) {
+      resultado.add(inicio.toString());
+    } else {
+      resultado.add('$inicio-$fin');
+    }
+    
+    return resultado;
+  }
+
+  // Método auxiliar para crear rangos de letras
+  List<String> _crearRangosLetras(List<String> letras) {
+    List<String> resultado = [];
+    String inicio = letras[0];
+    String fin = letras[0];
+    
+    for (int i = 1; i < letras.length; i++) {
+      if (letras[i].codeUnitAt(0) == fin.codeUnitAt(0) + 1) {
+        fin = letras[i];
+      } else {
+        if (inicio == fin) {
+          resultado.add(inicio);
+        } else {
+          resultado.add('$inicio-$fin');
+        }
+        inicio = letras[i];
+        fin = letras[i];
+      }
+    }
+    
+    // Agregar el último rango
+    if (inicio == fin) {
+      resultado.add(inicio);
+    } else {
+      resultado.add('$inicio-$fin');
+    }
+    
+    return resultado;
   }
 }

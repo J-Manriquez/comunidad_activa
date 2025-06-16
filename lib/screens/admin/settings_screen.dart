@@ -78,7 +78,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ? Colors.green 
                   : Colors.orange,
             ),
-            title: const Text('Viviendas'),
+            title: const Text('Configuraion Viviendas del Condominio'),
             subtitle: _isLoading 
                 ? const Text('Cargando...')
                 : Text(_getConfiguracionInfo()),

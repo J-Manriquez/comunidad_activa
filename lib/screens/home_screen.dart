@@ -7,7 +7,8 @@ import 'admin/admin_screen.dart';
 import 'user_screens/comite_screen.dart';
 import 'user_screens/residente_screen.dart';
 import 'user_screens/trabajador_screen.dart';
-import 'admin/viviendas_screen.dart'; // Importar la nueva pantalla de configuración
+import 'admin/viviendas_screen.dart';
+import 'admin/comunidad_screen.dart'; // Importar la nueva pantalla
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -87,6 +88,21 @@ class HomeScreen extends StatelessWidget {
               Navigator.pop(context); // Cerrar el drawer
             },
           ),
+          // Opción de comunidad solo para administradores
+          if (user.tipoUsuario == UserType.administrador)
+            ListTile(
+              leading: const Icon(Icons.location_city),
+              title: const Text('Comunidad'),
+              onTap: () {
+                Navigator.pop(context); // Cerrar el drawer
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ComunidadScreen(condominioId: user.condominioId!),
+                  ),
+                );
+              },
+            ),
           // Opción de configuración solo para administradores
           if (user.tipoUsuario == UserType.administrador)
             ListTile(
