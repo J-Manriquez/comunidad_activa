@@ -1,8 +1,8 @@
 import 'package:comunidad_activa/screens/admin/dialog_config_viviendas.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../models/condominio_model.dart';
-import '../../services/firestore_service.dart';
+import 'package:comunidad_activa/models/condominio_model.dart';
+import 'package:comunidad_activa/services/firestore_service.dart';
 
 class ViviendasScreen extends StatefulWidget {
   final String condominioId;
@@ -21,6 +21,7 @@ class _ViviendasScreenState extends State<ViviendasScreen> {
   bool _isLoading = true;
   TipoCondominio? _tipoSeleccionado;
   bool _edificiosIguales = true;
+  bool _requiereConfirmacionAdmin = false;
   // Controladores para casas
   final TextEditingController _numeroCasasController = TextEditingController();
   final TextEditingController _rangoCasasController = TextEditingController();
@@ -128,6 +129,7 @@ class _ViviendasScreenState extends State<ViviendasScreen> {
           _condominio = condominio;
           _tipoSeleccionado = condominio.tipoCondominio;
           _edificiosIguales = condominio.edificiosIguales ?? true;
+          _requiereConfirmacionAdmin = condominio.requiereConfirmacionAdmin ?? false;
 
           // Inicializar controladores con valores existentes
           _numeroCasasController.text =
@@ -533,6 +535,7 @@ class _ViviendasScreenState extends State<ViviendasScreen> {
         pruebaActiva: _condominio!.pruebaActiva,
         fechaFinPrueba: _condominio!.fechaFinPrueba,
         tipoCondominio: _tipoSeleccionado,
+        requiereConfirmacionAdmin: _requiereConfirmacionAdmin,
         // Casas
         numeroCasas:
             (_tipoSeleccionado == TipoCondominio.casas ||
@@ -704,6 +707,82 @@ class _ViviendasScreenState extends State<ViviendasScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Switch de confirmación de administrador
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.shade200,
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.admin_panel_settings,
+                              color: Colors.orange.shade700,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Configuración de Selección',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      SwitchListTile(
+                        title: const Text(
+                          'Requiere confirmación del administrador',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        subtitle: Text(
+                          _requiereConfirmacionAdmin
+                              ? 'Los residentes deben esperar aprobación para seleccionar vivienda'
+                              : 'Los residentes pueden seleccionar vivienda directamente',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        value: _requiereConfirmacionAdmin,
+                        onChanged: (bool value) {
+                          setState(() {
+                            _requiereConfirmacionAdmin = value;
+                          });
+                        },
+                        activeColor: Colors.orange.shade600,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              
               // Sección de tipo de condominio
               Container(
                 decoration: BoxDecoration(

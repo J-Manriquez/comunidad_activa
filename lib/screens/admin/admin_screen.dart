@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../models/condominio_model.dart';
 import '../../services/firestore_service.dart';
+import '../../services/notification_service.dart';
+import '../../widgets/notification_card_widget.dart';
+import 'admin_notifications_screen.dart';
 
 class AdminScreen extends StatefulWidget {
   final String condominioId;
@@ -14,6 +17,7 @@ class AdminScreen extends StatefulWidget {
 
 class _AdminScreenState extends State<AdminScreen> {
   final FirestoreService _firestoreService = FirestoreService();
+  final NotificationService _notificationService = NotificationService();
   CondominioModel? _condominio;
   int _residentes = 0;
   int _comite = 0;
@@ -79,6 +83,29 @@ class _AdminScreenState extends State<AdminScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Card de notificaciones
+          StreamBuilder<int>(
+            stream: _notificationService.getUnreadCondominioNotificationsCount(widget.condominioId),
+            builder: (context, snapshot) {
+              final unreadCount = snapshot.data ?? 0;
+              return NotificationCardWidget(
+                unreadCount: unreadCount,
+                title: 'Notificaciones del Condominio',
+                color: Colors.orange.shade600,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AdminNotificationsScreen(
+                        condominioId: widget.condominioId,
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+          
           // Información del condominio
           Card(
             elevation: 4,

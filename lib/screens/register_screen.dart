@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../models/user_model.dart';
 import 'home_screen.dart';
+import '../services/bloqueo_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -21,10 +22,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _condominioNombreController = TextEditingController();
   final _condominioDireccionController = TextEditingController();
   final _cargoEspecificoController = TextEditingController();
-  
+  final BloqueoService _bloqueoService = BloqueoService();
+
   final _authService = AuthService();
   final _firestoreService = FirestoreService();
-  
+
   UserType _tipoUsuario = UserType.residente;
   String _tipoTrabajador = 'conserje';
   bool _isLoading = false;
@@ -51,18 +53,61 @@ class _RegisterScreenState extends State<RegisterScreen> {
       });
 
       try {
-        // Registrar usuario en Firebase Auth
-        UserCredential userCredential = await _authService.registerWithEmailAndPassword(
+        // Verificar si el correo está bloqueado
+        final usuarioBloqueado = await _bloqueoService.verificarCorreoBloqueado(
+          _codigoController.text.trim(),
           _emailController.text.trim(),
-          _passwordController.text.trim(),
         );
+
+        if (usuarioBloqueado != null) {
+          if (mounted) {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Registro No Permitido'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'No tienes permitido registrarte en este condominio.',
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Motivo:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text(usuarioBloqueado.motivo),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Entendido'),
+                  ),
+                ],
+              ),
+            );
+          }
+          setState(() {
+            _isLoading = false;
+          });
+          return;
+        }
+
+        // Registrar usuario en Firebase Auth
+        UserCredential userCredential = await _authService
+            .registerWithEmailAndPassword(
+              _emailController.text.trim(),
+              _passwordController.text.trim(),
+            );
 
         // Guardar información adicional según el tipo de usuario
         if (userCredential.user != null) {
           String uid = userCredential.user!.uid;
           String email = _emailController.text.trim();
           String nombre = _nombreController.text.trim();
-          
+
           // Crear modelo de usuario general
           UserModel user = UserModel(
             uid: uid,
@@ -70,7 +115,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             nombre: nombre,
             tipoUsuario: _tipoUsuario,
           );
-          
+
           // Guardar datos según el tipo de usuario
           switch (_tipoUsuario) {
             case UserType.administrador:
@@ -81,7 +126,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 adminNombre: nombre,
                 adminEmail: email,
               );
-              
+
               // Actualizar el modelo de usuario con el ID del condominio
               user = UserModel(
                 uid: uid,
@@ -91,7 +136,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 condominioId: condominioId,
               );
               break;
-              
+
             case UserType.residente:
               // Registrar residente
               await _firestoreService.registerResidente(
@@ -100,7 +145,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 codigo: _codigoController.text.trim(),
                 esComite: false, // Por ahora, todos son residentes normales
               );
-              
+
               // Actualizar el modelo de usuario con el ID del condominio
               user = UserModel(
                 uid: uid,
@@ -110,7 +155,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 condominioId: _codigoController.text.trim(),
               );
               break;
-              
+
             case UserType.trabajador:
               // Registrar trabajador
               await _firestoreService.registerTrabajador(
@@ -118,9 +163,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 email: email,
                 codigo: _codigoController.text.trim(),
                 tipoTrabajador: _tipoTrabajador,
-                cargoEspecifico: _tipoTrabajador == 'otro' ? _cargoEspecificoController.text.trim() : null,
+                cargoEspecifico: _tipoTrabajador == 'otro'
+                    ? _cargoEspecificoController.text.trim()
+                    : null,
               );
-              
+
               // Actualizar el modelo de usuario con el ID del condominio
               user = UserModel(
                 uid: uid,
@@ -131,7 +178,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               );
               break;
           }
-          
+
           // Navegar a la pantalla principal después de registrarse
           if (mounted) {
             Navigator.pushReplacement(
@@ -152,9 +199,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Registro de Usuario'),
-      ),
+      appBar: AppBar(title: const Text('Registro de Usuario')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
@@ -211,7 +256,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   },
                 ),
                 const SizedBox(height: 16.0),
-                
+
                 // Selector de tipo de usuario
                 DropdownButtonFormField<UserType>(
                   value: _tipoUsuario,
@@ -242,15 +287,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   },
                 ),
                 const SizedBox(height: 16.0),
-                
+
                 // Campos específicos según el tipo de usuario
-                if (_tipoUsuario == UserType.residente) ...[  
+                if (_tipoUsuario == UserType.residente) ...[
                   TextFormField(
                     controller: _codigoController,
                     decoration: const InputDecoration(
                       labelText: 'Código de condominio',
                       border: OutlineInputBorder(),
-                      helperText: 'Solicite este código a su administrador o al comité del condominio',
+                      helperText:
+                          'Solicite este código a su administrador o al comité del condominio',
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -259,7 +305,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       return null;
                     },
                   ),
-                ] else if (_tipoUsuario == UserType.administrador) ...[  
+                ] else if (_tipoUsuario == UserType.administrador) ...[
                   TextFormField(
                     controller: _condominioNombreController,
                     decoration: const InputDecoration(
@@ -297,7 +343,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                   ),
-                ] else if (_tipoUsuario == UserType.trabajador) ...[  
+                ] else if (_tipoUsuario == UserType.trabajador) ...[
                   DropdownButtonFormField<String>(
                     value: _tipoTrabajador,
                     decoration: const InputDecoration(
@@ -317,10 +363,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         value: 'personalAseo',
                         child: Text('Personal de aseo'),
                       ),
-                      DropdownMenuItem(
-                        value: 'otro',
-                        child: Text('Otro'),
-                      ),
+                      DropdownMenuItem(value: 'otro', child: Text('Otro')),
                     ],
                     onChanged: (value) {
                       setState(() {
@@ -330,7 +373,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     },
                   ),
                   const SizedBox(height: 16.0),
-                  if (_mostrarCampoCargoEspecifico) ...[  
+                  if (_mostrarCampoCargoEspecifico) ...[
                     TextFormField(
                       controller: _cargoEspecificoController,
                       decoration: const InputDecoration(
@@ -338,7 +381,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         border: OutlineInputBorder(),
                       ),
                       validator: (value) {
-                        if (_mostrarCampoCargoEspecifico && (value == null || value.isEmpty)) {
+                        if (_mostrarCampoCargoEspecifico &&
+                            (value == null || value.isEmpty)) {
                           return 'Por favor ingrese su cargo específico';
                         }
                         return null;
@@ -360,8 +404,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     },
                   ),
                 ],
-                
-                if (_errorMessage != null) ...[  
+
+                if (_errorMessage != null) ...[
                   const SizedBox(height: 16.0),
                   Text(
                     _errorMessage!,
@@ -369,7 +413,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     textAlign: TextAlign.center,
                   ),
                 ],
-                
+
                 const SizedBox(height: 24.0),
                 ElevatedButton(
                   onPressed: _isLoading ? null : _register,
@@ -378,7 +422,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator()
-                      : const Text('Crear Usuario', style: TextStyle(fontSize: 18)),
+                      : const Text(
+                          'Crear Usuario',
+                          style: TextStyle(fontSize: 18),
+                        ),
                 ),
               ],
             ),

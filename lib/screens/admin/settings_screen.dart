@@ -1,4 +1,4 @@
-import 'package:comunidad_activa/screens/admin/viviendas_screen.dart';
+import 'package:comunidad_activa/screens/admin/config_viviendas_screen.dart';
 import 'package:flutter/material.dart';
 import '../../models/condominio_model.dart';
 import '../../services/firestore_service.dart';

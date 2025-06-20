@@ -74,6 +74,7 @@ class CondominioModel {
   
   // Campo calculado automáticamente
   final int? totalInmuebles;
+  final bool? requiereConfirmacionAdmin;
 
   CondominioModel({
     required this.id,
@@ -93,6 +94,8 @@ class CondominioModel {
     this.edificiosIguales,
     this.configuracionesEdificios,
     this.totalInmuebles,
+    this.requiereConfirmacionAdmin,
+
   });
 
   // Método para calcular el total de inmuebles
@@ -136,6 +139,7 @@ class CondominioModel {
       'edificiosIguales': edificiosIguales,
       'configuracionesEdificios': configuracionesEdificios?.map((e) => e.toMap()).toList(),
       'totalInmuebles': calcularTotalInmuebles(),
+      'requiereConfirmacionAdmin': requiereConfirmacionAdmin,
     };
   }
 
@@ -180,6 +184,7 @@ class CondominioModel {
       edificiosIguales: map['edificiosIguales'],
       configuracionesEdificios: configuraciones,
       totalInmuebles: map['totalInmuebles'],
+      requiereConfirmacionAdmin: map['requiereConfirmacionAdmin'],
     );
   }
 

@@ -12,7 +12,7 @@ import '../models/user_model.dart';
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  
+
   // Generar ID único para el condominio
   String generateCondominioId(String nombreCondominio) {
     // Normalizar el nombre (quitar espacios, acentos, etc.)
@@ -20,10 +20,10 @@ class FirestoreService {
         .toLowerCase()
         .replaceAll(RegExp(r'[^a-z0-9]'), '_')
         .replaceAll(RegExp(r'_+'), '_');
-    
+
     // Generar 3 dígitos aleatorios
     String randomDigits = Random().nextInt(900).toString().padLeft(3, '0');
-    
+
     // Crear el ID en el formato requerido
     return '${normalizedName}_$randomDigits';
   }
@@ -39,14 +39,16 @@ class FirestoreService {
       // Obtener el usuario actual
       User? currentUser = _auth.currentUser;
       if (currentUser == null) throw Exception('No hay usuario autenticado');
-      
+
       // Generar ID del condominio
       String condominioId = generateCondominioId(nombre);
       String fechaActual = DateTime.now().toIso8601String();
-      
+
       // Calcular fecha fin de prueba (14 días)
-      String fechaFinPrueba = DateTime.now().add(const Duration(days: 14)).toIso8601String();
-      
+      String fechaFinPrueba = DateTime.now()
+          .add(const Duration(days: 14))
+          .toIso8601String();
+
       // Crear modelo del condominio
       CondominioModel condominio = CondominioModel(
         id: condominioId,
@@ -56,7 +58,7 @@ class FirestoreService {
         pruebaActiva: true,
         fechaFinPrueba: fechaFinPrueba,
       );
-      
+
       // Crear modelo del administrador
       AdministradorModel administrador = AdministradorModel(
         uid: currentUser.uid,
@@ -65,59 +67,61 @@ class FirestoreService {
         condominioId: condominioId,
         fechaRegistro: fechaActual,
       );
-      
+
       // Iniciar transacción para guardar todo
       await _firestore.runTransaction((transaction) async {
         // Registrar el ID del condominio en la colección 'condominios'
         transaction.set(
           _firestore.collection('condominios').doc(condominioId),
-          {'nombre': nombre, 'created': fechaActual}
+          {'nombre': nombre, 'created': fechaActual},
         );
-        
+
         // Crear documento del condominio
         transaction.set(
           _firestore.collection(condominioId).doc('condominio'),
           condominio.toMap(),
         );
-        
+
         // Crear documento del administrador
         transaction.set(
           _firestore.collection(condominioId).doc('administrador'),
           administrador.toMap(),
         );
-        
+
         // Crear documento de usuarios con subcolecciones
-        transaction.set(
-          _firestore.collection(condominioId).doc('usuarios'),
-          {'created': fechaActual},
-        );
-        
+        transaction.set(_firestore.collection(condominioId).doc('usuarios'), {
+          'created': fechaActual,
+        });
+
         // Crear documentos placeholder para las subcolecciones
         transaction.set(
-          _firestore.collection(condominioId)
+          _firestore
+              .collection(condominioId)
               .doc('usuarios')
               .collection('residentes')
               .doc('_placeholder'),
           {'created': fechaActual},
         );
-        
+
         transaction.set(
-          _firestore.collection(condominioId)
+          _firestore
+              .collection(condominioId)
               .doc('usuarios')
               .collection('comite')
               .doc('_placeholder'),
           {'created': fechaActual},
         );
-        
+
         transaction.set(
-          _firestore.collection(condominioId)
+          _firestore
+              .collection(condominioId)
               .doc('usuarios')
               .collection('trabajadores')
               .doc('_placeholder'),
           {'created': fechaActual},
         );
       });
-      
+
       return condominioId;
     } catch (e) {
       debugPrint('Error al crear condominio: $e');
@@ -134,17 +138,20 @@ class FirestoreService {
   }) async {
     try {
       // Verificar que el código (condominioId) exista
-      DocumentSnapshot condominioDoc = await _firestore.collection(codigo).doc('condominio').get();
-      
+      DocumentSnapshot condominioDoc = await _firestore
+          .collection(codigo)
+          .doc('condominio')
+          .get();
+
       if (!condominioDoc.exists) {
         throw Exception('El código de condominio no es válido');
       }
-      
+
       User? currentUser = _auth.currentUser;
       if (currentUser == null) throw Exception('No hay usuario autenticado');
-      
+
       String fechaActual = DateTime.now().toIso8601String();
-      
+
       // Crear modelo del residente
       ResidenteModel residente = ResidenteModel(
         uid: currentUser.uid,
@@ -155,7 +162,7 @@ class FirestoreService {
         esComite: esComite,
         fechaRegistro: fechaActual,
       );
-      
+
       // Si es miembro del comité, guardar en ambas colecciones
       if (esComite) {
         ComiteModel comite = ComiteModel(
@@ -167,7 +174,7 @@ class FirestoreService {
           esComite: true,
           fechaRegistro: fechaActual,
         );
-        
+
         // Guardar en la colección de comité
         await _firestore
             .collection(codigo)
@@ -176,7 +183,7 @@ class FirestoreService {
             .doc(currentUser.uid)
             .set(comite.toMap());
       }
-      
+
       // Guardar en la colección de residentes
       await _firestore
           .collection(codigo)
@@ -184,7 +191,6 @@ class FirestoreService {
           .collection('residentes')
           .doc(currentUser.uid)
           .set(residente.toMap());
-      
     } catch (e) {
       debugPrint('Error al registrar residente: $e');
       throw Exception('Error al registrar residente: $e');
@@ -201,17 +207,20 @@ class FirestoreService {
   }) async {
     try {
       // Verificar que el código (condominioId) exista
-      DocumentSnapshot condominioDoc = await _firestore.collection(codigo).doc('condominio').get();
-      
+      DocumentSnapshot condominioDoc = await _firestore
+          .collection(codigo)
+          .doc('condominio')
+          .get();
+
       if (!condominioDoc.exists) {
         throw Exception('El código de condominio no es válido');
       }
-      
+
       User? currentUser = _auth.currentUser;
       if (currentUser == null) throw Exception('No hay usuario autenticado');
-      
+
       String fechaActual = DateTime.now().toIso8601String();
-      
+
       // Crear modelo del trabajador
       TrabajadorModel trabajador = TrabajadorModel(
         uid: currentUser.uid,
@@ -223,7 +232,7 @@ class FirestoreService {
         cargoEspecifico: cargoEspecifico,
         fechaRegistro: fechaActual,
       );
-      
+
       // Guardar en la colección de trabajadores
       await _firestore
           .collection(codigo)
@@ -231,7 +240,6 @@ class FirestoreService {
           .collection('trabajadores')
           .doc(currentUser.uid)
           .set(trabajador.toMap());
-      
     } catch (e) {
       debugPrint('Error al registrar trabajador: $e');
       throw Exception('Error al registrar trabajador: $e');
@@ -242,20 +250,25 @@ class FirestoreService {
   Future<Map<String, dynamic>?> checkUserRegistration(String uid) async {
     try {
       // Buscar en la colección de condominios (que almacena los IDs)
-      QuerySnapshot condominiosQuery = await _firestore.collection('condominios').get();
-      
+      QuerySnapshot condominiosQuery = await _firestore
+          .collection('condominios')
+          .get();
+
       for (var condominioDoc in condominiosQuery.docs) {
         String condominioId = condominioDoc.id;
-        
+
         // Verificar si es administrador
-        DocumentSnapshot adminDoc = await _firestore.collection(condominioId).doc('administrador').get();
+        DocumentSnapshot adminDoc = await _firestore
+            .collection(condominioId)
+            .doc('administrador')
+            .get();
         if (adminDoc.exists && adminDoc.get('uid') == uid) {
           Map<String, dynamic> data = adminDoc.data() as Map<String, dynamic>;
           data['tipoUsuario'] = 'administrador';
           data['condominioId'] = condominioId;
           return data;
         }
-        
+
         // Verificar si es residente
         DocumentSnapshot residenteDoc = await _firestore
             .collection(condominioId)
@@ -263,14 +276,15 @@ class FirestoreService {
             .collection('residentes')
             .doc(uid)
             .get();
-            
+
         if (residenteDoc.exists) {
-          Map<String, dynamic> data = residenteDoc.data() as Map<String, dynamic>;
+          Map<String, dynamic> data =
+              residenteDoc.data() as Map<String, dynamic>;
           data['tipoUsuario'] = 'residente';
           data['condominioId'] = condominioId;
           return data;
         }
-        
+
         // Verificar si es del comité
         DocumentSnapshot comiteDoc = await _firestore
             .collection(condominioId)
@@ -278,7 +292,7 @@ class FirestoreService {
             .collection('comite')
             .doc(uid)
             .get();
-            
+
         if (comiteDoc.exists) {
           Map<String, dynamic> data = comiteDoc.data() as Map<String, dynamic>;
           data['tipoUsuario'] = 'residente';
@@ -286,7 +300,7 @@ class FirestoreService {
           data['condominioId'] = condominioId;
           return data;
         }
-        
+
         // Verificar si es trabajador
         DocumentSnapshot trabajadorDoc = await _firestore
             .collection(condominioId)
@@ -294,15 +308,16 @@ class FirestoreService {
             .collection('trabajadores')
             .doc(uid)
             .get();
-            
+
         if (trabajadorDoc.exists) {
-          Map<String, dynamic> data = trabajadorDoc.data() as Map<String, dynamic>;
+          Map<String, dynamic> data =
+              trabajadorDoc.data() as Map<String, dynamic>;
           data['tipoUsuario'] = 'trabajador';
           data['condominioId'] = condominioId;
           return data;
         }
       }
-      
+
       return null;
     } catch (e) {
       debugPrint('Error al verificar registro de usuario: $e');
@@ -313,12 +328,15 @@ class FirestoreService {
   // Obtener datos del condominio
   Future<CondominioModel> getCondominioData(String condominioId) async {
     try {
-      DocumentSnapshot doc = await _firestore.collection(condominioId).doc('condominio').get();
-      
+      DocumentSnapshot doc = await _firestore
+          .collection(condominioId)
+          .doc('condominio')
+          .get();
+
       if (!doc.exists) {
         throw Exception('No se encontró información del condominio');
       }
-      
+
       return CondominioModel.fromFirestore(doc);
     } catch (e) {
       debugPrint('Error al obtener datos del condominio: $e');
@@ -334,7 +352,7 @@ class FirestoreService {
           .doc('usuarios')
           .collection('residentes')
           .get();
-      
+
       // Restar 1 por el documento placeholder
       int count = query.docs.length;
       return count > 0 ? count - 1 : 0;
@@ -352,7 +370,7 @@ class FirestoreService {
           .doc('usuarios')
           .collection('comite')
           .get();
-      
+
       // Restar 1 por el documento placeholder
       int count = query.docs.length;
       return count > 0 ? count - 1 : 0;
@@ -370,7 +388,7 @@ class FirestoreService {
           .doc('usuarios')
           .collection('trabajadores')
           .get();
-      
+
       // Restar 1 por el documento placeholder
       int count = query.docs.length;
       return count > 0 ? count - 1 : 0;
@@ -387,16 +405,165 @@ class FirestoreService {
           .collection(condominio.id)
           .doc('condominio')
           .update(condominio.toMap());
-      
+
       // También actualizar el nombre en la colección principal de condominios
-      await _firestore
-          .collection('condominios')
-          .doc(condominio.id)
-          .update({'nombre': condominio.nombre});
-          
+      await _firestore.collection('condominios').doc(condominio.id).update({
+        'nombre': condominio.nombre,
+      });
     } catch (e) {
       debugPrint('Error al actualizar datos del condominio: $e');
       throw Exception('Error al actualizar datos del condominio: $e');
+    }
+  }
+
+  // Obtener datos del usuario actual
+  Future<UserModel?> getCurrentUserData() async {
+    try {
+      User? currentUser = _auth.currentUser;
+      if (currentUser == null) return null;
+
+      // Buscar el registro del usuario en la base de datos
+      Map<String, dynamic>? userData = await checkUserRegistration(
+        currentUser.uid,
+      );
+      if (userData == null) return null;
+
+      // Determinar el tipo de usuario
+      UserType tipoUsuario;
+      switch (userData['tipoUsuario']) {
+        case 'administrador':
+          tipoUsuario = UserType.administrador;
+          break;
+        case 'trabajador':
+          tipoUsuario = UserType.trabajador;
+          break;
+        default:
+          tipoUsuario = UserType.residente;
+          break;
+      }
+
+      // Crear y devolver el modelo de usuario
+      return UserModel(
+        uid: currentUser.uid,
+        email: userData['email'] ?? currentUser.email ?? '',
+        nombre: userData['nombre'] ?? '',
+        tipoUsuario: tipoUsuario,
+        condominioId: userData['condominioId'],
+        esComite: userData['esComite'] ?? false,
+      );
+    } catch (e) {
+      debugPrint('Error al obtener datos del usuario actual: $e');
+      return null;
+    }
+  }
+
+  Future<ResidenteModel?> getResidenteData(String uid) async {
+    try {
+      // Primero obtener el condominioId del usuario actual
+      final userData = await getCurrentUserData();
+      if (userData?.condominioId == null) {
+        throw Exception('No se encontró el condominio del usuario');
+      }
+
+      final doc = await _firestore
+          .collection(userData!.condominioId!)
+          .doc('usuarios')
+          .collection('residentes')
+          .doc(uid)
+          .get();
+
+      if (doc.exists) {
+        return ResidenteModel.fromFirestore(doc);
+      }
+      return null;
+    } catch (e) {
+      throw Exception('Error al obtener datos del residente: $e');
+    }
+  }
+
+  Future<void> updateResidenteData(
+    String uid,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      // Primero obtener el condominioId del usuario actual
+      final userData = await getCurrentUserData();
+      if (userData?.condominioId == null) {
+        throw Exception('No se encontró el condominio del usuario');
+      }
+
+      await _firestore
+          .collection(userData!.condominioId!)
+          .doc('usuarios')
+          .collection('residentes')
+          .doc(uid)
+          .update(data);
+    } catch (e) {
+      throw Exception('Error al actualizar datos del residente: $e');
+    }
+  }
+
+  // Obtener datos del administrador
+  Future<AdministradorModel?> getAdministradorData(String condominioId) async {
+    try {
+      DocumentSnapshot doc = await _firestore
+          .collection(condominioId)
+          .doc('administrador')
+          .get();
+
+      if (doc.exists && doc.data() != null) {
+        return AdministradorModel.fromMap(doc.data() as Map<String, dynamic>);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error al obtener datos del administrador: $e');
+      return null;
+    }
+  }
+
+  // Agregar este método a la clase FirestoreService
+  Stream<ResidenteModel?> getResidenteStream(String uid) {
+    try {
+      final userData = getCurrentUserData();
+      return userData.then((user) {
+        if (user?.condominioId == null) {
+          return Stream.value(null);
+        }
+        
+        return FirebaseFirestore.instance
+            .collection(user!.condominioId.toString())
+            .doc('usuarios')
+            .collection('residentes')
+            .doc(uid)
+            .snapshots()
+            .map((doc) {
+              if (doc.exists) {
+                return ResidenteModel.fromFirestore(doc);
+              }
+              return null;
+            });
+      }).asStream().asyncExpand((stream) => stream);
+    } catch (e) {
+      return Stream.error('Error al obtener stream del residente: $e');
+    }
+  }
+
+  Future<bool> actualizarEstadoViviendaResidente(
+    String condominioId,
+    String residenteUid,
+    String nuevoEstado,
+  ) async {
+    try {
+      await _firestore
+          .collection(condominioId)
+          .doc('usuarios')
+          .collection('residentes')
+          .doc(residenteUid)
+          .update({'viviendaSeleccionada': nuevoEstado});
+      return true;
+    } catch (e) {
+      print('Error al actualizar estado de vivienda: $e');
+      return false;
     }
   }
 }

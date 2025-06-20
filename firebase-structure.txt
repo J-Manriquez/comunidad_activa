@@ -10,13 +10,46 @@ cada vez que un adimistrador se registra crea una nueva colección principal:
     │      ├── direccion: String
     │      ├── fechaCreacion: String (ISO 8601)
     │      ├── pruebaActiva: Boolean
-    │      └── fechaFinPrueba: String (ISO 8601, nullable)
+    │      ├── fechaFinPrueba: String (ISO 8601, nullable)
+    │      ├── tipoCondominio: String (casas|edificio|mixto, nullable)
+    │      ├── numeroCasas: Integer (nullable)
+    │      ├── rangoCasas: String (nullable)
+    │      ├── numeroTorres: Integer (nullable, para compatibilidad)
+    │      ├── apartamentosPorTorre: Integer (nullable, para compatibilidad)
+    │      ├── numeracion: String (nullable, para compatibilidad)
+    │      ├── etiquetasTorres: String (nullable, para compatibilidad)
+    │      ├── rangoTorres: String (nullable, para compatibilidad)
+    │      ├── edificiosIguales: Boolean (nullable)
+    │      ├── configuracionesEdificios: Array<Map> (nullable)
+    │      │   ├── id: String
+    │      │   ├── nombre: String
+    │      │   ├── numeroTorres: Integer
+    │      │   ├── apartamentosPorTorre: Integer
+    │      │   ├── numeracion: String (nullable)
+    │      │   ├── etiquetasTorres: String (nullable)
+    │      │   └── rangoTorres: String (nullable)
+    │      └── totalInmuebles: Integer (nullable)
     ├──── administrador (Document)
     │       ├── uid: String
     │       ├── nombre: String
     │       ├── email: String
     │       ├── condominioId: String
     │       └── fechaRegistro: String (ISO 8601)
+    │
+    │
+    ├──── comunicaciones (Document)
+    │        └── notificaciones (Subcollection)
+    │            ├── {id} (Document)
+    │            │   ├── id: String
+    │            │   ├── fecha: String (ISO 8601)
+    │            │   ├── hora: String
+    │            │   ├── tipoNotificacion: String
+    │            │   ├── contenido: String
+    │            │   ├── isRead: Map<String, dynamic> (nullable)
+    │            │   ├── estado: String
+    │            │   └── additionalData: Map<String, dynamic> (nullable)
+    │            └── _placeholder (Document - se elimina cuando se agrega la primera notificación real)
+    │                └── created: String (ISO 8601)
     │
     └─── usuarios (Document)
             ├── residentes (Subcollection)
@@ -27,9 +60,28 @@ cada vez que un adimistrador se registra crea una nueva colección principal:
             │   │   ├── condominioId: String
             │   │   ├── codigo: String
             │   │   ├── esComite: Boolean
-            │   │   └── fechaRegistro: String (ISO 8601)
+            │   │   ├── fechaRegistro: String (ISO 8601)
+            │   │   ├── tipoVivienda
+            │   │   ├── numeroVivienda
+            │   │   ├── etiquetaEdificio
+            │   │   ├── numeroDepartamento
+            │   │   └── viviendaSeleccionada
+            │   │   └── notificaciones (Subcollection)
+            │   │       ├── {id} (Document)
+            │   │       │   ├── id: String
+            │   │       │   ├── fecha: String (ISO 8601)
+            │   │       │   ├── hora: String
+            │   │       │   ├── tipoNotificacion: String
+            │   │       │   ├── contenido: String
+            │   │       │   ├── isRead: Boolean
+            │   │       │   ├── estado: String
+            │   │       │   └── additionalData: Map<String, dynamic> (nullable)
+            │   │       └── _placeholder (Document - se elimina cuando se agrega la primera notificación real)
+            │   │           └── created: String (ISO 8601)
+            │   │   
             │   └── _placeholder (Document - se elimina cuando se agrega el primer residente real)
             │       └── created: String (ISO 8601)
+            │
             ├── comite (Subcollection)
             │   ├── {uid} (Document)
             │   │   ├── uid: String
@@ -39,20 +91,54 @@ cada vez que un adimistrador se registra crea una nueva colección principal:
             │   │   ├── codigo: String
             │   │   ├── esComite: Boolean (true)
             │   │   └── fechaRegistro: String (ISO 8601)
+            │   │   └── notificaciones (Subcollection)
+            │   │       ├── {id} (Document)
+            │   │       │   ├── id: String
+            │   │       │   ├── fecha: String (ISO 8601)
+            │   │       │   ├── hora: String
+            │   │       │   ├── tipoNotificacion: String
+            │   │       │   ├── contenido: String
+            │   │       │   ├── isRead: Boolean
+            │   │       │   ├── estado: String
+            │   │       │   └── additionalData: Map<String, dynamic> (nullable)
+            │   │       └── _placeholder (Document - se elimina cuando se agrega la primera notificación real)
+            │   │           └── created: String (ISO 8601)
             │   └── _placeholder (Document - se elimina cuando se agrega el primer miembro real)
             │       └── created: String (ISO 8601)
-            └── trabajadores (Subcollection)
-                ├── {uid} (Document)
-                │   ├── uid: String
-                │   ├── nombre: String
-                │   ├── email: String
-                │   ├── condominioId: String
-                │   ├── codigo: String
-                │   ├── tipoTrabajador: String (conserje|guardia|personalAseo|otro)
-                │   ├── cargoEspecifico: String (nullable)
-                │   └── fechaRegistro: String (ISO 8601)
-                └── _placeholder (Document - se elimina cuando se agrega el primer trabajador real)
-                    └── created: String (ISO 8601)
+            ├── trabajadores (Subcollection)
+            │    ├── {uid} (Document)
+            │    │   ├── uid: String
+            │    │   ├── nombre: String
+            │    │   ├── email: String
+            │    │   ├── condominioId: String
+            │    │   ├── codigo: String
+            │    │   ├── tipoTrabajador: String (conserje|guardia|personalAseo|otro)
+            │    │   ├── cargoEspecifico: String (nullable)
+            │    │   ├── fechaRegistro: String (ISO 8601)
+            │    │   └── notificaciones (Subcollection)
+            │    │       ├── {id} (Document)
+            │    │       │   ├── id: String
+            │    │       │   ├── fecha: String (ISO 8601)
+            │    │       │   ├── hora: String
+            │    │       │   ├── tipoNotificacion: String
+            │    │       │   ├── contenido: String
+            │    │       │   ├── isRead: Boolean
+            │    │       │   ├── estado: String
+            │    │       │   └── additionalData: Map<String, dynamic> (nullable)
+            │    │       └── _placeholder (Document - se elimina cuando se agrega la primera notificación real)
+            │    │           └── created: String (ISO 8601)
+            │    └── _placeholder (Document - se elimina cuando se agrega el primer trabajador real)
+            │        └── created: String (ISO 8601)
+            │
+            ├── usuarios_bloqueados (Subcollection)
+            │   ├── {id} (Document)
+            │   │   ├── id: String
+            │   │   ├── nombre: String
+            │   │   ├── correo: String
+            │   │   ├── motivo: String
+            │   │   └── fecha-hora: timestamp
+            │   └── ...
+
 
 NOTAS:
 - Los códigos de condominio tienen el formato: nombre_condominio_XXX (donde XXX son 3 dígitos únicos)
