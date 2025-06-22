@@ -28,7 +28,15 @@ cada vez que un adimistrador se registra crea una nueva colección principal:
     │      │   ├── numeracion: String (nullable)
     │      │   ├── etiquetasTorres: String (nullable)
     │      │   └── rangoTorres: String (nullable)
-    │      └── totalInmuebles: Integer (nullable)
+    │      ├── totalInmuebles: Integer (nullable)
+    │      ├── gestionMultas: Array<Map> 
+    │      │   ├── fecha-hora: Array<Map> 
+    │      │   │   ├── id: String
+    │      │   │   ├── tipoMulta: String
+    │      │   │   ├── valor: Integer
+    │      │   │   └── unidadMedida: Integer
+    │          └── ... 
+    │
     ├──── administrador (Document)
     │       ├── uid: String
     │       ├── nombre: String
@@ -38,18 +46,53 @@ cada vez que un adimistrador se registra crea una nueva colección principal:
     │
     │
     ├──── comunicaciones (Document)
-    │        └── notificaciones (Subcollection)
-    │            ├── {id} (Document)
-    │            │   ├── id: String
-    │            │   ├── fecha: String (ISO 8601)
-    │            │   ├── hora: String
-    │            │   ├── tipoNotificacion: String
-    │            │   ├── contenido: String
-    │            │   ├── isRead: Map<String, dynamic> (nullable)
-    │            │   ├── estado: String
-    │            │   └── additionalData: Map<String, dynamic> (nullable)
-    │            └── _placeholder (Document - se elimina cuando se agrega la primera notificación real)
-    │                └── created: String (ISO 8601)
+    │        ├── notificaciones (Subcollection)
+    │        │    ├── {id} (Document)
+    │        │    │   ├── id: String
+    │        │    │   ├── fechaRegistro: String (ISO 8601)
+    │        │    │   ├── tipoNotificacion: String
+    │        │    │   ├── contenido: String
+    │        │    │   ├── isRead: Map<String, dynamic> (nullable)
+    │        │    │   ├── estado: String
+    │        │    │   └── additionalData: Map<String, dynamic> (nullable)
+    │        │    └── _placeholder (Document - se elimina cuando se agrega la primera notificación real)
+    │        │        └── created: String (ISO 8601)
+    │        │
+    │        ├── multas (Subcollection)
+    │        │    ├── {id} (Document)
+    │        │    │   ├── id: String
+    │        │    │   ├── fechaRegistro: String (ISO 8601)
+    │        │    │   ├── tipoMulta: String
+    │        │    │   ├── contenido: String
+    │        │    │   ├── isRead: Map<String, dynamic> (nullable)
+    │        │    │   ├── estado: String
+    │        │    │   └── additionalData: Map<String, dynamic> (nullable)
+    │        │    └── _placeholder (Document - se elimina cuando se agrega la primera notificación real)
+    │        │        └── created: String (ISO 8601)
+    │        │
+    │        ├── reclamos (Subcollection)
+    │        │    ├── {id} (Document)
+    │        │    │   ├── id: String
+    │        │    │   ├── fechaRegistro: String (ISO 8601)
+    │        │    │   ├── tipoReclamo: String
+    │        │    │   ├── contenido: String
+    │        │    │   ├── isRead: Map<String, dynamic> (nullable)
+    │        │    │   ├── estado: String
+    │        │    │   └── additionalData: Map<String, dynamic> (nullable)
+    │        │    └── _placeholder (Document - se elimina cuando se agrega la primera notificación real)
+    │        │        └── created: String (ISO 8601)
+    │        │ 
+    │        └── mensajes (Subcollection)
+    │             ├── {id} (Document)
+    │             │   ├── id: String
+    │             │   ├── fechaRegistro: String (ISO 8601)
+    │             │   ├── tipoMensaje: String
+    │             │   ├── contenido: String
+    │             │   ├── isRead: Map<String, dynamic> (nullable)
+    │             │   ├── estado: String
+    │             │   └── additionalData: Map<String, dynamic> (nullable)
+    │             └── _placeholder (Document - se elimina cuando se agrega la primera notificación real)
+    │                 └── created: String (ISO 8601)
     │
     └─── usuarios (Document)
             ├── residentes (Subcollection)

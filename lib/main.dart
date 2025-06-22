@@ -10,7 +10,7 @@ import 'screens/admin/admin_screen.dart';
 import 'screens/residente/residente_screen.dart';
 import 'screens/residente/r_seleccion_vivienda_screen.dart';
 import 'screens/admin/admin_notifications_screen.dart';
-import 'screens/residente/residente_notifications_screen.dart';
+import 'screens/residente/r_notifications_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

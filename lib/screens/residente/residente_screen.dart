@@ -5,7 +5,7 @@ import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
 import '../../services/notification_service.dart';
 import '../../widgets/notification_card_widget.dart';
-import 'residente_notifications_screen.dart';
+import 'r_notifications_screen.dart';
 import 'r_config_screen.dart';
 import '../home_screen.dart';
 

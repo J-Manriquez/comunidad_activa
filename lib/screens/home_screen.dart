@@ -1,6 +1,8 @@
 import 'package:comunidad_activa/screens/admin/settings_screen.dart';
 import 'package:comunidad_activa/screens/residente/residente_screen.dart';
 import 'package:flutter/material.dart';
+import '../models/user_model.dart';
+import '../models/residente_bloqueado_model.dart';
 import '../services/auth_service.dart';
 import '../services/bloqueo_service.dart';
 import 'welcome_screen.dart';
@@ -11,7 +13,9 @@ import 'package:comunidad_activa/screens/user_screens/comite_screen.dart';
 import 'user_screens/trabajador_screen.dart';
 import 'admin/config_viviendas_screen.dart';
 import 'admin/comunidad_screen.dart';
-import 'residente/r_config_screen.dart';
+import 'admin/multas_admin_screen.dart'; // Nueva importación
+import 'residente/r_multas_screen.dart';
+import 'residente/r_config_screen.dart'; // Nueva importación
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -339,6 +343,20 @@ class HomeScreen extends StatelessWidget {
               },
             ),
             ListTile(
+              leading: const Icon(Icons.gavel),
+              title: const Text('Gestión de Multas'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        MultasAdminScreen(currentUser: user,),
+                  ),
+                );
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.settings),
               title: const Text('Configuraciones'),
               onTap: () {
@@ -356,6 +374,20 @@ class HomeScreen extends StatelessWidget {
 
           // Opciones específicas para residentes
           if (user.tipoUsuario == UserType.residente) ...[
+            ListTile(
+              leading: const Icon(Icons.receipt_long),
+              title: const Text('Mis Multas'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MultasResidenteScreen(currentUser: user,
+                    ),
+                  ),
+                );
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.settings),
               title: const Text('Configuración'),

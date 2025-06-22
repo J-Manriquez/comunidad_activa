@@ -1,6 +1,9 @@
+import 'package:comunidad_activa/widgets/crear_multa_dialog.dart';
 import 'package:flutter/material.dart';
 import '../../models/condominio_model.dart';
+import '../../models/multa_model.dart';
 import '../../services/firestore_service.dart';
+import '../../services/multa_service.dart';
 
 class ComunidadScreen extends StatefulWidget {
   final String condominioId;
@@ -100,6 +103,25 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
     return resultado;
   }
 
+  // Nuevo método para mostrar el diálogo de crear multa
+  void _mostrarDialogoCrearMulta(
+    BuildContext context,
+    String vivienda,
+    String tipo,
+  ) {
+    // navegar a CrearMultaDialog
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CrearMultaDialog(
+          condominioId: widget.condominioId,
+          tipoVivienda: tipo,
+          numeroVivienda: vivienda,
+        ),
+      ),
+    );
+  }
+
   void _mostrarMenuVivienda(
     BuildContext context,
     String vivienda,
@@ -110,7 +132,6 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
         Overlay.of(context).context.findRenderObject() as RenderBox;
 
     showMenu<String>(
-      // <--- Add the explicit type parameter here
       context: context,
       position: RelativeRect.fromRect(
         Rect.fromPoints(tapPosition, tapPosition),
@@ -118,8 +139,7 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
       ),
       items: [
         PopupMenuItem<String>(
-          // <--- Also specify the type here for consistency, though not strictly necessary for enabled: false
-          enabled: false, // Título no seleccionable
+          enabled: false,
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Text(
@@ -132,15 +152,24 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
             ),
           ),
         ),
-        const PopupMenuDivider(), // This one doesn't need a type argument
+        const PopupMenuDivider(),
         PopupMenuItem<String>(
-          // <--- Explicitly define the type here
           value: 'residentes',
           child: Row(
             children: [
               Icon(Icons.people, color: Colors.blue.shade600),
               const SizedBox(width: 8),
               const Text('Visualizar residentes'),
+            ],
+          ),
+        ),
+        PopupMenuItem<String>(
+          value: 'crear_multa',
+          child: Row(
+            children: [
+              Icon(Icons.gavel, color: Colors.red.shade600),
+              const SizedBox(width: 8),
+              const Text('Crear Multa'),
             ],
           ),
         ),
@@ -156,6 +185,8 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
             behavior: SnackBarBehavior.floating,
           ),
         );
+      } else if (value == 'crear_multa') {
+        _mostrarDialogoCrearMulta(context, vivienda, tipo);
       }
     });
   }

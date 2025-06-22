@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:comunidad_activa/models/multa_model.dart';
 
 enum TipoCondominio { casas, edificio, mixto }
 
@@ -69,12 +70,15 @@ class CondominioModel {
   final String? rangoTorres;
   
   // Nuevas propiedades para múltiples configuraciones
-  final bool? edificiosIguales; // Toggle para edificios iguales o diferentes
+  final bool? edificiosIguales;
   final List<ConfiguracionEdificio>? configuracionesEdificios;
   
   // Campo calculado automáticamente
   final int? totalInmuebles;
   final bool? requiereConfirmacionAdmin;
+  
+  // Nueva propiedad para gestión de multas
+  final List<GestionMulta>? gestionMultas;
 
   CondominioModel({
     required this.id,
@@ -95,7 +99,7 @@ class CondominioModel {
     this.configuracionesEdificios,
     this.totalInmuebles,
     this.requiereConfirmacionAdmin,
-
+    this.gestionMultas,
   });
 
   // Método para calcular el total de inmuebles
@@ -140,6 +144,7 @@ class CondominioModel {
       'configuracionesEdificios': configuracionesEdificios?.map((e) => e.toMap()).toList(),
       'totalInmuebles': calcularTotalInmuebles(),
       'requiereConfirmacionAdmin': requiereConfirmacionAdmin,
+      'gestionMultas': gestionMultas?.map((e) => e.toMap()).toList(),
     };
   }
 
@@ -166,6 +171,13 @@ class CondominioModel {
           .toList();
     }
     
+    List<GestionMulta>? gestionMultasList;
+    if (map['gestionMultas'] != null) {
+      gestionMultasList = (map['gestionMultas'] as List)
+          .map((e) => GestionMulta.fromMap(e))
+          .toList();
+    }
+    
     return CondominioModel(
       id: map['id'] ?? '',
       nombre: map['nombre'] ?? '',
@@ -185,6 +197,7 @@ class CondominioModel {
       configuracionesEdificios: configuraciones,
       totalInmuebles: map['totalInmuebles'],
       requiereConfirmacionAdmin: map['requiereConfirmacionAdmin'],
+      gestionMultas: gestionMultasList,
     );
   }
 
