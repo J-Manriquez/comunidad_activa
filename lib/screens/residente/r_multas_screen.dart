@@ -6,9 +6,13 @@ import 'package:intl/intl.dart';
 
 class MultasResidenteScreen extends StatefulWidget {
   final UserModel currentUser;
+  final String? multaIdToOpen; // Agregar este parámetro opcional
 
-  const MultasResidenteScreen({Key? key, required this.currentUser})
-    : super(key: key);
+  const MultasResidenteScreen({
+    Key? key, 
+    required this.currentUser,
+    this.multaIdToOpen, // Parámetro opcional
+  }) : super(key: key);
 
   @override
   _MultasResidenteScreenState createState() => _MultasResidenteScreenState();
@@ -18,6 +22,7 @@ class _MultasResidenteScreenState extends State<MultasResidenteScreen> {
   final MultaService _multaService = MultaService();
   Map<String, List<MultaModel>> _multasAgrupadas = {};
   Map<String, bool> _fechasExpandidas = {};
+  bool _modalAbierto = false; // Agregar esta variable
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +47,13 @@ class _MultasResidenteScreenState extends State<MultasResidenteScreen> {
           }
 
           final multas = snapshot.data ?? [];
+
+          // Abrir modal automáticamente si se especificó una multa
+          if (widget.multaIdToOpen != null && !_modalAbierto && multas.isNotEmpty) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _abrirMultaEspecifica(multas, widget.multaIdToOpen!);
+            });
+          }
 
           if (multas.isEmpty) {
             return const Center(
@@ -105,6 +117,17 @@ class _MultasResidenteScreenState extends State<MultasResidenteScreen> {
         },
       ),
     );
+  }
+
+  // Nuevo método para abrir una multa específica
+  void _abrirMultaEspecifica(List<MultaModel> multas, String multaId) {
+    final multa = multas.firstWhere(
+      (m) => m.id == multaId,
+      orElse: () => multas.first, // Si no encuentra la multa específica, abre la primera
+    );
+    
+    _modalAbierto = true;
+    _abrirModalDetalle(multa);
   }
 
   Widget _buildMultaItem(MultaModel multa) {

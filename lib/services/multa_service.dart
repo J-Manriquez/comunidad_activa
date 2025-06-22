@@ -114,6 +114,7 @@ class MultaService {
           .doc(multaId)
           .set(multa.toMap());
 
+
       // Enviar notificaciones a todos los residentes de la vivienda
       await _enviarNotificacionesMulta(
         condominioId: condominioId,
@@ -122,7 +123,8 @@ class MultaService {
         contenido: contenido,
         valor: valor,
         unidadMedida: unidadMedida,
-        fechaCreacion: fechaActual,
+        fechaCreacion: fechaActual, 
+        multaId: multaId,
       );
 
       print('Multa creada exitosamente');
@@ -141,14 +143,15 @@ class MultaService {
     required int valor,
     required String unidadMedida,
     required String fechaCreacion,
+    required String multaId, // Agregar este parámetro
   }) async {
     try {
       final DateTime fechaHora = DateTime.parse(fechaCreacion);
       final String fechaFormateada = '${fechaHora.day.toString().padLeft(2, '0')}/${fechaHora.month.toString().padLeft(2, '0')}/${fechaHora.year}';
       final String horaFormateada = '${fechaHora.hour.toString().padLeft(2, '0')}:${fechaHora.minute.toString().padLeft(2, '0')}';
-
+  
       final String mensajeNotificacion = 'Se le ha asignado una multa: $contenido. Tipo: $tipoMulta. Valor: $valor $unidadMedida. Fecha: $fechaFormateada a las $horaFormateada.';
-
+  
       for (String residenteId in residentesIds) {
         await _notificationService.createUserNotification(
           condominioId: condominioId,
@@ -161,6 +164,7 @@ class MultaService {
             'valor': valor,
             'unidadMedida': unidadMedida,
             'fechaCreacion': fechaCreacion,
+            'multaId': multaId, // Agregar el ID de la multa
           },
         );
       }

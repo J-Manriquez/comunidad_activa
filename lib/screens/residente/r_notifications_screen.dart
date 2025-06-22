@@ -1,4 +1,6 @@
 import 'package:comunidad_activa/models/residente_model.dart';
+import 'package:comunidad_activa/models/user_model.dart';
+import 'package:comunidad_activa/screens/residente/r_multas_screen.dart';
 import 'package:comunidad_activa/screens/residente/r_seleccion_vivienda_screen.dart';
 import 'package:flutter/material.dart';
 import '../../models/notification_model.dart';
@@ -114,6 +116,55 @@ class _ResidenteNotificationsScreenState
     );
   }
 
+  void _handleNotificationTap(
+    NotificationModel notification,
+    String userId,
+  ) async {
+    // Marcar como leída si no lo está
+    final residente = await _firestoreService.getResidenteData(userId);
+    if (notification.isRead == null) {
+      if (residente != null) {
+        await _notificationService.markNotificationAsRead(
+          condominioId: widget.condominioId,
+          notificationId: notification.id,
+          userName: residente.nombre,
+          userId: residente.uid,
+          userType: 'residentes',
+          targetUserId: userId,
+          targetUserType: 'residentes',
+        );
+      }
+    }
+
+    if (!mounted) return;
+
+    // Manejar según el tipo de notificación
+    if (notification.notificationType == 'multa') {
+      // Navegar a la pantalla de multas con el ID de la multa
+      final multaId = notification.additionalData?['multaId'];
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MultasResidenteScreen(
+            currentUser: UserModel(
+              uid: userId,
+              condominioId: widget.condominioId,
+              email: residente!.email,
+              nombre:residente.nombre,
+              tipoUsuario: UserType.residente,
+              // Agregar otros campos necesarios del usuario
+            ),
+            multaIdToOpen: multaId, // Pasar el ID de la multa a abrir
+          ),
+        ),
+      );
+    } else {
+      // Para otros tipos de notificaciones, mostrar el diálogo normal
+      _showNotificationDetails(notification, userId);
+    }
+  }
+
   Widget _buildNotificationCard(NotificationModel notification, String userId) {
     final isRead = notification.isRead != null;
 
@@ -132,6 +183,11 @@ class _ResidenteNotificationsScreenState
         typeIcon = Icons.home;
         typeText = 'Vivienda Aprobada';
         break;
+      case 'multa': // Agregar este caso
+        typeColor = Colors.redAccent;
+        typeIcon = Icons.gavel;
+        typeText = 'Nueva Multa';
+        break;
       default:
         typeColor = Colors.blue;
         typeIcon = Icons.notifications;
@@ -142,7 +198,7 @@ class _ResidenteNotificationsScreenState
       margin: const EdgeInsets.only(bottom: 12),
       elevation: isRead ? 2 : 4,
       child: InkWell(
-        onTap: () => _showNotificationDetails(notification, userId),
+        onTap: () => _handleNotificationTap(notification, userId),
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.all(16),
@@ -271,13 +327,13 @@ class _ResidenteNotificationsScreenState
                 notification.notificationType == 'vivienda_rechazada'
                     ? Icons.home_outlined
                     : notification.notificationType == 'vivienda_aprobada'
-                        ? Icons.home
-                        : Icons.notifications,
+                    ? Icons.home
+                    : Icons.notifications,
                 color: notification.notificationType == 'vivienda_rechazada'
                     ? Colors.red.shade600
                     : notification.notificationType == 'vivienda_aprobada'
-                        ? Colors.green.shade600
-                        : Colors.blue.shade600,
+                    ? Colors.green.shade600
+                    : Colors.blue.shade600,
               ),
               const SizedBox(width: 8),
               const Text('Detalle de Notificación'),
