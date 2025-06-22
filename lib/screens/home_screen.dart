@@ -1,4 +1,6 @@
+import 'package:comunidad_activa/screens/admin/admin_reclamos_screen.dart';
 import 'package:comunidad_activa/screens/admin/settings_screen.dart';
+import 'package:comunidad_activa/screens/residente/r_reclamos_screen.dart';
 import 'package:comunidad_activa/screens/residente/residente_screen.dart';
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
@@ -327,7 +329,7 @@ class HomeScreen extends StatelessWidget {
           ),
 
           // Opciones específicas para administradores
-          if (user.tipoUsuario == UserType.administrador) ...[
+          if (user.tipoUsuario == UserType.administrador) ...[            
             ListTile(
               leading: const Icon(Icons.location_city),
               title: const Text('Comunidad'),
@@ -356,6 +358,21 @@ class HomeScreen extends StatelessWidget {
                 );
               },
             ),
+            // Nueva opción para administradores - Gestión de Reclamos
+            ListTile(
+              leading: const Icon(Icons.report_problem),
+              title: const Text('Gestión de Reclamos'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        AdminReclamosScreen(currentUser: user),
+                  ),
+                );
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.settings),
               title: const Text('Configuraciones'),
@@ -373,7 +390,7 @@ class HomeScreen extends StatelessWidget {
           ],
 
           // Opciones específicas para residentes
-          if (user.tipoUsuario == UserType.residente) ...[
+          if (user.tipoUsuario == UserType.residente) ...[            
             ListTile(
               leading: const Icon(Icons.receipt_long),
               title: const Text('Mis Multas'),
@@ -384,6 +401,20 @@ class HomeScreen extends StatelessWidget {
                   MaterialPageRoute(
                     builder: (context) => MultasResidenteScreen(currentUser: user,
                     ),
+                  ),
+                );
+              },
+            ),
+            // Nueva opción para residentes - Mis Reclamos
+            ListTile(
+              leading: const Icon(Icons.comment),
+              title: const Text('Mis Reclamos'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ReclamosResidenteScreen(currentUser: user),
                   ),
                 );
               },

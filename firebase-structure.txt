@@ -77,7 +77,7 @@ cada vez que un adimistrador se registra crea una nueva colección principal:
     │        │    │   ├── tipoReclamo: String
     │        │    │   ├── contenido: String
     │        │    │   ├── isRead: Map<String, dynamic> (nullable)
-    │        │    │   ├── estado: String
+    │        │    │   ├── estado: Map<String, dynamic> (nullable)
     │        │    │   └── additionalData: Map<String, dynamic> (nullable)
     │        │    └── _placeholder (Document - se elimina cuando se agrega la primera notificación real)
     │        │        └── created: String (ISO 8601)

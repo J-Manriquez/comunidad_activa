@@ -1,6 +1,7 @@
 import 'package:comunidad_activa/models/residente_model.dart';
 import 'package:comunidad_activa/models/user_model.dart';
 import 'package:comunidad_activa/screens/residente/r_multas_screen.dart';
+import 'package:comunidad_activa/screens/residente/r_reclamos_screen.dart';
 import 'package:comunidad_activa/screens/residente/r_seleccion_vivienda_screen.dart';
 import 'package:flutter/material.dart';
 import '../../models/notification_model.dart';
@@ -117,54 +118,71 @@ class _ResidenteNotificationsScreenState
   }
 
   void _handleNotificationTap(
-    NotificationModel notification,
-    String userId,
-  ) async {
-    // Marcar como leída si no lo está
-    final residente = await _firestoreService.getResidenteData(userId);
-    if (notification.isRead == null) {
-      if (residente != null) {
-        await _notificationService.markNotificationAsRead(
-          condominioId: widget.condominioId,
-          notificationId: notification.id,
-          userName: residente.nombre,
-          userId: residente.uid,
-          userType: 'residentes',
-          targetUserId: userId,
-          targetUserType: 'residentes',
-        );
-      }
-    }
-
-    if (!mounted) return;
-
-    // Manejar según el tipo de notificación
-    if (notification.notificationType == 'multa') {
-      // Navegar a la pantalla de multas con el ID de la multa
-      final multaId = notification.additionalData?['multaId'];
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => MultasResidenteScreen(
-            currentUser: UserModel(
-              uid: userId,
-              condominioId: widget.condominioId,
-              email: residente!.email,
-              nombre:residente.nombre,
-              tipoUsuario: UserType.residente,
-              // Agregar otros campos necesarios del usuario
-            ),
-            multaIdToOpen: multaId, // Pasar el ID de la multa a abrir
-          ),
-        ),
+  NotificationModel notification,
+  String userId,
+) async {
+  // Marcar como leída si no lo está
+  final residente = await _firestoreService.getResidenteData(userId);
+  if (notification.isRead == null) {
+    if (residente != null) {
+      await _notificationService.markNotificationAsRead(
+        condominioId: widget.condominioId,
+        notificationId: notification.id,
+        userName: residente.nombre,
+        userId: residente.uid,
+        userType: 'residentes',
+        targetUserId: userId,
+        targetUserType: 'residentes',
       );
-    } else {
-      // Para otros tipos de notificaciones, mostrar el diálogo normal
-      _showNotificationDetails(notification, userId);
     }
   }
 
+  if (!mounted) return;
+
+  // Manejar según el tipo de notificación
+  if (notification.notificationType == 'multa') {
+    // Navegar a la pantalla de multas con el ID de la multa
+    final multaId = notification.additionalData?['multaId'];
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MultasResidenteScreen(
+          currentUser: UserModel(
+            uid: userId,
+            condominioId: widget.condominioId,
+            email: residente!.email,
+            nombre:residente.nombre,
+            tipoUsuario: UserType.residente,
+          ),
+          multaIdToOpen: multaId,
+        ),
+      ),
+    );
+  } else if (notification.notificationType == 'reclamo_resuelto') {
+    // Navegar a la pantalla de reclamos y mostrar el detalle del reclamo resuelto
+    final reclamoId = notification.additionalData?['reclamoId'];
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ReclamosResidenteScreen(
+          currentUser: UserModel(
+            uid: userId,
+            condominioId: widget.condominioId,
+            email: residente!.email,
+            nombre: residente.nombre,
+            tipoUsuario: UserType.residente,
+          ),
+          reclamoIdToOpen: reclamoId, // Pasar el ID del reclamo a abrir
+        ),
+      ),
+    );
+  } else {
+    // Para otros tipos de notificaciones, mostrar el diálogo normal
+    _showNotificationDetails(notification, userId);
+  }
+}
   Widget _buildNotificationCard(NotificationModel notification, String userId) {
     final isRead = notification.isRead != null;
 
@@ -295,6 +313,416 @@ class _ResidenteNotificationsScreenState
     }
   }
 
+  // Diálogo para notificaciones de vivienda
+void _showViviendaNotificationDialog(NotificationModel notification) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              notification.notificationType == 'vivienda_rechazada'
+                  ? Icons.home_outlined
+                  : Icons.home,
+              color: notification.notificationType == 'vivienda_rechazada'
+                  ? Colors.red.shade600
+                  : Colors.green.shade600,
+            ),
+            const SizedBox(width: 8),
+            const Text('Notificación de Vivienda'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (notification.additionalData?['viviendaSolicitada'] != null)
+                _buildDetailRow(
+                  'Vivienda',
+                  notification.additionalData!['viviendaSolicitada'],
+                ),
+              _buildDetailRow(
+                'Fecha',
+                '${notification.date} - ${notification.time}',
+              ),
+              _buildDetailRow(
+                'Tipo',
+                _getNotificationTypeText(notification.notificationType),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                notification.content,
+                style: const TextStyle(fontSize: 14),
+              ),
+              // Mostrar mensaje del administrador si existe
+              if (notification.notificationType == 'vivienda_rechazada' &&
+                  notification.additionalData?['mensajeAdmin'] != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.message,
+                            color: Colors.red.shade600,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Mensaje del Administrador:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red.shade600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        notification.additionalData!['mensajeAdmin'],
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              if (notification.notificationType == 'vivienda_rechazada') ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: GestureDetector(
+                    onTap: () async {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ResidenteSeleccionViviendaScreen(
+                                condominioId: widget.condominioId,
+                                onViviendaSeleccionada: () {
+                                  _loadResidenteData();
+                                },
+                              ),
+                        ),
+                      );
+                    },
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: Colors.orange.shade600,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Puede intentar seleccionar otra vivienda disponible dando click aquí.',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+// Diálogo para notificaciones de multas
+void _showMultaNotificationDialog(NotificationModel notification) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              notification.notificationType == 'multa_aplicada'
+                  ? Icons.warning
+                  : Icons.check_circle,
+              color: notification.notificationType == 'multa_aplicada'
+                  ? Colors.red.shade600
+                  : Colors.green.shade600,
+            ),
+            const SizedBox(width: 8),
+            const Text('Notificación de Multa'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildDetailRow(
+                'Fecha',
+                '${notification.date} - ${notification.time}',
+              ),
+              _buildDetailRow(
+                'Tipo',
+                _getNotificationTypeText(notification.notificationType),
+              ),
+              if (notification.additionalData?['monto'] != null)
+                _buildDetailRow(
+                  'Monto',
+                  'S/ ${notification.additionalData!['monto']}',
+                ),
+              if (notification.additionalData?['motivo'] != null)
+                _buildDetailRow(
+                  'Motivo',
+                  notification.additionalData!['motivo'],
+                ),
+              const SizedBox(height: 16),
+              Text(
+                notification.content,
+                style: const TextStyle(fontSize: 14),
+              ),
+              if (notification.notificationType == 'multa_aplicada') ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: Colors.blue.shade600,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Puede revisar y pagar sus multas en la sección "Mis Multas".',
+                          style: TextStyle(fontSize: 14),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+// Diálogo para notificaciones de reclamos
+void _showReclamoNotificationDialog(NotificationModel notification) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              Icons.assignment_turned_in,
+              color: Colors.green.shade600,
+            ),
+            const SizedBox(width: 8),
+            const Text('Reclamo Resuelto'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildDetailRow(
+                'Fecha',
+                '${notification.date} - ${notification.time}',
+              ),
+              if (notification.additionalData?['tipoReclamo'] != null)
+                _buildDetailRow(
+                  'Tipo de Reclamo',
+                  notification.additionalData!['tipoReclamo'],
+                ),
+              const SizedBox(height: 16),
+              Text(
+                notification.content,
+                style: const TextStyle(fontSize: 14),
+              ),
+              // Mostrar respuesta del administrador
+              if (notification.additionalData?['respuestaAdmin'] != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.admin_panel_settings,
+                            color: Colors.green.shade600,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Respuesta del Administrador:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green.shade600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        notification.additionalData!['respuestaAdmin'],
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: Colors.blue.shade600,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Puede revisar todos sus reclamos en la sección "Mis Reclamos".',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+// Diálogo para notificaciones generales
+void _showGeneralNotificationDialog(NotificationModel notification) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              Icons.notifications,
+              color: Colors.blue.shade600,
+            ),
+            const SizedBox(width: 8),
+            const Text('Notificación General'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildDetailRow(
+                'Fecha',
+                '${notification.date} - ${notification.time}',
+              ),
+              _buildDetailRow(
+                'Tipo',
+                _getNotificationTypeText(notification.notificationType),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                notification.content,
+                style: const TextStyle(fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+// Actualizar el método _getNotificationTypeText para incluir más tipos
+String _getNotificationTypeText(String type) {
+  switch (type) {
+    case 'vivienda_rechazada':
+      return 'Vivienda Rechazada';
+    case 'vivienda_aprobada':
+      return 'Vivienda Aprobada';
+    case 'multa_aplicada':
+      return 'Multa Aplicada';
+    case 'multa_pagada':
+      return 'Multa Pagada';
+    case 'reclamo_resuelto':
+      return 'Reclamo Resuelto';
+    default:
+      return 'Notificación General';
+  }
+}
+
   void _showNotificationDetails(
     NotificationModel notification,
     String userId,
@@ -317,148 +745,168 @@ class _ResidenteNotificationsScreenState
 
     if (!mounted) return;
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Row(
-            children: [
-              Icon(
-                notification.notificationType == 'vivienda_rechazada'
-                    ? Icons.home_outlined
-                    : notification.notificationType == 'vivienda_aprobada'
-                    ? Icons.home
-                    : Icons.notifications,
-                color: notification.notificationType == 'vivienda_rechazada'
-                    ? Colors.red.shade600
-                    : notification.notificationType == 'vivienda_aprobada'
-                    ? Colors.green.shade600
-                    : Colors.blue.shade600,
-              ),
-              const SizedBox(width: 8),
-              const Text('Detalle de Notificación'),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (notification.additionalData?['viviendaSolicitada'] != null)
-                  _buildDetailRow(
-                    'Vivienda',
-                    notification.additionalData!['viviendaSolicitada'],
-                  ),
-                _buildDetailRow(
-                  'Fecha',
-                  '${notification.date} - ${notification.time}',
-                ),
-                _buildDetailRow(
-                  'Tipo',
-                  _getNotificationTypeText(notification.notificationType),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  notification.content,
-                  style: const TextStyle(fontSize: 14),
-                ),
-                // Mostrar mensaje del administrador si existe
-                if (notification.notificationType == 'vivienda_rechazada' &&
-                    notification.additionalData?['mensajeAdmin'] != null) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.red.shade200),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.message,
-                              color: Colors.red.shade600,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Mensaje del Administrador:',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.red.shade600,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          notification.additionalData!['mensajeAdmin'],
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-                if (notification.notificationType == 'vivienda_rechazada') ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.orange.shade200),
-                    ),
-                    child: GestureDetector(
-                      onTap: () async {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                ResidenteSeleccionViviendaScreen(
-                                  condominioId: widget.condominioId,
-                                  onViviendaSeleccionada: () {
-                                    _loadResidenteData();
-                                  },
-                                ),
-                          ),
-                        );
-                      },
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            color: Colors.orange.shade600,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          const Expanded(
-                            child: Text(
-                              'Puede intentar seleccionar otra vivienda disponible dando click aquí.',
-                              style: TextStyle(fontSize: 14),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cerrar'),
-            ),
-          ],
-        );
-      },
-    );
+
+  // Determinar qué tipo de diálogo mostrar
+  switch (notification.notificationType) {
+    case 'vivienda_aprobada':
+    case 'vivienda_rechazada':
+      _showViviendaNotificationDialog(notification);
+      break;
+    case 'multa_aplicada':
+    case 'multa_pagada':
+      _showMultaNotificationDialog(notification);
+      break;
+    case 'reclamo_resuelto':
+      _showReclamoNotificationDialog(notification);
+      break;
+    default:
+      _showGeneralNotificationDialog(notification);
+      break;
   }
+
+    // showDialog(
+    //   context: context,
+    //   builder: (BuildContext context) {
+    //     return AlertDialog(
+    //       title: Row(
+    //         children: [
+    //           Icon(
+    //             notification.notificationType == 'vivienda_rechazada'
+    //                 ? Icons.home_outlined
+    //                 : notification.notificationType == 'vivienda_aprobada'
+    //                 ? Icons.home
+    //                 : Icons.notifications,
+    //             color: notification.notificationType == 'vivienda_rechazada'
+    //                 ? Colors.red.shade600
+    //                 : notification.notificationType == 'vivienda_aprobada'
+    //                 ? Colors.green.shade600
+    //                 : Colors.blue.shade600,
+    //           ),
+    //           const SizedBox(width: 8),
+    //           const Text('Detalle de Notificación'),
+    //         ],
+    //       ),
+    //       content: SingleChildScrollView(
+    //         child: Column(
+    //           mainAxisSize: MainAxisSize.min,
+    //           crossAxisAlignment: CrossAxisAlignment.start,
+    //           children: [
+    //             if (notification.additionalData?['viviendaSolicitada'] != null)
+    //               _buildDetailRow(
+    //                 'Vivienda',
+    //                 notification.additionalData!['viviendaSolicitada'],
+    //               ),
+    //             _buildDetailRow(
+    //               'Fecha',
+    //               '${notification.date} - ${notification.time}',
+    //             ),
+    //             _buildDetailRow(
+    //               'Tipo',
+    //               _getNotificationTypeText(notification.notificationType),
+    //             ),
+    //             const SizedBox(height: 16),
+    //             Text(
+    //               notification.content,
+    //               style: const TextStyle(fontSize: 14),
+    //             ),
+    //             // Mostrar mensaje del administrador si existe
+    //             if (notification.notificationType == 'vivienda_rechazada' &&
+    //                 notification.additionalData?['mensajeAdmin'] != null) ...[
+    //               const SizedBox(height: 16),
+    //               Container(
+    //                 padding: const EdgeInsets.all(12),
+    //                 decoration: BoxDecoration(
+    //                   color: Colors.red.shade50,
+    //                   borderRadius: BorderRadius.circular(8),
+    //                   border: Border.all(color: Colors.red.shade200),
+    //                 ),
+    //                 child: Column(
+    //                   crossAxisAlignment: CrossAxisAlignment.start,
+    //                   children: [
+    //                     Row(
+    //                       children: [
+    //                         Icon(
+    //                           Icons.message,
+    //                           color: Colors.red.shade600,
+    //                           size: 16,
+    //                         ),
+    //                         const SizedBox(width: 8),
+    //                         Text(
+    //                           'Mensaje del Administrador:',
+    //                           style: TextStyle(
+    //                             fontWeight: FontWeight.bold,
+    //                             color: Colors.red.shade600,
+    //                             fontSize: 14,
+    //                           ),
+    //                         ),
+    //                       ],
+    //                     ),
+    //                     const SizedBox(height: 8),
+    //                     Text(
+    //                       notification.additionalData!['mensajeAdmin'],
+    //                       style: const TextStyle(fontSize: 14),
+    //                     ),
+    //                   ],
+    //                 ),
+    //               ),
+    //             ],
+    //             if (notification.notificationType == 'vivienda_rechazada') ...[
+    //               const SizedBox(height: 16),
+    //               Container(
+    //                 padding: const EdgeInsets.all(12),
+    //                 decoration: BoxDecoration(
+    //                   color: Colors.orange.shade50,
+    //                   borderRadius: BorderRadius.circular(8),
+    //                   border: Border.all(color: Colors.orange.shade200),
+    //                 ),
+    //                 child: GestureDetector(
+    //                   onTap: () async {
+    //                     Navigator.push(
+    //                       context,
+    //                       MaterialPageRoute(
+    //                         builder: (context) =>
+    //                             ResidenteSeleccionViviendaScreen(
+    //                               condominioId: widget.condominioId,
+    //                               onViviendaSeleccionada: () {
+    //                                 _loadResidenteData();
+    //                               },
+    //                             ),
+    //                       ),
+    //                     );
+    //                   },
+    //                   child: Row(
+    //                     children: [
+    //                       Icon(
+    //                         Icons.info_outline,
+    //                         color: Colors.orange.shade600,
+    //                         size: 20,
+    //                       ),
+    //                       const SizedBox(width: 8),
+    //                       const Expanded(
+    //                         child: Text(
+    //                           'Puede intentar seleccionar otra vivienda disponible dando click aquí.',
+    //                           style: TextStyle(fontSize: 14),
+    //                         ),
+    //                       ),
+    //                     ],
+    //                   ),
+    //                 ),
+    //               ),
+    //             ],
+    //           ],
+    //         ),
+    //       ),
+    //       actions: [
+    //         TextButton(
+    //           onPressed: () => Navigator.of(context).pop(),
+    //           child: const Text('Cerrar'),
+    //         ),
+    //       ],
+    //     );
+    //   },
+    // );
+ 
+ }
 
   Widget _buildDetailRow(String label, String value) {
     return Padding(
@@ -477,16 +925,5 @@ class _ResidenteNotificationsScreenState
         ],
       ),
     );
-  }
-
-  String _getNotificationTypeText(String type) {
-    switch (type) {
-      case 'vivienda_rechazada':
-        return 'Vivienda Rechazada';
-      case 'vivienda_aprobada':
-        return 'Vivienda Aprobada';
-      default:
-        return 'Notificación General';
-    }
   }
 }

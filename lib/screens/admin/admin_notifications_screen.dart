@@ -1,3 +1,5 @@
+import 'package:comunidad_activa/models/user_model.dart';
+import 'package:comunidad_activa/screens/admin/admin_reclamos_screen.dart';
 import 'package:comunidad_activa/services/auth_service.dart';
 import 'package:comunidad_activa/services/firestore_service.dart';
 import 'package:comunidad_activa/services/notification_service.dart';
@@ -25,6 +27,27 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final AuthService _authService = AuthService();
   final BloqueoService _bloqueoService = BloqueoService();
+
+  UserModel? user;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentUser();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    try {
+      final currentUser = await _authService.getCurrentUserData();
+      if (mounted) {
+        setState(() {
+          user = currentUser;
+        });
+      }
+    } catch (e) {
+      print('❌ Error al cargar usuario actual: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,11 +96,24 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
 
           final notifications = snapshot.data ?? [];
           print('Notificaciones recibidas: ${notifications.length}');
-          final housingRequests = notifications
-              .where((n) => n.notificationType == 'solicitud_vivienda')
+
+          // Filtrar notificaciones relevantes para administradores
+          final relevantNotifications = notifications
+              .where(
+                (n) =>
+                    n.notificationType == 'solicitud_vivienda' ||
+                    n.notificationType == 'nuevo_reclamo',
+              )
               .toList();
 
-          if (housingRequests.isEmpty) {
+          print('Notificaciones relevantes: ${relevantNotifications.length}');
+          for (var notif in relevantNotifications) {
+            print(
+              '- Tipo: ${notif.notificationType}, Contenido: ${notif.content}',
+            );
+          }
+
+          if (relevantNotifications.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -89,7 +125,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'No hay solicitudes de vivienda',
+                    'No hay notificaciones pendientes',
                     style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
                   ),
                 ],
@@ -99,9 +135,9 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
 
           return ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: housingRequests.length,
+            itemCount: relevantNotifications.length,
             itemBuilder: (context, index) {
-              final notification = housingRequests[index];
+              final notification = relevantNotifications[index];
               return _buildNotificationCard(notification);
             },
           );
@@ -110,13 +146,148 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
     );
   }
 
+  void _showReclamoDetails(NotificationModel notification) async {
+    print('🔍 Mostrando detalles del reclamo: ${notification.additionalData}');
+
+    try {
+      // Marcar notificación como leída
+      if (notification.isRead == null) {
+        final user = _authService.currentUser;
+        if (user != null) {
+          final admin = await _firestoreService.getAdministradorData(
+            widget.condominioId,
+          );
+          if (admin != null) {
+            await _notificationService.markNotificationAsRead(
+              condominioId: widget.condominioId,
+              notificationId: notification.id,
+              userName: admin.nombre,
+              userId: admin.uid,
+              userType: 'administrador',
+              isCondominioNotification: true,
+            );
+          }
+        }
+      }
+
+      if (!mounted) return;
+
+      // Obtener el ID del reclamo desde additionalData
+      final reclamoId = notification.additionalData?['reclamoId'];
+      
+      if (reclamoId != null) {
+        // Navegar directamente a AdminReclamosScreen con el ID del reclamo específico
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AdminReclamosScreen(
+              currentUser: user!,
+              reclamoIdToOpen: reclamoId, // Pasar el ID del reclamo específico
+            ),
+          ),
+        );
+      } else {
+        // Si no hay reclamoId, mostrar el diálogo actual como fallback
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.report_problem, color: Colors.orange),
+                const SizedBox(width: 8),
+                const Text('Detalle del Reclamo'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Tipo: ${notification.additionalData?['tipoReclamo'] ?? 'No especificado'}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Residente: ${notification.additionalData?['nombreResidente'] ?? 'Desconocido'}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Contenido:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                Text(notification.content),
+                const SizedBox(height: 16),
+                Text(
+                  'Fecha ${notification.date} - ${notification.time}',
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cerrar'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AdminReclamosScreen(
+                        currentUser: user!,
+                      ),
+                    ),
+                  );
+                },
+                child: const Text('Ver Todos los Reclamos'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ Error al mostrar detalles del reclamo: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cargar detalles: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Widget _buildNotificationCard(NotificationModel notification) {
     final isRead = notification.isRead != null;
     final isPending = notification.status == 'pendiente';
+    final isReclamoNotification =
+        notification.notificationType == 'nuevo_reclamo';
 
     Color statusColor;
     IconData statusIcon;
     String statusText;
+
+    if (isReclamoNotification) {
+      statusColor = Colors.orange;
+      statusIcon = Icons.report_problem;
+      statusText = 'Nuevo Reclamo';
+    } else if (isPending) {
+      statusColor = Colors.orange;
+      statusIcon = Icons.pending;
+      statusText = 'Pendiente';
+    } else if (isRead) {
+      statusColor = Colors.green;
+      statusIcon = Icons.check_circle;
+      statusText = 'Procesada';
+    } else {
+      statusColor = Colors.blue;
+      statusIcon = Icons.new_releases;
+      statusText = 'Nueva';
+    }
 
     switch (notification.status) {
       case 'pendiente':
@@ -144,7 +315,9 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       elevation: isRead ? 2 : 4,
       child: InkWell(
-        onTap: () => _showNotificationDetails(notification),
+        onTap: () => isReclamoNotification
+            ? _showReclamoDetails(notification)
+            : _showNotificationDetails(notification),
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.all(16),
@@ -173,7 +346,9 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Solicitud de Vivienda',
+                          isReclamoNotification
+                              ? 'Reclamo: ${notification.additionalData?['tipoReclamo'] ?? 'Sin tipo'}'
+                              : 'Solicitud de Vivienda',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -597,14 +772,16 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
             updateData = {
               'tipoVivienda': 'casa',
               'numeroVivienda': vivienda,
-              'viviendaSeleccionada': 'seleccionada', // Cambiar de true a 'seleccionada'
+              'viviendaSeleccionada':
+                  'seleccionada', // Cambiar de true a 'seleccionada'
             };
           } else {
             updateData = {
               'tipoVivienda': 'departamento',
               'etiquetaEdificio': etiquetaEdificio,
               'numeroDepartamento': vivienda,
-              'viviendaSeleccionada': 'seleccionada', // Cambiar de true a 'seleccionada'
+              'viviendaSeleccionada':
+                  'seleccionada', // Cambiar de true a 'seleccionada'
             };
           }
 
