@@ -1,9 +1,13 @@
+import 'package:comunidad_activa/screens/residente/chat_screen.dart';
 import 'package:comunidad_activa/widgets/crear_multa_dialog.dart';
 import 'package:flutter/material.dart';
 import '../../models/condominio_model.dart';
 import '../../models/multa_model.dart';
 import '../../services/firestore_service.dart';
 import '../../services/multa_service.dart';
+import '../../services/mensaje_service.dart';
+import '../../models/residente_model.dart';
+import 'mensajes_admin_screen.dart';
 
 class ComunidadScreen extends StatefulWidget {
   final String condominioId;
@@ -16,6 +20,7 @@ class ComunidadScreen extends StatefulWidget {
 
 class _ComunidadScreenState extends State<ComunidadScreen> {
   final FirestoreService _firestoreService = FirestoreService();
+  final MensajeService _mensajeService = MensajeService();
   CondominioModel? _condominio;
   bool _isLoading = true;
 
@@ -164,6 +169,16 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
           ),
         ),
         PopupMenuItem<String>(
+          value: 'enviar_mensaje',
+          child: Row(
+            children: [
+              Icon(Icons.message, color: Colors.green.shade600),
+              const SizedBox(width: 8),
+              const Text('Enviar mensaje'),
+            ],
+          ),
+        ),
+        PopupMenuItem<String>(
           value: 'crear_multa',
           child: Row(
             children: [
@@ -185,10 +200,164 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
             behavior: SnackBarBehavior.floating,
           ),
         );
+      } else if (value == 'enviar_mensaje') {
+        _mostrarResidentesParaMensaje(vivienda, tipo);
       } else if (value == 'crear_multa') {
         _mostrarDialogoCrearMulta(context, vivienda, tipo);
       }
     });
+  }
+
+  Future<void> _mostrarResidentesParaMensaje(String vivienda, String tipo) async {
+    try {
+      // Obtener residentes de la vivienda específica
+      final todosResidentes = await _firestoreService
+          .obtenerResidentesCondominio(widget.condominioId);
+      
+      final residentesVivienda = todosResidentes
+          .where((r) => r.viviendaSeleccionada == vivienda)
+          .toList();
+
+      if (!mounted) return;
+
+      if (residentesVivienda.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No hay residentes registrados en $tipo $vivienda'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      if (residentesVivienda.length == 1) {
+        // Solo un residente, abrir chat directamente
+        final residente = residentesVivienda.first;
+        await _abrirChatConResidente(residente);
+      } else {
+        // Múltiples residentes, mostrar modal de selección
+        _mostrarModalSeleccionResidente(residentesVivienda, vivienda, tipo);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al obtener residentes: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _mostrarModalSeleccionResidente(
+    List<ResidenteModel> residentes,
+    String vivienda,
+    String tipo,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle del modal
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            
+            // Título
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'Seleccionar Residente de $tipo $vivienda',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            
+            // Lista de residentes
+            ...residentes.map((residente) => ListTile(
+              leading: CircleAvatar(
+                backgroundColor: Colors.green.shade600,
+                child: Text(
+                  residente.nombre.isNotEmpty
+                      ? residente.nombre[0].toUpperCase()
+                      : 'R',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+              title: Text(
+                residente.nombre,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(residente.email),
+              trailing: const Icon(Icons.message),
+              onTap: () {
+                Navigator.pop(context);
+                _abrirChatConResidente(residente);
+              },
+            )).toList(),
+            
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _abrirChatConResidente(ResidenteModel residente) async {
+    try {
+      // Obtener datos del usuario actual (administrador)
+      final adminData = await _firestoreService.getCurrentUserData();
+      if (adminData == null) {
+        throw Exception('No se pudo obtener datos del administrador');
+      }
+
+      final chatId = await _mensajeService.crearOObtenerChatPrivado(
+        condominioId: widget.condominioId,
+        usuario1Id: adminData.uid,
+        usuario2Id: residente.uid,
+        tipo: 'admin-residente'
+      );
+      
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatScreen(
+              currentUser: adminData,
+              chatId: chatId,
+              nombreChat: residente.nombre,
+              esGrupal: false,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al abrir chat: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildCasasCard() {

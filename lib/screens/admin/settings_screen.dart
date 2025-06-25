@@ -2,6 +2,7 @@ import 'package:comunidad_activa/screens/admin/config_viviendas_screen.dart';
 import 'package:flutter/material.dart';
 import '../../models/condominio_model.dart';
 import '../../services/firestore_service.dart';
+import '../../services/mensaje_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   final String condominioId;
@@ -14,13 +15,66 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final FirestoreService _firestoreService = FirestoreService();
+  final MensajeService _mensajeService = MensajeService();
   CondominioModel? _condominio;
   bool _isLoading = true;
+  bool _comunicacionEntreResidentes = false;
 
   @override
   void initState() {
     super.initState();
     _loadCondominioData();
+    _loadMensajeSettings();
+  }
+
+  Future<void> _loadMensajeSettings() async {
+    try {
+      final comunicacionHabilitada = await _mensajeService
+          .esComunicacionEntreResidentesHabilitada(widget.condominioId);
+      
+      if (mounted) {
+        setState(() {
+          _comunicacionEntreResidentes = comunicacionHabilitada;
+        });
+      }
+    } catch (e) {
+      print('Error al cargar configuración de mensajes: $e');
+    }
+  }
+
+  Future<void> _toggleComunicacionResidentes(bool value) async {
+    try {
+      await _mensajeService.actualizarComunicacionEntreResidentes(
+        condominioId: widget.condominioId,
+        permitir: value,
+      );
+      
+      if (mounted) {
+        setState(() {
+          _comunicacionEntreResidentes = value;
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              value 
+                  ? 'Comunicación entre residentes habilitada'
+                  : 'Comunicación entre residentes deshabilitada',
+            ),
+            backgroundColor: value ? Colors.green : Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al actualizar configuración: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _loadCondominioData() async {
@@ -78,7 +132,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ? Colors.green 
                   : Colors.orange,
             ),
-            title: const Text('Configuraion Viviendas del Condominio'),
+            title: const Text('Configuración Viviendas del Condominio'),
             subtitle: _isLoading 
                 ? const Text('Cargando...')
                 : Text(_getConfiguracionInfo()),
@@ -89,10 +143,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 MaterialPageRoute(
                   builder: (context) => ViviendasScreen(condominioId: widget.condominioId),
                 ),
-              ).then((_) => _loadCondominioData()); // Recargar al volver
+              ).then((_) => _loadCondominioData());
             },
-          )
-        ]
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.message, color: Colors.blue),
+            title: const Text('Comunicación entre Residentes'),
+            subtitle: Text(
+              _comunicacionEntreResidentes
+                  ? 'Los residentes pueden enviarse mensajes entre ellos'
+                  : 'Solo pueden comunicarse con administración y conserjería',
+            ),
+            trailing: Switch(
+              value: _comunicacionEntreResidentes,
+              onChanged: _toggleComunicacionResidentes,
+              activeColor: Colors.blue,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -8,6 +8,7 @@ class ResidenteModel {
   final String codigo;
   final bool esComite;
   final String fechaRegistro;
+  final bool permitirMsjsResidentes;
   // Nuevos campos para vivienda
   final String? tipoVivienda; // 'casa' o 'departamento'
   final String? numeroVivienda; // Para casas
@@ -23,6 +24,7 @@ class ResidenteModel {
     required this.codigo,
     required this.esComite,
     required this.fechaRegistro,
+    required this.permitirMsjsResidentes,
     this.tipoVivienda,
     this.numeroVivienda,
     this.etiquetaEdificio,
@@ -39,6 +41,7 @@ class ResidenteModel {
       'codigo': codigo,
       'esComite': esComite,
       'fechaRegistro': fechaRegistro,
+      'permitirMsjsResidentes': permitirMsjsResidentes,
       'tipoVivienda': tipoVivienda,
       'numeroVivienda': numeroVivienda,
       'etiquetaEdificio': etiquetaEdificio,
@@ -49,19 +52,30 @@ class ResidenteModel {
 
   factory ResidenteModel.fromMap(Map<String, dynamic> map) {
     return ResidenteModel(
-      uid: map['uid'] ?? '',
-      nombre: map['nombre'] ?? '',
-      email: map['email'] ?? '',
-      condominioId: map['condominioId'] ?? '',
-      codigo: map['codigo'] ?? '',
-      esComite: map['esComite'] ?? false,
-      fechaRegistro: map['fechaRegistro'] ?? '',
-      tipoVivienda: map['tipoVivienda'],
-      numeroVivienda: map['numeroVivienda'],
-      etiquetaEdificio: map['etiquetaEdificio'],
-      numeroDepartamento: map['numeroDepartamento'],
-      viviendaSeleccionada: map['viviendaSeleccionada'] ?? 'no_seleccionada',
+      uid: map['uid']?.toString() ?? '',
+      nombre: map['nombre']?.toString() ?? '',
+      email: map['email']?.toString() ?? '',
+      condominioId: map['condominioId']?.toString() ?? '',
+      codigo: map['codigo']?.toString() ?? '',
+      esComite: _parseBool(map['esComite']),
+      fechaRegistro: map['fechaRegistro']?.toString() ?? '',
+      permitirMsjsResidentes: _parseBool(map['permitirMsjsResidentes'], defaultValue: true),
+      tipoVivienda: map['tipoVivienda']?.toString(),
+      numeroVivienda: map['numeroVivienda']?.toString(),
+      etiquetaEdificio: map['etiquetaEdificio']?.toString(),
+      numeroDepartamento: map['numeroDepartamento']?.toString(),
+      viviendaSeleccionada: map['viviendaSeleccionada']?.toString() ?? 'no_seleccionada',
     );
+  }
+
+  // Método auxiliar para parsear valores booleanos de manera segura
+  static bool _parseBool(dynamic value, {bool defaultValue = false}) {
+    if (value == null) return defaultValue;
+    if (value is bool) return value;
+    if (value is String) {
+      return value.toLowerCase() == 'true';
+    }
+    return defaultValue;
   }
 
   factory ResidenteModel.fromFirestore(DocumentSnapshot doc) {
@@ -92,6 +106,7 @@ class ResidenteModel {
     String? codigo,
     bool? esComite,
     String? fechaRegistro,
+    bool? permitirMsjsResidentes,
     String? tipoVivienda,
     String? numeroVivienda,
     String? etiquetaEdificio,
@@ -106,6 +121,7 @@ class ResidenteModel {
       codigo: codigo ?? this.codigo,
       esComite: esComite ?? this.esComite,
       fechaRegistro: fechaRegistro ?? this.fechaRegistro,
+      permitirMsjsResidentes: permitirMsjsResidentes?? this.permitirMsjsResidentes,
       tipoVivienda: tipoVivienda ?? this.tipoVivienda,
       numeroVivienda: numeroVivienda ?? this.numeroVivienda,
       etiquetaEdificio: etiquetaEdificio ?? this.etiquetaEdificio,

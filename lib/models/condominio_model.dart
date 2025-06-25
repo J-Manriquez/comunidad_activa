@@ -56,6 +56,7 @@ class CondominioModel {
   final String fechaCreacion;
   final bool pruebaActiva;
   final String? fechaFinPrueba;
+  final bool? comunicacionEntreResidentes;
   final TipoCondominio? tipoCondominio;
   
   // Propiedades específicas para tipo 'casas'
@@ -87,6 +88,7 @@ class CondominioModel {
     required this.fechaCreacion,
     required this.pruebaActiva,
     this.fechaFinPrueba,
+    this.comunicacionEntreResidentes,
     this.tipoCondominio,
     this.numeroCasas,
     this.rangoCasas,
@@ -132,6 +134,7 @@ class CondominioModel {
       'fechaCreacion': fechaCreacion,
       'pruebaActiva': pruebaActiva,
       'fechaFinPrueba': fechaFinPrueba,
+      'comunicacionEntreResidentes': comunicacionEntreResidentes,
       'tipoCondominio': tipoCondominio?.toString().split('.').last,
       'numeroCasas': numeroCasas,
       'rangoCasas': rangoCasas,
@@ -185,6 +188,7 @@ class CondominioModel {
       fechaCreacion: map['fechaCreacion'] ?? '',
       pruebaActiva: map['pruebaActiva'] ?? true,
       fechaFinPrueba: map['fechaFinPrueba'],
+      comunicacionEntreResidentes: map['comunicacionEntreResidentes'] ?? false,
       tipoCondominio: tipo,
       numeroCasas: map['numeroCasas'],
       rangoCasas: map['rangoCasas'],

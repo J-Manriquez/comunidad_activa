@@ -129,6 +129,37 @@ class FirestoreService {
     }
   }
 
+  // Obtener todos los residentes de un condominio - VERSIÓN CORREGIDA
+  Future<List<ResidenteModel>> obtenerResidentesCondominio(
+    String condominioId,
+  ) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection(condominioId)
+          .doc('usuarios')
+          .collection('residentes')
+          .get();
+
+      return querySnapshot.docs
+          .where((doc) => doc.id != '_placeholder') // Filtrar placeholder
+          .map((doc) {
+            try {
+              return ResidenteModel.fromFirestore(doc);
+            } catch (e) {
+              print('❌ Error al procesar residente ${doc.id}: $e');
+              print('Datos del documento: ${doc.data()}');
+              return null;
+            }
+          })
+          .where((residente) => residente != null)
+          .cast<ResidenteModel>()
+          .toList();
+    } catch (e) {
+      debugPrint('Error al obtener residentes del condominio: $e');
+      throw Exception('Error al obtener residentes del condominio: $e');
+    }
+  }
+
   // Registrar un residente
   Future<void> registerResidente({
     required String nombre,
@@ -161,6 +192,7 @@ class FirestoreService {
         codigo: codigo,
         esComite: esComite,
         fechaRegistro: fechaActual,
+        permitirMsjsResidentes: true,
       );
 
       // Si es miembro del comité, guardar en ambas colecciones
@@ -525,24 +557,27 @@ class FirestoreService {
   Stream<ResidenteModel?> getResidenteStream(String uid) {
     try {
       final userData = getCurrentUserData();
-      return userData.then((user) {
-        if (user?.condominioId == null) {
-          return Stream.value(null);
-        }
-        
-        return FirebaseFirestore.instance
-            .collection(user!.condominioId.toString())
-            .doc('usuarios')
-            .collection('residentes')
-            .doc(uid)
-            .snapshots()
-            .map((doc) {
-              if (doc.exists) {
-                return ResidenteModel.fromFirestore(doc);
-              }
-              return null;
-            });
-      }).asStream().asyncExpand((stream) => stream);
+      return userData
+          .then((user) {
+            if (user?.condominioId == null) {
+              return Stream.value(null);
+            }
+
+            return FirebaseFirestore.instance
+                .collection(user!.condominioId.toString())
+                .doc('usuarios')
+                .collection('residentes')
+                .doc(uid)
+                .snapshots()
+                .map((doc) {
+                  if (doc.exists) {
+                    return ResidenteModel.fromFirestore(doc);
+                  }
+                  return null;
+                });
+          })
+          .asStream()
+          .asyncExpand((stream) => stream);
     } catch (e) {
       return Stream.error('Error al obtener stream del residente: $e');
     }

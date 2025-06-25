@@ -18,6 +18,8 @@ import 'admin/comunidad_screen.dart';
 import 'admin/multas_admin_screen.dart'; // Nueva importación
 import 'residente/r_multas_screen.dart';
 import 'residente/r_config_screen.dart'; // Nueva importación
+import 'residente/mensajes_residente_screen.dart';
+import 'admin/mensajes_admin_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -345,6 +347,19 @@ class HomeScreen extends StatelessWidget {
               },
             ),
             ListTile(
+              leading: const Icon(Icons.message),
+              title: const Text('Mensajes'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MensajesAdminScreen(currentUser: user),
+                  ),
+                );
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.gavel),
               title: const Text('Gestión de Multas'),
               onTap: () {
@@ -391,6 +406,19 @@ class HomeScreen extends StatelessWidget {
 
           // Opciones específicas para residentes
           if (user.tipoUsuario == UserType.residente) ...[            
+            ListTile(
+              leading: const Icon(Icons.message),
+              title: const Text('Mensajes'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MensajesResidenteScreen(currentUser: user),
+                  ),
+                );
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.receipt_long),
               title: const Text('Mis Multas'),

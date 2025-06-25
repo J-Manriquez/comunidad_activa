@@ -1,5 +1,6 @@
 import 'package:comunidad_activa/models/residente_model.dart';
 import 'package:comunidad_activa/models/user_model.dart';
+import 'package:comunidad_activa/screens/residente/chat_screen.dart';
 import 'package:comunidad_activa/screens/residente/r_multas_screen.dart';
 import 'package:comunidad_activa/screens/residente/r_reclamos_screen.dart';
 import 'package:comunidad_activa/screens/residente/r_seleccion_vivienda_screen.dart';
@@ -178,7 +179,44 @@ class _ResidenteNotificationsScreenState
         ),
       ),
     );
-  } else {
+  } else if (notification.notificationType == 'nuevo_mensaje') {
+      // NUEVO: Navegar al chat correspondiente
+      final chatId = notification.additionalData?['chatId'];
+      final tipoChat = notification.additionalData?['tipoChat'];
+      final remitenteNombre = notification.additionalData?['remitenteId'];
+      
+      if (chatId != null) {
+        String nombreChat;
+        bool esGrupal = false;
+        
+        if (tipoChat == 'grupal') {
+          nombreChat = 'Chat General del Condominio';
+          esGrupal = true;
+        } else if (tipoChat == 'conserjeria') {
+          nombreChat = 'Conserjería';
+        } else {
+          nombreChat = remitenteNombre ?? 'Chat';
+        }
+        
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatScreen(
+              currentUser: UserModel(
+                uid: userId,
+                condominioId: widget.condominioId,
+                email: residente!.email,
+                nombre: residente.nombre,
+                tipoUsuario: UserType.residente,
+              ),
+              chatId: chatId,
+              nombreChat: nombreChat,
+              esGrupal: esGrupal,
+            ),
+          ),
+        );
+      }
+    }else {
     // Para otros tipos de notificaciones, mostrar el diálogo normal
     _showNotificationDetails(notification, userId);
   }
@@ -206,6 +244,15 @@ class _ResidenteNotificationsScreenState
         typeIcon = Icons.gavel;
         typeText = 'Nueva Multa';
         break;
+      case 'nuevo_mensaje': // NUEVO CASO
+        typeColor = Colors.blue;
+        typeIcon = Icons.message;
+        typeText = 'Nuevo Mensaje';
+        break;
+      case 'reclamo_resuelto':
+        typeColor = Colors.green;
+        typeIcon = Icons.check_circle;
+        typeText = 'Reclamo Resuelto';
       default:
         typeColor = Colors.blue;
         typeIcon = Icons.notifications;

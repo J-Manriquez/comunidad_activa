@@ -11,6 +11,7 @@ cada vez que un adimistrador se registra crea una nueva colección principal:
     │      ├── fechaCreacion: String (ISO 8601)
     │      ├── pruebaActiva: Boolean
     │      ├── fechaFinPrueba: String (ISO 8601, nullable)
+    │      ├── comunicacionEntreResidentes: Boolean
     │      ├── tipoCondominio: String (casas|edificio|mixto, nullable)
     │      ├── numeroCasas: Integer (nullable)
     │      ├── rangoCasas: String (nullable)
@@ -82,17 +83,20 @@ cada vez que un adimistrador se registra crea una nueva colección principal:
     │        │    └── _placeholder (Document - se elimina cuando se agrega la primera notificación real)
     │        │        └── created: String (ISO 8601)
     │        │ 
-    │        └── mensajes (Subcollection)
-    │             ├── {id} (Document)
-    │             │   ├── id: String
-    │             │   ├── fechaRegistro: String (ISO 8601)
-    │             │   ├── tipoMensaje: String
-    │             │   ├── contenido: String
-    │             │   ├── isRead: Map<String, dynamic> (nullable)
-    │             │   ├── estado: String
-    │             │   └── additionalData: Map<String, dynamic> (nullable)
-    │             └── _placeholder (Document - se elimina cuando se agrega la primera notificación real)
-    │                 └── created: String (ISO 8601)
+    │        └── mensajes (Subcollection)
+    │             ├── {id} (Document)
+    │             │   ├── id: String
+    │             │   ├── fechaRegistro: String (ISO 8601)
+    │             │   ├── participantes: array list
+    │             │   └── contenido (Subcollection)
+    │             │       ├── {contenidoId} (Document)
+    │             │       │   ├── texto: String (nullable)
+    │             │       │   ├── additionalData: Map<String, dynamic> (nullable)
+    │             │       │   ├── isRead: Map<String, dynamic> (nullable)
+    │             │       │   ├── fechaCreacion: String (ISO 8601)
+    │             │       │   └── autorUid: String
+    │             │       └── ...
+    │             └── ...
     │
     └─── usuarios (Document)
             ├── residentes (Subcollection)
@@ -104,6 +108,7 @@ cada vez que un adimistrador se registra crea una nueva colección principal:
             │   │   ├── codigo: String
             │   │   ├── esComite: Boolean
             │   │   ├── fechaRegistro: String (ISO 8601)
+            │   │   ├── permitirMsjsResidentes: Boolean
             │   │   ├── tipoVivienda
             │   │   ├── numeroVivienda
             │   │   ├── etiquetaEdificio
