@@ -4,6 +4,7 @@ import 'package:comunidad_activa/screens/admin/mensajes_admin_screen.dart';
 import 'package:comunidad_activa/screens/residente/chat_screen.dart';
 import 'package:comunidad_activa/services/auth_service.dart';
 import 'package:comunidad_activa/services/firestore_service.dart';
+import 'package:comunidad_activa/services/mensaje_service.dart';
 import 'package:comunidad_activa/services/notification_service.dart';
 import 'package:comunidad_activa/models/notification_model.dart';
 import 'package:comunidad_activa/services/bloqueo_service.dart';
@@ -184,6 +185,21 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
         } else {
           nombreChat = remitenteNombre ?? 'Chat';
         }
+
+        // Marcar todos los mensajes del chat como leídos y eliminar notificaciones
+        final mensajeService = MensajeService();
+        final admin = await _firestoreService.getAdministradorData(widget.condominioId);
+        
+        if (admin != null) {
+          await mensajeService.marcarTodosMensajesComoLeidos(
+            condominioId: widget.condominioId,
+            chatId: chatId,
+            usuarioId: admin.uid,
+            nombreUsuario: admin.nombre,
+            tipoUsuario: 'administrador',
+          );
+        }
+
 
         if (chatId != null) {
           // Navegar al chat específico

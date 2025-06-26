@@ -1,3 +1,4 @@
+import 'package:comunidad_activa/models/administrador_model.dart';
 import 'package:flutter/material.dart';
 import '../../models/user_model.dart';
 import '../../models/mensaje_model.dart';
@@ -77,10 +78,28 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
         children: [
           // Chat grupal del condominio
           _buildChatGrupalCard(),
-          const Divider(height: 1),
-          // Chat con conserjería - NUEVO
+          const SizedBox(height: 4),
+
+          // Chat con conserjería
           _buildChatConserjeriaCard(),
-          const Divider(height: 1),
+          const SizedBox(height: 4),
+          
+          // ✅ NUEVO: Chat con administrador
+          _buildChatAdministradorCard(),
+          const SizedBox(height: 4),
+          
+          Padding(
+            padding: EdgeInsets.all(8.0),
+            child: Text(
+              'Chats con Residentes',
+              textAlign: TextAlign.start,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+              ),
+            ),
+          ),
           // Lista de chats
           Expanded(
             child: StreamBuilder<List<MensajeModel>>(
@@ -105,7 +124,9 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
                     .where(
                       (chat) =>
                           !chat.participantes.contains('GRUPO_CONDOMINIO') &&
-                          chat.tipo != 'grupal' && chat.tipo !='conserjeria',
+                          chat.tipo != 'grupal' &&
+                          chat.tipo != 'conserjeria' &&
+                          chat.tipo != 'admin-residente',
                     )
                     .toList();
 
@@ -121,13 +142,32 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
                     ),
                   );
                 }
+                const Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: Text(
+                    'Chats con Residentes',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
+                );
 
                 return ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: chatsPrivados.length,
                   itemBuilder: (context, index) {
                     final chat = chatsPrivados[index];
-                    return _buildChatCard(chat);
+                    final otroParticipante = chat.participantes
+                        .where((p) => p != widget.currentUser.uid)
+                        .firstOrNull;
+
+                    // Solo mostrar el chat si hay otro participante válido
+                    if (otroParticipante == null) {
+                      return const SizedBox.shrink(); // No mostrar nada si no hay otro participante
+                    }
+                    return _buildChatCard(chat, otroParticipante);
                   },
                 );
               },
@@ -143,6 +183,102 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
             )
           : null,
     );
+  }
+
+  // Agregar después del chat con conserjería
+  Widget _buildChatAdministradorCard() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Card(
+        elevation: 2,
+        color: Colors.red.shade50,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: Colors.red.shade200, width: 1),
+        ),
+        child: ListTile(
+          contentPadding: const EdgeInsets.all(16),
+          leading: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.red.shade600,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.admin_panel_settings,
+              color: Colors.white,
+              size: 28,
+            ),
+          ),
+          title: const Text(
+            'Administrador',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          subtitle: const Text(
+            'Chat con el administrador del condominio',
+            style: TextStyle(fontSize: 14, color: Colors.grey),
+          ),
+          trailing: Icon(
+            Icons.arrow_forward_ios,
+            color: Colors.grey[400],
+            size: 16,
+          ),
+          onTap: _abrirChatAdministrador,
+        ),
+      ),
+    );
+  }
+
+  // Método para abrir chat con administrador
+  Future<void> _abrirChatAdministrador() async {
+    try {
+      // Obtener datos del administrador
+      final admin = await _firestoreService.getAdministradorData(
+        widget.currentUser.condominioId.toString(),
+      );
+
+      if (admin == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No se pudo encontrar al administrador'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      final chatId = await _mensajeService.crearOObtenerChatPrivado(
+        condominioId: widget.currentUser.condominioId.toString(),
+        usuario1Id: widget.currentUser.uid,
+        usuario2Id: admin.uid,
+        tipo: 'admin-residente', // ✅ Usar el mismo tipo que usa el admin
+      );
+
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatScreen(
+              currentUser: widget.currentUser,
+              chatId: chatId,
+              nombreChat: admin.nombre,
+              esGrupal: false,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al abrir chat con administrador: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   // NUEVO: Widget para chat con conserjería
@@ -229,143 +365,172 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
   }
 
   Widget _buildChatGrupalCard() {
-    return Card(
+    return Container(
       margin: const EdgeInsets.all(16),
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: () => _abrirChatGrupal(),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: Colors.blue[100],
-                radius: 25,
-                child: Icon(Icons.group, color: Colors.blue[700], size: 28),
-              ),
-              const SizedBox(width: 16),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Chat General del Condominio',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Comunicación con todos los residentes',
-                      style: TextStyle(fontSize: 14, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(Icons.arrow_forward_ios, color: Colors.grey[400], size: 16),
-            ],
+      child: Card(
+        elevation: 4,
+        color: Colors.blue.shade50,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: Colors.blue.shade200, width: 2),
+        ),
+        child: ListTile(
+          contentPadding: const EdgeInsets.all(16),
+          leading: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade600,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.apartment, color: Colors.white, size: 28),
           ),
+          title: const Text(
+            'Chat del Condominio',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+          subtitle: const Text(
+            'Chat general con todos los residentes',
+            style: TextStyle(fontSize: 14),
+          ),
+          trailing: const Icon(Icons.arrow_forward_ios, color: Colors.blue),
+          onTap: () => _abrirChatGrupal(),
         ),
       ),
     );
   }
 
-  Widget _buildChatCard(MensajeModel chat) {
+  Widget _buildChatCard(MensajeModel chat, String otroParticipante) {
     // Chat con otro residente o administrador
-    final otroParticipante = chat.participantes.firstWhere(
-      (id) => id != widget.currentUser.uid,
-      orElse: () => '',
-    );
     print('Participantes: ${chat.participantes}');
-    return FutureBuilder<String>(
-      future: _obtenerNombreUsuario(otroParticipante),
-      builder: (context, snapshot) {
-        final nombreOtroUsuario = snapshot.data ?? 'Usuario';
+    print('Residente ID: ${widget.currentUser.uid}');
+    print('Otro participante: $otroParticipante');
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: InkWell(
-            onTap: () => _abrirChat(chat.id, nombreOtroUsuario),
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    backgroundColor: Colors.green[100],
+    return FutureBuilder<ResidenteModel?>(
+      future: _firestoreService.getResidenteData(otroParticipante),
+      builder: (context, residenteSnapshot) {
+        if (residenteSnapshot.connectionState == ConnectionState.waiting) {
+          return const Card(
+            margin: EdgeInsets.only(bottom: 12),
+            child: ListTile(
+              leading: CircularProgressIndicator(),
+              title: Text('Cargando...'),
+            ),
+          );
+        }
+
+        if (residenteSnapshot.hasError) {
+          return Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            child: ListTile(
+              leading: Icon(Icons.error, color: Colors.red),
+              title: Text('Error al cargar usuario'),
+              subtitle: Text('${residenteSnapshot.error}'),
+            ),
+          );
+        }
+
+        print('Residente: ${residenteSnapshot.data}');
+        print('Residente nombre: ${residenteSnapshot.data?.nombre}');
+
+        // Obtener el nombre del residente y la descripción de la vivienda
+        final residente = residenteSnapshot.data;
+
+        // Si no se encuentra el residente, intentar buscar como administrador
+        if (residente == null) {
+          return FutureBuilder<AdministradorModel?>(
+            future: _firestoreService.getAdministradorData(
+              widget.currentUser.condominioId.toString(),
+            ),
+            builder: (context, adminSnapshot) {
+              if (adminSnapshot.connectionState == ConnectionState.waiting) {
+                return const Card(
+                  margin: EdgeInsets.only(bottom: 12),
+                  child: ListTile(
+                    leading: CircularProgressIndicator(),
+                    title: Text('Cargando...'),
+                  ),
+                );
+              }
+
+              final admin = adminSnapshot.data;
+              final nombreUsuario = admin?.nombre ?? 'Usuario Desconocido';
+              final tipoUsuario = admin != null ? 'Administrador' : 'Usuario';
+
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: admin != null
+                        ? Colors.red[100]
+                        : Colors.grey[100],
                     radius: 25,
                     child: Icon(
-                      Icons.person,
-                      color: Colors.green[700],
+                      admin != null ? Icons.admin_panel_settings : Icons.person,
+                      color: admin != null ? Colors.red[700] : Colors.grey[700],
                       size: 28,
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          nombreOtroUsuario,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          DateFormat(
-                            'dd/MM/yyyy',
-                          ).format(DateTime.parse(chat.fechaRegistro)),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
+                  title: Text(
+                    nombreUsuario,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  Icon(
-                    Icons.arrow_forward_ios,
-                    color: Colors.grey[400],
-                    size: 16,
+                  subtitle: Text(
+                    tipoUsuario,
+                    style: const TextStyle(fontSize: 12),
                   ),
-                ],
-              ),
+                  trailing: Text(
+                    DateFormat(
+                      'dd/MM',
+                    ).format(DateTime.parse(chat.fechaRegistro)),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  onTap: () => {
+                    _abrirChat(otroParticipante, nombreUsuario),
+                    print('Chat con admin $otroParticipante'),
+                  },
+                ),
+              );
+            },
+          );
+        }
+
+        final nombreResidente = residente.nombre;
+        final vivienda = residente.descripcionVivienda;
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: Colors.green[100],
+              radius: 25,
+              child: Icon(Icons.person, color: Colors.green[700], size: 28),
             ),
+            title: Text(
+              nombreResidente,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            subtitle: Text(
+              vivienda ?? 'Sin vivienda asignada',
+              style: const TextStyle(fontSize: 12),
+            ),
+            trailing: Text(
+              DateFormat('dd/MM').format(DateTime.parse(chat.fechaRegistro)),
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            onTap: () => _abrirChat(otroParticipante, nombreResidente),
           ),
         );
       },
     );
-  }
-
-  Future<String> _obtenerNombreUsuario(String userId) async {
-    try {
-      // Intentar obtener como residente
-      final residente = await _firestoreService.getResidenteData(userId);
-      if (residente != null) {
-        return residente.nombre;
-      }
-
-      // Intentar obtener como administrador
-      final admin = await _firestoreService.getAdministradorData(
-        widget.currentUser.condominioId.toString(),
-      );
-      if (admin != null && admin.uid == userId) {
-        return '${admin.nombre} (Administrador)';
-      }
-
-      return 'Usuario';
-    } catch (e) {
-      return 'Usuario';
-    }
   }
 
   Future<void> _abrirChatGrupal() async {
@@ -675,7 +840,7 @@ class _BuscarResidentesModalState extends State<_BuscarResidentesModal> {
         condominioId: widget.currentUser.condominioId.toString(),
         usuario1Id: widget.currentUser.uid,
         usuario2Id: residente.uid,
-        tipo: 'entreResidentes'
+        tipo: 'entreResidentes',
       );
 
       widget.onChatCreado(chatId, residente.nombre);

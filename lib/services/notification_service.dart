@@ -238,4 +238,67 @@ class NotificationService {
         .snapshots()
         .map((snapshot) => snapshot.docs.length);
   }
+
+  // Eliminar notificación específica
+  Future<void> deleteNotification({
+    required String condominioId,
+    required String notificationId,
+    required String userId,
+    required String userType,
+    bool isCondominioNotification = false,
+  }) async {
+    try {
+      if (isCondominioNotification) {
+        await _firestore
+            .collection(condominioId)
+            .doc('comunicaciones')
+            .collection('notificaciones')
+            .doc(notificationId)
+            .delete();
+      } else {
+        await _firestore
+            .collection(condominioId)
+            .doc('usuarios')
+            .collection(userType)
+            .doc(userId)
+            .collection('notificaciones')
+            .doc(notificationId)
+            .delete();
+      }
+    } catch (e) {
+      print('❌ Error al eliminar notificación: $e');
+      throw Exception('Error al eliminar notificación: $e');
+    }
+  }
+
+  // Eliminar notificaciones de mensaje específico
+  Future<void> deleteMessageNotifications({
+    required String condominioId,
+    required String chatId,
+    required String userId,
+    required String userType,
+  }) async {
+    try {
+      // Obtener notificaciones del usuario relacionadas con el chat
+      final notificationsSnapshot = await _firestore
+          .collection(condominioId)
+          .doc('usuarios')
+          .collection(userType)
+          .doc(userId)
+          .collection('notificaciones')
+          .where('tipoNotificacion', isEqualTo: 'nuevo_mensaje')
+          .get();
+
+      // Filtrar y eliminar notificaciones del chat específico
+      for (final doc in notificationsSnapshot.docs) {
+        final data = doc.data();
+        final additionalData = data['additionalData'] as Map<String, dynamic>?;
+        if (additionalData?['chatId'] == chatId) {
+          await doc.reference.delete();
+        }
+      }
+    } catch (e) {
+      print('❌ Error al eliminar notificaciones de mensaje: $e');
+    }
+  }
 }

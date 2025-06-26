@@ -4,6 +4,7 @@ import 'package:comunidad_activa/screens/residente/chat_screen.dart';
 import 'package:comunidad_activa/screens/residente/r_multas_screen.dart';
 import 'package:comunidad_activa/screens/residente/r_reclamos_screen.dart';
 import 'package:comunidad_activa/screens/residente/r_seleccion_vivienda_screen.dart';
+import 'package:comunidad_activa/services/mensaje_service.dart';
 import 'package:flutter/material.dart';
 import '../../models/notification_model.dart';
 import '../../services/notification_service.dart';
@@ -197,6 +198,16 @@ class _ResidenteNotificationsScreenState
         } else {
           nombreChat = remitenteNombre ?? 'Chat';
         }
+
+        // Marcar todos los mensajes del chat como leídos y eliminar notificaciones
+        final mensajeService = MensajeService();
+        await mensajeService.marcarTodosMensajesComoLeidos(
+          condominioId: widget.condominioId,
+          chatId: chatId,
+          usuarioId: userId,
+          nombreUsuario: residente!.nombre,
+          tipoUsuario: 'residentes',
+        );
         
         Navigator.push(
           context,
