@@ -83,96 +83,99 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
           // Chat con conserjería
           _buildChatConserjeriaCard(),
           const SizedBox(height: 4),
-          
+
           // ✅ NUEVO: Chat con administrador
           _buildChatAdministradorCard(),
-          const SizedBox(height: 4),
-          
-          Padding(
-            padding: EdgeInsets.all(8.0),
-            child: Text(
-              'Chats con Residentes',
-              textAlign: TextAlign.start,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,
+          const SizedBox(height: 8),
+
+          if (_comunicacionEntreResidentesHabilitada &&
+              _permitirMensajesResidentes) ...[
+            Padding(
+              padding: EdgeInsets.all(0),
+              child: Text(
+                'Chats con Residentes',
+                textAlign: TextAlign.start,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
               ),
             ),
-          ),
-          // Lista de chats
-          Expanded(
-            child: StreamBuilder<List<MensajeModel>>(
-              stream: _mensajeService.obtenerChatsUsuario(
-                condominioId: widget.currentUser.condominioId.toString(),
-                usuarioId: widget.currentUser.uid,
-              ),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+            // Lista de chats
+            Expanded(
+              child: StreamBuilder<List<MensajeModel>>(
+                stream: _mensajeService.obtenerChatsUsuario(
+                  condominioId: widget.currentUser.condominioId.toString(),
+                  usuarioId: widget.currentUser.uid,
+                ),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Text('Error al cargar chats: ${snapshot.error}'),
-                  );
-                }
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text('Error al cargar chats: ${snapshot.error}'),
+                    );
+                  }
 
-                final chats = snapshot.data ?? [];
-                // CORREGIR: Incluir chats con conserjería y otros residentes
-                final chatsPrivados = chats
-                    .where(
-                      (chat) =>
-                          !chat.participantes.contains('GRUPO_CONDOMINIO') &&
-                          chat.tipo != 'grupal' &&
-                          chat.tipo != 'conserjeria' &&
-                          chat.tipo != 'admin-residente',
-                    )
-                    .toList();
+                  final chats = snapshot.data ?? [];
+                  // CORREGIR: Incluir chats con conserjería y otros residentes
+                  final chatsPrivados = chats
+                      .where(
+                        (chat) =>
+                            !chat.participantes.contains('GRUPO_CONDOMINIO') &&
+                            chat.tipo != 'grupal' &&
+                            chat.tipo != 'conserjeria' &&
+                            chat.tipo != 'admin-residente',
+                      )
+                      .toList();
 
-                if (chatsPrivados.isEmpty) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(32.0),
-                      child: Text(
-                        'No tienes conversaciones aún.\nUsa el botón + para iniciar una conversación.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey, fontSize: 16),
+                  if (chatsPrivados.isEmpty) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: Text(
+                          'No tienes conversaciones aún.\nUsa el botón + para iniciar una conversación.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.grey, fontSize: 16),
+                        ),
+                      ),
+                    );
+                  }
+                  const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Text(
+                      'Chats con Residentes',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
                       ),
                     ),
                   );
-                }
-                const Padding(
-                  padding: EdgeInsets.all(8.0),
-                  child: Text(
-                    'Chats con Residentes',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey,
-                    ),
-                  ),
-                );
 
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: chatsPrivados.length,
-                  itemBuilder: (context, index) {
-                    final chat = chatsPrivados[index];
-                    final otroParticipante = chat.participantes
-                        .where((p) => p != widget.currentUser.uid)
-                        .firstOrNull;
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: chatsPrivados.length,
+                    itemBuilder: (context, index) {
+                      final chat = chatsPrivados[index];
+                      final otroParticipante = chat.participantes
+                          .where((p) => p != widget.currentUser.uid)
+                          .firstOrNull;
 
-                    // Solo mostrar el chat si hay otro participante válido
-                    if (otroParticipante == null) {
-                      return const SizedBox.shrink(); // No mostrar nada si no hay otro participante
-                    }
-                    return _buildChatCard(chat, otroParticipante);
-                  },
-                );
-              },
+                      // Solo mostrar el chat si hay otro participante válido
+                      if (otroParticipante == null) {
+                        return const SizedBox.shrink(); // No mostrar nada si no hay otro participante
+                      }
+                      return _buildChatCard(chat, otroParticipante);
+                    },
+                  );
+                },
+              ),
             ),
-          ),
+          ],
         ],
       ),
       floatingActionButton: _comunicacionEntreResidentesHabilitada
@@ -190,7 +193,7 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Card(
-        elevation: 2,
+        elevation: 4,
         color: Colors.red.shade50,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -220,8 +223,8 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
           ),
           trailing: Icon(
             Icons.arrow_forward_ios,
-            color: Colors.grey[400],
-            size: 16,
+            color: Colors.red[400],
+            size: 25,
           ),
           onTap: _abrirChatAdministrador,
         ),
@@ -283,48 +286,58 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
 
   // NUEVO: Widget para chat con conserjería
   Widget _buildChatConserjeriaCard() {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: () => _abrirChatConserjeria(),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: Colors.orange[100],
-                radius: 25,
-                child: Icon(
-                  Icons.security,
-                  color: Colors.orange[700],
-                  size: 28,
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Card(
+        elevation: 4,
+        color: Colors.orange.shade50,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: Colors.orange.shade200, width: 2),
+        ),
+        child: InkWell(
+          onTap: () => _abrirChatConserjeria(),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: Colors.orange[100],
+                  radius: 25,
+                  child: Icon(
+                    Icons.security,
+                    color: Colors.orange[700],
+                    size: 28,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Conserjería',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Conserjería',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Chat con el personal de conserjería',
-                      style: TextStyle(fontSize: 14, color: Colors.grey),
-                    ),
-                  ],
+                      SizedBox(height: 4),
+                      Text(
+                        'Chat con el personal de conserjería',
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Icon(Icons.arrow_forward_ios, color: Colors.grey[400], size: 16),
-            ],
+                Icon(
+                  Icons.arrow_forward_ios,
+                  color: Colors.orange[400],
+                  size: 25,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -366,7 +379,7 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
 
   Widget _buildChatGrupalCard() {
     return Container(
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Card(
         elevation: 4,
         color: Colors.blue.shade50,
@@ -392,7 +405,11 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
             'Chat general con todos los residentes',
             style: TextStyle(fontSize: 14),
           ),
-          trailing: const Icon(Icons.arrow_forward_ios, color: Colors.blue),
+          trailing: const Icon(
+            Icons.arrow_forward_ios,
+            color: Colors.blue,
+            size: 25,
+          ),
           onTap: () => _abrirChatGrupal(),
         ),
       ),
@@ -456,43 +473,92 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
               final nombreUsuario = admin?.nombre ?? 'Usuario Desconocido';
               final tipoUsuario = admin != null ? 'Administrador' : 'Usuario';
 
-
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: admin != null
-                        ? Colors.red[100]
-                        : Colors.grey[100],
-                    radius: 25,
-                    child: Icon(
-                      admin != null ? Icons.admin_panel_settings : Icons.person,
-                      color: admin != null ? Colors.red[700] : Colors.grey[700],
-                      size: 28,
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Card(
+                  elevation: 4,
+                  color: Colors.green.shade50,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.green.shade200, width: 2),
+                  ),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: admin != null
+                          ? Colors.red[100]
+                          : Colors.grey[100],
+                      radius: 25,
+                      child: Icon(
+                        admin != null
+                            ? Icons.admin_panel_settings
+                            : Icons.person,
+                        color: admin != null
+                            ? Colors.red[700]
+                            : Colors.grey[700],
+                        size: 28,
+                      ),
                     ),
+                    title: Text(
+                      nombreUsuario,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      tipoUsuario,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // ✅ NUEVO: Contador de mensajes no leídos
+                        FutureBuilder<int>(
+                          future: _mensajeService.contarMensajesNoLeidos(
+                            condominioId: widget.currentUser.condominioId
+                                .toString(),
+                            chatId: chat.id,
+                            usuarioId: widget.currentUser.uid,
+                          ),
+                          builder: (context, unreadSnapshot) {
+                            final unreadCount = unreadSnapshot.data ?? 0;
+                            if (unreadCount > 0) {
+                              return Container(
+                                margin: const EdgeInsets.only(right: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  unreadCount.toString(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          },
+                        ),
+                        Text(
+                          DateFormat(
+                            'dd/MM',
+                          ).format(DateTime.parse(chat.fechaRegistro)),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                    onTap: () => {
+                      _abrirChat(otroParticipante, nombreUsuario),
+                      print('Chat con admin $otroParticipante'),
+                    },
                   ),
-                  title: Text(
-                    nombreUsuario,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  subtitle: Text(
-                    tipoUsuario,
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  trailing: Text(
-                    DateFormat(
-                      'dd/MM',
-                    ).format(DateTime.parse(chat.fechaRegistro)),
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  onTap: () => {
-                    _abrirChat(otroParticipante, nombreUsuario),
-                    print('Chat con admin $otroParticipante'),
-                  },
                 ),
               );
             },
@@ -502,31 +568,74 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
         final nombreResidente = residente.nombre;
         final vivienda = residente.descripcionVivienda;
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Colors.green[100],
-              radius: 25,
-              child: Icon(Icons.person, color: Colors.green[700], size: 28),
+        return Container(
+          child: Card(
+            elevation: 4,
+            color: Colors.green.shade50,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: Colors.green.shade200, width: 2),
             ),
-            title: Text(
-              nombreResidente,
-              style: const TextStyle(fontWeight: FontWeight.w600),
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: Colors.green[100],
+                radius: 25,
+                child: Icon(Icons.person, color: Colors.green[700], size: 28),
+              ),
+              title: Text(
+                nombreResidente,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(
+                vivienda ?? 'Sin vivienda asignada',
+                style: const TextStyle(fontSize: 12),
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ✅ NUEVO: Contador de mensajes no leídos
+                  FutureBuilder<int>(
+                    future: _mensajeService.contarMensajesNoLeidos(
+                      condominioId: widget.currentUser.condominioId.toString(),
+                      chatId: chat.id,
+                      usuarioId: widget.currentUser.uid,
+                    ),
+                    builder: (context, unreadSnapshot) {
+                      final unreadCount = unreadSnapshot.data ?? 0;
+                      if (unreadCount > 0) {
+                        return Container(
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            unreadCount.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                  Text(
+                    DateFormat(
+                      'dd/MM',
+                    ).format(DateTime.parse(chat.fechaRegistro)),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+              onTap: () => _abrirChat(otroParticipante, nombreResidente),
             ),
-            subtitle: Text(
-              vivienda ?? 'Sin vivienda asignada',
-              style: const TextStyle(fontSize: 12),
-            ),
-            trailing: Text(
-              DateFormat('dd/MM').format(DateTime.parse(chat.fechaRegistro)),
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            onTap: () => _abrirChat(otroParticipante, nombreResidente),
           ),
         );
       },

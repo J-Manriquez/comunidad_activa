@@ -232,7 +232,10 @@ class MensajeService {
 
   // NUEVO: Método para obtener información del usuario
   // NUEVO: Método para obtener información del usuario
-  Future<Map<String, String>> _obtenerInfoUsuario(String condominioId, String userId) async {
+  Future<Map<String, String>> _obtenerInfoUsuario(
+    String condominioId,
+    String userId,
+  ) async {
     try {
       // Intentar como residente
       final residenteDoc = await _firestore
@@ -241,21 +244,18 @@ class MensajeService {
           .collection('residentes')
           .doc(userId)
           .get();
-      
+
       if (residenteDoc.exists) {
         final data = residenteDoc.data()!;
-        return {
-          'nombre': data['nombre'] ?? 'Residente',
-          'tipo': 'residente',
-        };
+        return {'nombre': data['nombre'] ?? 'Residente', 'tipo': 'residente'};
       }
-  
+
       // Intentar como administrador - RUTA CORREGIDA
       final adminDoc = await _firestore
           .collection(condominioId)
-          .doc('administrador')  // ✅ Ruta correcta según firebase-structure.txt
+          .doc('administrador') // ✅ Ruta correcta según firebase-structure.txt
           .get();
-      
+
       if (adminDoc.exists) {
         final data = adminDoc.data()!;
         // Verificar si el UID coincide con el administrador
@@ -266,25 +266,16 @@ class MensajeService {
           };
         }
       }
-  
+
       // Si es conserjería
       if (userId == 'CONSERJERIA') {
-        return {
-          'nombre': 'Conserjería',
-          'tipo': 'conserjeria',
-        };
+        return {'nombre': 'Conserjería', 'tipo': 'conserjeria'};
       }
-  
-      return {
-        'nombre': 'Usuario',
-        'tipo': 'desconocido',
-      };
+
+      return {'nombre': 'Usuario', 'tipo': 'desconocido'};
     } catch (e) {
       print('❌ Error al obtener info del usuario: $e');
-      return {
-        'nombre': 'Usuario',
-        'tipo': 'desconocido',
-      };
+      return {'nombre': 'Usuario', 'tipo': 'desconocido'};
     }
   }
 
@@ -338,7 +329,7 @@ class MensajeService {
       } else {
         // Para residentes: usar createUserNotification
         String userType = 'residentes';
-        
+
         await notificationService.createUserNotification(
           condominioId: condominioId,
           userId: destinatarioId,
@@ -630,6 +621,44 @@ class MensajeService {
     } catch (e) {
       print('❌ Error al buscar residentes: $e');
       return [];
+    }
+  }
+
+  // ✅ CORREGIDO: Contar mensajes no leídos en un chat
+  Future<int> contarMensajesNoLeidos({
+    required String condominioId,
+    required String chatId,
+    required String usuarioId,
+  }) async {
+    try {
+      final mensajesSnapshot = await _firestore
+          .collection(condominioId)
+          .doc('comunicaciones')
+          .collection('mensajes')
+          .doc(chatId)
+          .collection('contenido')
+          .get();
+
+      int contador = 0;
+      for (final doc in mensajesSnapshot.docs) {
+        final data = doc.data();
+        final autorUid = data['autorUid'] as String?;
+        final isRead = data['isRead'] as Map<String, dynamic>?;
+
+        // Contar solo mensajes que no son del usuario actual y que no ha leído
+        if (autorUid != usuarioId) {
+          // Si isRead es null o no contiene al usuario, o si contiene al usuario pero es false
+          final usuarioHaLeido = isRead?[usuarioId] != null;
+          if (!usuarioHaLeido) {
+            contador++;
+          }
+        }
+      }
+
+      return contador;
+    } catch (e) {
+      print('❌ Error al contar mensajes no leídos: $e');
+      return 0;
     }
   }
 }

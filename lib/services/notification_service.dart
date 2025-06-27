@@ -271,6 +271,32 @@ class NotificationService {
     }
   }
 
+  // ✅ CORREGIDO: Método para borrar notificaciones de mensajes del condominio
+  Future<void> borrarNotificacionesMensajeCondominio({
+    required String condominioId,
+    required String chatId,
+  }) async {
+    try {
+      final notificationsSnapshot = await FirebaseFirestore.instance
+          .collection(condominioId)
+          .doc('comunicaciones')
+          .collection('notificaciones')
+          .where('tipoNotificacion', isEqualTo: 'mensaje')
+          .get();
+
+      // Filtrar y eliminar notificaciones del chat específico
+      for (final doc in notificationsSnapshot.docs) {
+        final data = doc.data();
+        final additionalData = data['additionalData'] as Map<String, dynamic>?;
+        if (additionalData?['chatId'] == chatId) {
+          await doc.reference.delete();
+        }
+      }
+    } catch (e) {
+      print('❌ Error al eliminar notificaciones de mensaje del condominio: $e');
+    }
+  }
+
   // Eliminar notificaciones de mensaje específico
   Future<void> deleteMessageNotifications({
     required String condominioId,

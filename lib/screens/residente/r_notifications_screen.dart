@@ -186,6 +186,7 @@ class _ResidenteNotificationsScreenState
       final tipoChat = notification.additionalData?['tipoChat'];
       final remitenteNombre = notification.additionalData?['remitenteId'];
       
+      // ✅ CORREGIDO: Eliminar notificaciones específicas del chat
       if (chatId != null) {
         String nombreChat;
         bool esGrupal = false;
@@ -199,14 +200,13 @@ class _ResidenteNotificationsScreenState
           nombreChat = remitenteNombre ?? 'Chat';
         }
 
-        // Marcar todos los mensajes del chat como leídos y eliminar notificaciones
-        final mensajeService = MensajeService();
-        await mensajeService.marcarTodosMensajesComoLeidos(
+        // ✅ NUEVO: Eliminar notificaciones específicas del chat
+        final notificationService = NotificationService();
+        await notificationService.deleteMessageNotifications(
           condominioId: widget.condominioId,
           chatId: chatId,
-          usuarioId: userId,
-          nombreUsuario: residente!.nombre,
-          tipoUsuario: 'residentes',
+          userId: userId,
+          userType: 'residentes',
         );
         
         Navigator.push(

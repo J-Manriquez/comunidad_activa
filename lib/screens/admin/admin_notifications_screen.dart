@@ -188,8 +188,10 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
 
         // Marcar todos los mensajes del chat como leídos y eliminar notificaciones
         final mensajeService = MensajeService();
-        final admin = await _firestoreService.getAdministradorData(widget.condominioId);
-        
+        final admin = await _firestoreService.getAdministradorData(
+          widget.condominioId,
+        );
+
         if (admin != null) {
           await mensajeService.marcarTodosMensajesComoLeidos(
             condominioId: widget.condominioId,
@@ -200,6 +202,12 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
           );
         }
 
+        // Eliminar notificaciones
+        // ✅ NUEVO: Borrar notificaciones de mensajes del condominio para este chat
+        await _notificationService.borrarNotificacionesMensajeCondominio(
+          condominioId: widget.condominioId,
+          chatId: chatId,
+        );
 
         if (chatId != null) {
           // Navegar al chat específico
