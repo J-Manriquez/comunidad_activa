@@ -6,6 +6,8 @@ import '../../models/mensaje_model.dart';
 import '../../models/residente_model.dart';
 import '../../services/mensaje_service.dart';
 import '../../services/firestore_service.dart';
+import '../../services/unread_messages_service.dart';
+import '../../widgets/unread_messages_badge.dart';
 import '../residente/chat_screen.dart';
 import 'package:intl/intl.dart';
 
@@ -21,14 +23,49 @@ class MensajesAdminScreen extends StatefulWidget {
 class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
   final MensajeService _mensajeService = MensajeService();
   final NotificationService _notificationService = NotificationService();
-
+  final UnreadMessagesService _unreadService = UnreadMessagesService();
   final FirestoreService _firestoreService = FirestoreService();
   bool _comunicacionEntreResidentesHabilitada = false;
+  
+  // IDs de chats específicos
+  String? _chatGrupalId;
+  String? _chatConserjeriaId;
 
   @override
   void initState() {
     super.initState();
     _cargarConfiguraciones();
+    _cargarChatsIds();
+  }
+
+  @override
+  void dispose() {
+    _unreadService.dispose();
+    super.dispose();
+  }
+
+  Future<void> _cargarChatsIds() async {
+    try {
+      // Cargar ID del chat grupal
+      final chatGrupalId = await _mensajeService.crearOObtenerChatGrupal(
+        condominioId: widget.currentUser.condominioId.toString(),
+      );
+      
+      // Cargar ID del chat de conserjería
+      final chatConserjeriaId = await _mensajeService.crearOObtenerChatConserjeria(
+        condominioId: widget.currentUser.condominioId.toString(),
+        residenteId: widget.currentUser.uid,
+      );
+      
+      if (mounted) {
+        setState(() {
+          _chatGrupalId = chatGrupalId;
+          _chatConserjeriaId = chatConserjeriaId;
+        });
+      }
+    } catch (e) {
+      print('❌ Error al cargar IDs de chats: $e');
+    }
   }
 
   Future<void> _cargarConfiguraciones() async {
@@ -79,6 +116,10 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
   }
 
   Widget _buildChatCondominioCard() {
+    if (_chatGrupalId == null) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Card(
@@ -88,7 +129,11 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
           borderRadius: BorderRadius.circular(12),
           side: BorderSide(color: Colors.blue.shade200, width: 2),
         ),
-        child: ListTile(
+        child: UnreadMessagesListTile(
+          condominioId: widget.currentUser.condominioId.toString(),
+          chatId: _chatGrupalId!,
+          usuarioId: widget.currentUser.uid,
+          unreadService: _unreadService,
           contentPadding: const EdgeInsets.all(16),
           leading: Container(
             padding: const EdgeInsets.all(12),
@@ -106,11 +151,6 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
             'Chat general con todos los residentes',
             style: TextStyle(fontSize: 14),
           ),
-          trailing: const Icon(
-            Icons.arrow_forward_ios,
-            color: Colors.blue,
-            size: 25,
-          ),
           onTap: () => _abrirChatCondominio(),
         ),
       ),
@@ -118,6 +158,10 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
   }
 
   Widget _buildChatConserjeriaCard() {
+    if (_chatConserjeriaId == null) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Card(
@@ -127,7 +171,11 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
           borderRadius: BorderRadius.circular(12),
           side: BorderSide(color: Colors.orange.shade200, width: 2),
         ),
-        child: ListTile(
+        child: UnreadMessagesListTile(
+          condominioId: widget.currentUser.condominioId.toString(),
+          chatId: _chatConserjeriaId!,
+          usuarioId: widget.currentUser.uid,
+          unreadService: _unreadService,
           contentPadding: const EdgeInsets.all(12),
           leading: Container(
             padding: const EdgeInsets.all(8),
@@ -144,11 +192,6 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
           subtitle: const Text(
             'Chat con el personal de conserjería',
             style: TextStyle(fontSize: 13),
-          ),
-          trailing: Icon(
-            Icons.arrow_forward_ios,
-            color: Colors.orange[400],
-            size: 25,
           ),
           onTap: () => _abrirChatConserjeria(),
         ),
@@ -239,13 +282,16 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
                         final residente = residenteSnapshot.data;
                         final nombreResidente = residente?.nombre ?? 'Usuario';
                         final vivienda = residente?.descripcionVivienda;
-
+                        
+                        if (vivienda == null) {
+                          return const SizedBox.shrink();
+                        }
                         return Container(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
                           child: Card(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
                             elevation: 4,
                             color: Colors.green.shade50,
                             shape: RoundedRectangleBorder(
@@ -255,7 +301,11 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
                                 width: 2,
                               ),
                             ),
-                            child: ListTile(
+                            child: UnreadMessagesListTile(
+                              condominioId: widget.currentUser.condominioId.toString(),
+                              chatId: chat.id,
+                              usuarioId: widget.currentUser.uid,
+                              unreadService: _unreadService,
                               leading: CircleAvatar(
                                 backgroundColor: Colors.green[100],
                                 radius: 25,
@@ -272,65 +322,10 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
                                 ),
                               ),
                               subtitle: Text(
-                                vivienda!,
+                                vivienda ?? 'Sin vivienda asignada',
                                 style: const TextStyle(fontSize: 12),
                               ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // ✅ NUEVO: Contador de mensajes no leídos
-                                  FutureBuilder<int>(
-                                    future: _mensajeService
-                                        .contarMensajesNoLeidos(
-                                          condominioId: widget
-                                              .currentUser
-                                              .condominioId
-                                              .toString(),
-                                          chatId: chat.id,
-                                          usuarioId: widget.currentUser.uid,
-                                        ),
-                                    builder: (context, unreadSnapshot) {
-                                      final unreadCount =
-                                          unreadSnapshot.data ?? 0;
-                                      if (unreadCount > 0) {
-                                        return Container(
-                                          margin: const EdgeInsets.only(
-                                            right: 8,
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.red,
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            unreadCount.toString(),
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                      return const SizedBox.shrink();
-                                    },
-                                  ),
-                                  Text(
-                                    DateFormat('dd/MM').format(
-                                      DateTime.parse(chat.fechaRegistro),
-                                    ),
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                              contentPadding: const EdgeInsets.all(16),
                               onTap: () => _abrirChatPrivado(
                                 otroParticipante,
                                 nombreResidente,
@@ -338,6 +333,7 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
                             ),
                           ),
                         );
+                      
                       },
                     );
                   },
@@ -354,6 +350,13 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
     try {
       final chatId = await _mensajeService.crearOObtenerChatGrupal(
         condominioId: widget.currentUser.condominioId.toString(),
+      );
+
+      // Marcar mensajes como leídos
+      await _unreadService.markMessagesAsRead(
+        condominioId: widget.currentUser.condominioId.toString(),
+        chatId: chatId,
+        usuarioId: widget.currentUser.uid,
       );
 
       // ✅ NUEVO: Borrar notificaciones de mensajes del condominio para este chat
@@ -396,6 +399,13 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
         tipo: 'admin-conserjeria',
       );
 
+      // Marcar mensajes como leídos
+      await _unreadService.markMessagesAsRead(
+        condominioId: widget.currentUser.condominioId.toString(),
+        chatId: chatId,
+        usuarioId: widget.currentUser.uid,
+      );
+
       if (mounted) {
         Navigator.push(
           context,
@@ -428,6 +438,13 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
         usuario1Id: widget.currentUser.uid,
         usuario2Id: residenteId,
         tipo: 'admin-residente',
+      );
+
+      // Marcar mensajes como leídos
+      await _unreadService.markMessagesAsRead(
+        condominioId: widget.currentUser.condominioId.toString(),
+        chatId: chatId,
+        usuarioId: widget.currentUser.uid,
       );
 
       // ✅ NUEVO: Borrar notificaciones de mensajes del condominio para este chat

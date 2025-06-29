@@ -5,6 +5,8 @@ import '../../models/mensaje_model.dart';
 import '../../models/residente_model.dart';
 import '../../services/mensaje_service.dart';
 import '../../services/firestore_service.dart';
+import '../../services/unread_messages_service.dart';
+import '../../widgets/unread_messages_badge.dart';
 import 'chat_screen.dart';
 import 'package:intl/intl.dart';
 
@@ -22,13 +24,24 @@ class MensajesResidenteScreen extends StatefulWidget {
 class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
   final MensajeService _mensajeService = MensajeService();
   final FirestoreService _firestoreService = FirestoreService();
+  final UnreadMessagesService _unreadService = UnreadMessagesService();
   bool _comunicacionEntreResidentesHabilitada = false;
   bool _permitirMensajesResidentes = true;
+  String? _chatGrupalId;
+  String? _chatConserjeriaId;
+  String? _chatAdministradorId;
 
   @override
   void initState() {
     super.initState();
     _cargarConfiguraciones();
+    _cargarChatsIds();
+  }
+
+  @override
+  void dispose() {
+    _unreadService.dispose();
+    super.dispose();
   }
 
   Future<void> _cargarConfiguraciones() async {
@@ -51,6 +64,46 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
       }
     } catch (e) {
       print('❌ Error al cargar configuraciones: $e');
+    }
+  }
+
+  Future<void> _cargarChatsIds() async {
+    try {
+      // Cargar chat grupal
+      final chatGrupalId = await _mensajeService.crearOObtenerChatGrupal(
+        condominioId: widget.currentUser.condominioId.toString(),
+      );
+
+      // Cargar chat conserjería
+      final chatConserjeriaId = await _mensajeService.crearOObtenerChatConserjeria(
+        condominioId: widget.currentUser.condominioId.toString(),
+        residenteId: widget.currentUser.uid,
+      );
+
+      // Cargar chat administrador
+      final administrador = await _firestoreService.getAdministradorData(
+        widget.currentUser.condominioId.toString(),
+      );
+      
+      String? chatAdministradorId;
+      if (administrador != null) {
+        chatAdministradorId = await _mensajeService.crearOObtenerChatPrivado(
+          condominioId: widget.currentUser.condominioId.toString(),
+          usuario1Id: widget.currentUser.uid,
+          usuario2Id: administrador.uid,
+          tipo: 'admin-residente',
+        );
+      }
+
+      if (mounted) {
+        setState(() {
+          _chatGrupalId = chatGrupalId;
+          _chatConserjeriaId = chatConserjeriaId;
+          _chatAdministradorId = chatAdministradorId;
+        });
+      }
+    } catch (e) {
+      print('❌ Error al cargar IDs de chats: $e');
     }
   }
 
@@ -190,6 +243,10 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
 
   // Agregar después del chat con conserjería
   Widget _buildChatAdministradorCard() {
+    if (_chatAdministradorId == null) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Card(
@@ -199,8 +256,11 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
           borderRadius: BorderRadius.circular(12),
           side: BorderSide(color: Colors.red.shade200, width: 1),
         ),
-        child: ListTile(
-          contentPadding: const EdgeInsets.all(16),
+        child: UnreadMessagesListTile(
+          condominioId: widget.currentUser.condominioId.toString(),
+          chatId: _chatAdministradorId!,
+          usuarioId: widget.currentUser.uid,
+          unreadService: _unreadService,
           leading: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -221,11 +281,7 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
             'Chat con el administrador del condominio',
             style: TextStyle(fontSize: 14, color: Colors.grey),
           ),
-          trailing: Icon(
-            Icons.arrow_forward_ios,
-            color: Colors.red[400],
-            size: 25,
-          ),
+          contentPadding: const EdgeInsets.all(16),
           onTap: _abrirChatAdministrador,
         ),
       ),
@@ -259,6 +315,13 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
         tipo: 'admin-residente', // ✅ Usar el mismo tipo que usa el admin
       );
 
+      // Marcar mensajes como leídos
+      await _unreadService.markMessagesAsRead(
+        condominioId: widget.currentUser.condominioId.toString(),
+        chatId: chatId,
+        usuarioId: widget.currentUser.uid,
+      );
+
       if (mounted) {
         Navigator.push(
           context,
@@ -286,6 +349,10 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
 
   // NUEVO: Widget para chat con conserjería
   Widget _buildChatConserjeriaCard() {
+    if (_chatConserjeriaId == null) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Card(
@@ -295,50 +362,33 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
           borderRadius: BorderRadius.circular(12),
           side: BorderSide(color: Colors.orange.shade200, width: 2),
         ),
-        child: InkWell(
-          onTap: () => _abrirChatConserjeria(),
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: Colors.orange[100],
-                  radius: 25,
-                  child: Icon(
-                    Icons.security,
-                    color: Colors.orange[700],
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Conserjería',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Chat con el personal de conserjería',
-                        style: TextStyle(fontSize: 14, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: Colors.orange[400],
-                  size: 25,
-                ),
-              ],
+        child: UnreadMessagesListTile(
+          condominioId: widget.currentUser.condominioId.toString(),
+          chatId: _chatConserjeriaId!,
+          usuarioId: widget.currentUser.uid,
+          unreadService: _unreadService,
+          leading: CircleAvatar(
+            backgroundColor: Colors.orange[100],
+            radius: 25,
+            child: Icon(
+              Icons.security,
+              color: Colors.orange[700],
+              size: 28,
             ),
           ),
+          title: const Text(
+            'Conserjería',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          subtitle: const Text(
+            'Chat con el personal de conserjería',
+            style: TextStyle(fontSize: 14, color: Colors.grey),
+          ),
+          contentPadding: const EdgeInsets.all(16),
+          onTap: () => _abrirChatConserjeria(),
         ),
       ),
     );
@@ -350,6 +400,13 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
       final chatId = await _mensajeService.crearOObtenerChatConserjeria(
         condominioId: widget.currentUser.condominioId.toString(),
         residenteId: widget.currentUser.uid,
+      );
+
+      // Marcar mensajes como leídos
+      await _unreadService.markMessagesAsRead(
+        condominioId: widget.currentUser.condominioId.toString(),
+        chatId: chatId,
+        usuarioId: widget.currentUser.uid,
       );
 
       if (mounted) {
@@ -378,6 +435,10 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
   }
 
   Widget _buildChatGrupalCard() {
+    if (_chatGrupalId == null) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Card(
@@ -387,8 +448,11 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
           borderRadius: BorderRadius.circular(12),
           side: BorderSide(color: Colors.blue.shade200, width: 2),
         ),
-        child: ListTile(
-          contentPadding: const EdgeInsets.all(16),
+        child: UnreadMessagesListTile(
+          condominioId: widget.currentUser.condominioId.toString(),
+          chatId: _chatGrupalId!,
+          usuarioId: widget.currentUser.uid,
+          unreadService: _unreadService,
           leading: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -405,11 +469,7 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
             'Chat general con todos los residentes',
             style: TextStyle(fontSize: 14),
           ),
-          trailing: const Icon(
-            Icons.arrow_forward_ios,
-            color: Colors.blue,
-            size: 25,
-          ),
+          contentPadding: const EdgeInsets.all(16),
           onTap: () => _abrirChatGrupal(),
         ),
       ),
@@ -482,7 +542,11 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
                     borderRadius: BorderRadius.circular(12),
                     side: BorderSide(color: Colors.green.shade200, width: 2),
                   ),
-                  child: ListTile(
+                  child: UnreadMessagesListTile(
+                    condominioId: widget.currentUser.condominioId.toString(),
+                    chatId: chat.id,
+                    usuarioId: widget.currentUser.uid,
+                    unreadService: _unreadService,
                     leading: CircleAvatar(
                       backgroundColor: admin != null
                           ? Colors.red[100]
@@ -506,58 +570,8 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
                       tipoUsuario,
                       style: const TextStyle(fontSize: 12),
                     ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // ✅ NUEVO: Contador de mensajes no leídos
-                        FutureBuilder<int>(
-                          future: _mensajeService.contarMensajesNoLeidos(
-                            condominioId: widget.currentUser.condominioId
-                                .toString(),
-                            chatId: chat.id,
-                            usuarioId: widget.currentUser.uid,
-                          ),
-                          builder: (context, unreadSnapshot) {
-                            final unreadCount = unreadSnapshot.data ?? 0;
-                            if (unreadCount > 0) {
-                              return Container(
-                                margin: const EdgeInsets.only(right: 8),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  unreadCount.toString(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          },
-                        ),
-                        Text(
-                          DateFormat(
-                            'dd/MM',
-                          ).format(DateTime.parse(chat.fechaRegistro)),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                    onTap: () => {
-                      _abrirChat(otroParticipante, nombreUsuario),
-                      print('Chat con admin $otroParticipante'),
-                    },
+                    contentPadding: const EdgeInsets.all(16),
+                     onTap: () => _abrirChatPrivado(chat, nombreUsuario),
                   ),
                 ),
               );
@@ -569,6 +583,7 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
         final vivienda = residente.descripcionVivienda;
 
         return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: Card(
             elevation: 4,
             color: Colors.green.shade50,
@@ -576,7 +591,11 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
               borderRadius: BorderRadius.circular(12),
               side: BorderSide(color: Colors.green.shade200, width: 2),
             ),
-            child: ListTile(
+            child: UnreadMessagesListTile(
+              condominioId: widget.currentUser.condominioId.toString(),
+              chatId: chat.id,
+              usuarioId: widget.currentUser.uid,
+              unreadService: _unreadService,
               leading: CircleAvatar(
                 backgroundColor: Colors.green[100],
                 radius: 25,
@@ -590,51 +609,8 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
                 vivienda ?? 'Sin vivienda asignada',
                 style: const TextStyle(fontSize: 12),
               ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // ✅ NUEVO: Contador de mensajes no leídos
-                  FutureBuilder<int>(
-                    future: _mensajeService.contarMensajesNoLeidos(
-                      condominioId: widget.currentUser.condominioId.toString(),
-                      chatId: chat.id,
-                      usuarioId: widget.currentUser.uid,
-                    ),
-                    builder: (context, unreadSnapshot) {
-                      final unreadCount = unreadSnapshot.data ?? 0;
-                      if (unreadCount > 0) {
-                        return Container(
-                          margin: const EdgeInsets.only(right: 8),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            unreadCount.toString(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    },
-                  ),
-                  Text(
-                    DateFormat(
-                      'dd/MM',
-                    ).format(DateTime.parse(chat.fechaRegistro)),
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                ],
-              ),
-              onTap: () => _abrirChat(otroParticipante, nombreResidente),
+              contentPadding: const EdgeInsets.all(16),
+              onTap: () => _abrirChatPrivado(chat, nombreResidente),
             ),
           ),
         );
@@ -646,6 +622,13 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
     try {
       final chatId = await _mensajeService.crearOObtenerChatGrupal(
         condominioId: widget.currentUser.condominioId.toString(),
+      );
+
+      // Marcar mensajes como leídos
+      await _unreadService.markMessagesAsRead(
+        condominioId: widget.currentUser.condominioId.toString(),
+        chatId: chatId,
+        usuarioId: widget.currentUser.uid,
       );
 
       if (mounted) {
@@ -666,6 +649,41 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error al abrir chat grupal: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Método para abrir chat privado con otro residente
+  Future<void> _abrirChatPrivado(MensajeModel chat, String nombreResidente) async {
+    try {
+      // Marcar mensajes como leídos
+      await _unreadService.markMessagesAsRead(
+        condominioId: widget.currentUser.condominioId.toString(),
+        chatId: chat.id,
+        usuarioId: widget.currentUser.uid,
+      );
+
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatScreen(
+              currentUser: widget.currentUser,
+              chatId: chat.id,
+              nombreChat: nombreResidente,
+              esGrupal: false,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al abrir chat: $e'),
             backgroundColor: Colors.red,
           ),
         );
