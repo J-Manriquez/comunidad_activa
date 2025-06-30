@@ -320,6 +320,8 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
         condominioId: widget.currentUser.condominioId.toString(),
         chatId: chatId,
         usuarioId: widget.currentUser.uid,
+        nombreUsuario: widget.currentUser.nombre,
+        tipoUsuario: 'residentes',
       );
 
       if (mounted) {
@@ -407,6 +409,8 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
         condominioId: widget.currentUser.condominioId.toString(),
         chatId: chatId,
         usuarioId: widget.currentUser.uid,
+        nombreUsuario: widget.currentUser.nombre,
+        tipoUsuario: 'residentes',
       );
 
       if (mounted) {
@@ -629,6 +633,8 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
         condominioId: widget.currentUser.condominioId.toString(),
         chatId: chatId,
         usuarioId: widget.currentUser.uid,
+        nombreUsuario: widget.currentUser.nombre,
+        tipoUsuario: 'residentes',
       );
 
       if (mounted) {
@@ -664,6 +670,8 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
         condominioId: widget.currentUser.condominioId.toString(),
         chatId: chat.id,
         usuarioId: widget.currentUser.uid,
+        nombreUsuario: widget.currentUser.nombre,
+        tipoUsuario: 'residentes',
       );
 
       if (mounted) {

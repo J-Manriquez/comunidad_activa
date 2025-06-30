@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
+import 'mensaje_service.dart';
 
 class UnreadMessagesService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final Map<String, StreamSubscription> _subscriptions = {};
   final Map<String, StreamController<int>> _controllers = {};
+  final MensajeService _mensajeService = MensajeService();
 
   // Obtener stream de mensajes no leídos para un chat específico
   Stream<int> getUnreadMessagesStream({
@@ -61,7 +63,18 @@ class UnreadMessagesService {
       // Contar solo mensajes que no son del usuario actual
       if (autorUid != null && autorUid != usuarioId) {
         // Si isRead es null o no contiene al usuario, el mensaje no está leído
-        final usuarioHaLeido = isRead?[usuarioId] == true;
+        bool usuarioHaLeido = false;
+        
+        if (isRead != null && isRead.containsKey(usuarioId)) {
+          final readValue = isRead[usuarioId];
+          // Manejar tanto formato bool como Map
+          if (readValue is bool) {
+            usuarioHaLeido = readValue;
+          } else if (readValue is Map<String, dynamic>) {
+            usuarioHaLeido = true; // Si existe el Map, está leído
+          }
+        }
+        
         if (!usuarioHaLeido) {
           unreadCount++;
         }
@@ -102,38 +115,25 @@ class UnreadMessagesService {
     return controller.stream;
   }
 
-  // Marcar mensajes como leídos cuando se entra a un chat
+  // Marcar todos los mensajes de un chat como leídos
   Future<void> markMessagesAsRead({
     required String condominioId,
     required String chatId,
     required String usuarioId,
+    required String nombreUsuario,
+    required String tipoUsuario,
   }) async {
     try {
-      final batch = _firestore.batch();
-      
-      // Obtener todos los mensajes del chat que no son del usuario actual
-      final snapshot = await _firestore
-          .collection(condominioId)
-          .doc('comunicaciones')
-          .collection('mensajes')
-          .doc(chatId)
-          .collection('contenido')
-          .where('autorUid', isNotEqualTo: usuarioId)
-          .get();
-
-      for (final doc in snapshot.docs) {
-        final data = doc.data();
-        final isRead = Map<String, dynamic>.from(data['isRead'] ?? {});
-        
-        // Marcar como leído para este usuario
-        isRead[usuarioId] = true;
-        
-        batch.update(doc.reference, {'isRead': isRead});
-      }
-
-      await batch.commit();
+      await _mensajeService.marcarTodosMensajesComoLeidos(
+        condominioId: condominioId,
+        chatId: chatId,
+        usuarioId: usuarioId,
+        nombreUsuario: nombreUsuario,
+        tipoUsuario: tipoUsuario,
+      );
     } catch (e) {
       print('❌ Error al marcar mensajes como leídos: $e');
+      throw Exception('Error al marcar mensajes como leídos: $e');
     }
   }
 

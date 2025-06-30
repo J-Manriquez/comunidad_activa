@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/user_model.dart';
 import '../../models/mensaje_model.dart';
 import '../../services/mensaje_service.dart';
 import '../../services/firestore_service.dart';
+import '../../services/unread_messages_service.dart';
 import 'package:intl/intl.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -28,6 +30,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   final MensajeService _mensajeService = MensajeService();
   final FirestoreService _firestoreService = FirestoreService();
+  late final UnreadMessagesService _unreadService;
   
   Map<String, String> _nombresUsuarios = {};
   bool _isLoading = false;
@@ -35,6 +38,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    _unreadService = UnreadMessagesService();
     _cargarNombresUsuarios();
   }
 
@@ -42,6 +46,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _unreadService.dispose();
     super.dispose();
   }
 
@@ -117,9 +122,10 @@ class _ChatScreenState extends State<ChatScreen> {
                   );
                 }
 
-                // Marcar mensajes como leídos
+                // Marcar mensajes como leídos automáticamente
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   _marcarMensajesComoLeidos(mensajes);
+                  _marcarMensajesComoLeidosConUnreadService();
                 });
 
                 return ListView.builder(
@@ -344,6 +350,41 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  /// Marca los mensajes como leídos usando el UnreadMessagesService
+  /// para actualizar los contadores en tiempo real
+  Future<void> _marcarMensajesComoLeidosConUnreadService() async {
+    try {
+      // Obtener mensajes no leídos del usuario actual
+      final snapshot = await FirebaseFirestore.instance
+          .collection(widget.currentUser.condominioId.toString())
+          .doc('comunicaciones')
+          .collection('mensajes')
+          .doc(widget.chatId)
+          .collection('contenido')
+          .where('autorUid', isNotEqualTo: widget.currentUser.uid)
+          .get();
+
+      // Marcar cada mensaje usando el formato correcto del MensajeService
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final isRead = data['isRead'] as Map<String, dynamic>? ?? {};
+        
+        // Solo marcar si no está ya leído por este usuario
+        if (!isRead.containsKey(widget.currentUser.uid)) {
+          await _mensajeService.marcarMensajeComoLeido(
+            condominioId: widget.currentUser.condominioId.toString(),
+            chatId: widget.chatId,
+            contenidoId: doc.id,
+            usuarioId: widget.currentUser.uid,
+            nombreUsuario: widget.currentUser.nombre,
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Error al marcar mensajes como leídos con UnreadService: $e');
+    }
+  }
+
   bool _esMensajeLeido(ContenidoMensajeModel mensaje) {
     if (mensaje.isRead == null) return false;
     
@@ -376,9 +417,22 @@ class _ChatScreenState extends State<ChatScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: mensaje.isRead!.entries.map((entry) {
             final userId = entry.key;
-            final readInfo = entry.value as Map<String, dynamic>;
-            final nombre = readInfo['nombre'] ?? 'Usuario';
-            final fechaHora = readInfo['fechaHora'] ?? '';
+            
+            // Manejar tanto el formato bool como el formato Map
+            String nombre = 'Usuario';
+            String fechaHora = '';
+            
+            if (entry.value is Map<String, dynamic>) {
+              final readInfo = entry.value as Map<String, dynamic>;
+              nombre = readInfo['nombre'] ?? 'Usuario';
+              fechaHora = readInfo['fechaHora'] ?? '';
+            } else if (entry.value is bool && entry.value == true) {
+              // Formato simplificado (solo bool)
+              nombre = 'Usuario';
+              fechaHora = 'Leído';
+            } else {
+              return const SizedBox.shrink(); // No mostrar si no está leído
+            }
             
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),

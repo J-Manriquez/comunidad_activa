@@ -357,6 +357,8 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
         condominioId: widget.currentUser.condominioId.toString(),
         chatId: chatId,
         usuarioId: widget.currentUser.uid,
+        nombreUsuario: widget.currentUser.nombre,
+        tipoUsuario: 'administrador',
       );
 
       // ✅ NUEVO: Borrar notificaciones de mensajes del condominio para este chat
@@ -404,6 +406,8 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
         condominioId: widget.currentUser.condominioId.toString(),
         chatId: chatId,
         usuarioId: widget.currentUser.uid,
+        nombreUsuario: widget.currentUser.nombre,
+        tipoUsuario: 'administrador',
       );
 
       if (mounted) {
@@ -445,6 +449,8 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
         condominioId: widget.currentUser.condominioId.toString(),
         chatId: chatId,
         usuarioId: widget.currentUser.uid,
+        nombreUsuario: widget.currentUser.nombre,
+        tipoUsuario: 'administrador',
       );
 
       // ✅ NUEVO: Borrar notificaciones de mensajes del condominio para este chat
