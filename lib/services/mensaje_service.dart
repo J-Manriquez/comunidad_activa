@@ -466,7 +466,7 @@ class MensajeService {
     }
   }
 
-  // Obtener mensajes de un chat
+  // Obtener mensajes de un chat (últimos 20 mensajes)
   Stream<List<ContenidoMensajeModel>> obtenerMensajesChat({
     required String condominioId,
     required String chatId,
@@ -477,7 +477,8 @@ class MensajeService {
         .collection('mensajes')
         .doc(chatId)
         .collection('contenido')
-        .orderBy('fechaHoraCreacion', descending: false)
+        .orderBy('fechaHoraCreacion', descending: true)
+        .limit(20)
         .snapshots()
         .map(
           (snapshot) => snapshot.docs
@@ -485,7 +486,9 @@ class MensajeService {
                 (doc) =>
                     ContenidoMensajeModel.fromFirestore(doc.data(), doc.id),
               )
-              .toList(),
+              .toList()
+              .reversed
+              .toList(), // Revertir para mostrar en orden cronológico
         );
   }
 
