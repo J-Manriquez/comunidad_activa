@@ -1,25 +1,26 @@
-import 'package:comunidad_activa/screens/admin/admin_reclamos_screen.dart';
+import 'package:comunidad_activa/screens/admin/comunicaciones/admin_reclamos_screen.dart';
 import 'package:comunidad_activa/screens/admin/settings_screen.dart';
-import 'package:comunidad_activa/screens/residente/r_reclamos_screen.dart';
+import 'package:comunidad_activa/screens/residente/comunicaciones/r_reclamos_screen.dart';
 import 'package:comunidad_activa/screens/residente/residente_screen.dart';
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../models/residente_bloqueado_model.dart';
 import '../services/auth_service.dart';
 import '../services/bloqueo_service.dart';
-import 'welcome_screen.dart';
+import 'cuenta/welcome_screen.dart';
 import '../models/user_model.dart';
 import 'package:comunidad_activa/screens/admin/admin_screen.dart';
 import 'package:comunidad_activa/screens/user_screens/comite_screen.dart';
 
 import 'user_screens/trabajador_screen.dart';
-import 'admin/config_viviendas_screen.dart';
+import 'admin/vivienda/config_viviendas_screen.dart';
 import 'admin/comunidad_screen.dart';
-import 'admin/multas_admin_screen.dart'; // Nueva importación
-import 'residente/r_multas_screen.dart';
+import 'admin/comunicaciones/multas_admin_screen.dart'; // Nueva importación
+import 'admin/gastosComunes/gastos_comunes_screen.dart';
+import 'residente/comunicaciones/r_multas_screen.dart';
 import 'residente/r_config_screen.dart'; // Nueva importación
-import 'residente/mensajes_residente_screen.dart';
-import 'admin/mensajes_admin_screen.dart';
+import 'residente/comunicaciones/mensajes_residente_screen.dart';
+import 'admin/comunicaciones/mensajes_admin_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -369,6 +370,20 @@ class HomeScreen extends StatelessWidget {
                   MaterialPageRoute(
                     builder: (context) =>
                         MultasAdminScreen(currentUser: user,),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_balance_wallet),
+              title: const Text('Gastos Comunes'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        GastosComunesScreen(currentUser: user),
                   ),
                 );
               },

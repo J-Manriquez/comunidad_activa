@@ -1,4 +1,4 @@
-import 'package:comunidad_activa/screens/admin/dialog_config_viviendas.dart';
+import 'package:comunidad_activa/screens/admin/vivienda/dialog_config_viviendas.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:comunidad_activa/models/condominio_model.dart';

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../models/user_model.dart';
-import '../../models/reclamo_model.dart';
-import '../../services/reclamo_service.dart';
+import '../../../models/user_model.dart';
+import '../../../models/reclamo_model.dart';
+import '../../../services/reclamo_service.dart';
 import 'package:intl/intl.dart';
 
 class AdminReclamosScreen extends StatefulWidget {

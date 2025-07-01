@@ -1,77 +1,49 @@
 import 'package:flutter/material.dart';
-import '../../services/multa_service.dart';
-import '../../models/user_model.dart';
-import '../../models/multa_model.dart';
+import '../../../services/multa_service.dart';
+import '../../../models/user_model.dart';
+import '../../../models/multa_model.dart';
 import 'package:intl/intl.dart';
 
-class MultasResidenteScreen extends StatefulWidget {
+class HistorialMultasScreen extends StatefulWidget {
   final UserModel currentUser;
-  final String? multaIdToOpen; // Agregar este parámetro opcional
 
-  const MultasResidenteScreen({
-    Key? key, 
-    required this.currentUser,
-    this.multaIdToOpen, // Parámetro opcional
-  }) : super(key: key);
+  const HistorialMultasScreen({Key? key, required this.currentUser}) : super(key: key);
 
   @override
-  _MultasResidenteScreenState createState() => _MultasResidenteScreenState();
+  _HistorialMultasScreenState createState() => _HistorialMultasScreenState();
 }
 
-class _MultasResidenteScreenState extends State<MultasResidenteScreen> {
+class _HistorialMultasScreenState extends State<HistorialMultasScreen> {
   final MultaService _multaService = MultaService();
   Map<String, List<MultaModel>> _multasAgrupadas = {};
   Map<String, bool> _fechasExpandidas = {};
-  bool _modalAbierto = false; // Agregar esta variable
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mis Multas'),
-        backgroundColor: Colors.red[700],
+        title: const Text('Historial de Multas'),
+        backgroundColor: Colors.orange[700],
         foregroundColor: Colors.white,
       ),
       body: StreamBuilder<List<MultaModel>>(
-        stream: _multaService.obtenerMultasResidente(
-          widget.currentUser.condominioId.toString(),
-          widget.currentUser.uid,
-        ),
+        stream: _multaService.obtenerMultasCondominio(widget.currentUser.condominioId.toString()),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(
+              child: Text('Error: ${snapshot.error}'),
+            );
           }
 
           final multas = snapshot.data ?? [];
-
-          // Abrir modal automáticamente si se especificó una multa
-          if (widget.multaIdToOpen != null && !_modalAbierto && multas.isNotEmpty) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _abrirMultaEspecifica(multas, widget.multaIdToOpen!);
-            });
-          }
-
+          
           if (multas.isEmpty) {
             return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.check_circle_outline,
-                    size: 80,
-                    color: Colors.green,
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'No tienes multas registradas',
-                    style: TextStyle(fontSize: 18),
-                  ),
-                ],
-              ),
+              child: Text('No hay multas registradas'),
             );
           }
 
@@ -119,74 +91,35 @@ class _MultasResidenteScreenState extends State<MultasResidenteScreen> {
     );
   }
 
-  // Nuevo método para abrir una multa específica
-  void _abrirMultaEspecifica(List<MultaModel> multas, String multaId) {
-    final multa = multas.firstWhere(
-      (m) => m.id == multaId,
-      orElse: () => multas.first, // Si no encuentra la multa específica, abre la primera
-    );
-    
-    _modalAbierto = true;
-    _abrirModalDetalle(multa);
-  }
-
   Widget _buildMultaItem(MultaModel multa) {
-    // Verificar si el usuario actual ya leyó esta multa
-    bool yaLeida = multa.isRead?.containsKey(widget.currentUser.uid) ?? false;
-
     return GestureDetector(
       onTap: () => _abrirModalDetalle(multa),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: yaLeida ? Colors.grey[100] : Colors.white,
+          color: Colors.grey[50],
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: yaLeida ? Colors.grey[400]! : Colors.orange[300]!,
-            width: yaLeida ? 1 : 2,
-          ),
+          border: Border.all(color: Colors.grey[300]!),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.gavel,
-                  color: yaLeida ? Colors.grey[600] : Colors.orange[700],
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     multa.tipoMulta,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      color: yaLeida ? Colors.grey[700] : Colors.orange[800],
                     ),
                   ),
                 ),
-                if (!yaLeida)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.red[100],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'NUEVA',
-                      style: TextStyle(
-                        color: Colors.red[700],
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
+                Text(
+                  multa.time,
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
                 const SizedBox(width: 8),
                 Icon(
                   Icons.arrow_forward_ios,
@@ -200,79 +133,128 @@ class _MultasResidenteScreenState extends State<MultasResidenteScreen> {
               multa.contenido,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: yaLeida ? Colors.grey[600] : Colors.black87,
-              ),
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
-                const SizedBox(width: 4),
-                Text(
-                  '${_formatearFecha(multa.date)} - ${multa.time}',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                ),
-                const Spacer(),
-                if (yaLeida)
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.check_circle,
-                        color: Colors.green[600],
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Leída',
-                        style: TextStyle(
-                          color: Colors.green[600],
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
+            if (multa.additionalData != null) ...[
+              const SizedBox(height: 8),
+              _buildAdditionalInfo(multa.additionalData!),
+            ],
+            // Agregar información de lectura
+            if (multa.isRead != null && multa.isRead!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _buildReadStatusInfo(multa.isRead!),
+            ],
           ],
         ),
       ),
     );
   }
 
-  // Nuevo método para abrir el modal de detalle
-  Future<void> _abrirModalDetalle(MultaModel multa) async {
-    // Marcar como leída automáticamente si no ha sido leída
-    bool yaLeida = multa.isRead?.containsKey(widget.currentUser.uid) ?? false;
-    
-    if (!yaLeida) {
-      try {
-        await _multaService.marcarMultaComoLeida(
-          widget.currentUser.condominioId.toString(),
-          multa.id,
-          widget.currentUser.uid,
-        );
-      } catch (e) {
-        print('Error al marcar multa como leída: $e');
-      }
-    }
-
-    // Mostrar el modal
+  // Nuevo método para abrir el modal de detalle (administrador)
+  void _abrirModalDetalle(MultaModel multa) {
     showDialog(
       context: context,
-      builder: (BuildContext context) => _MultaDetalleModal(
+      builder: (BuildContext context) => _MultaDetalleModalAdmin(
         multa: multa,
-        currentUser: widget.currentUser,
       ),
     );
   }
 
-  Map<String, List<MultaModel>> _agruparMultasPorFecha(
-    List<MultaModel> multas,
-  ) {
-    Map<String, List<MultaModel>> agrupadas = {};
+  // Nuevo método para mostrar información de lectura
+  Widget _buildReadStatusInfo(Map<String, dynamic> isRead) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.green[50],
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.green[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.visibility, color: Colors.green[700], size: 16),
+              const SizedBox(width: 8),
+              Text(
+                'Estado de Lectura:',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green[700],
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (isRead.isEmpty)
+            Text(
+              'No leída por ningún residente',
+              style: TextStyle(color: Colors.orange[700], fontSize: 12),
+            )
+          else
+            ...isRead.entries.map((entry) {
+              final readData = entry.value as Map<String, dynamic>;
+              final nombre = readData['nombre'] ?? 'Usuario';
+              final fechaHora = readData['fechaHora'] ?? '';
+              
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    Icon(Icons.person, color: Colors.green[600], size: 14),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        '$nombre - ${_formatearFechaHoraLectura(fechaHora)}',
+                        style: TextStyle(
+                          color: Colors.green[700],
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+        ],
+      ),
+    );
+  }
 
+  // Método auxiliar para formatear fecha y hora de lectura
+  String _formatearFechaHoraLectura(String fechaHora) {
+    try {
+      final dateTime = DateTime.parse(fechaHora);
+      return '${dateTime.day.toString().padLeft(2, '0')}/${dateTime.month.toString().padLeft(2, '0')}/${dateTime.year} a las ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return fechaHora;
+    }
+  }
+
+  Widget _buildAdditionalInfo(Map<String, dynamic> additionalData) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.blue[50],
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (additionalData['valor'] != null)
+            Text('Valor: ${additionalData['valor']} ${additionalData['unidadMedida'] ?? ''}'),
+          if (additionalData['tipoVivienda'] != null)
+            Text('Vivienda: ${additionalData['tipoVivienda']} ${additionalData['numeroVivienda']}'),
+          if (additionalData['etiquetaEdificio'] != null)
+            Text('Edificio: ${additionalData['etiquetaEdificio']} - Depto: ${additionalData['numeroDepartamento']}'),
+        ],
+      ),
+    );
+  }
+
+  Map<String, List<MultaModel>> _agruparMultasPorFecha(List<MultaModel> multas) {
+    Map<String, List<MultaModel>> agrupadas = {};
+    
     for (var multa in multas) {
       final fecha = multa.date;
       if (agrupadas[fecha] == null) {
@@ -280,7 +262,7 @@ class _MultasResidenteScreenState extends State<MultasResidenteScreen> {
       }
       agrupadas[fecha]!.add(multa);
     }
-
+    
     return agrupadas;
   }
 
@@ -294,27 +276,23 @@ class _MultasResidenteScreenState extends State<MultasResidenteScreen> {
   }
 }
 
-// Nuevo widget para el modal de detalle
-class _MultaDetalleModal extends StatelessWidget {
+// Modal de detalle para administradores
+class _MultaDetalleModalAdmin extends StatelessWidget {
   final MultaModel multa;
-  final UserModel currentUser;
 
-  const _MultaDetalleModal({
+  const _MultaDetalleModalAdmin({
     Key? key,
     required this.multa,
-    required this.currentUser,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    bool yaLeida = multa.isRead?.containsKey(currentUser.uid) ?? false;
-    
     return Dialog(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 600),
+        constraints: const BoxConstraints(maxWidth: 600, maxHeight: 700),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -338,10 +316,10 @@ class _MultaDetalleModal extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Detalle de Multa',
+                      'Detalle de Multa - Vista Administrador',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -363,7 +341,7 @@ class _MultaDetalleModal extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Tipo de multa
+                    // Información básica de la multa
                     _buildDetailRow(
                       'Tipo de Multa:',
                       multa.tipoMulta,
@@ -372,7 +350,6 @@ class _MultaDetalleModal extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     
-                    // Contenido
                     _buildDetailSection(
                       'Descripción:',
                       multa.contenido,
@@ -381,7 +358,6 @@ class _MultaDetalleModal extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     
-                    // Fecha y hora
                     _buildDetailRow(
                       'Fecha:',
                       '${_formatearFecha(multa.date)} - ${multa.time}',
@@ -396,59 +372,8 @@ class _MultaDetalleModal extends StatelessWidget {
                     
                     const SizedBox(height: 20),
                     
-                    // Estado de lectura
-                    // Container(
-                    //   width: double.infinity,
-                    //   padding: const EdgeInsets.all(16),
-                    //   decoration: BoxDecoration(
-                    //     color: yaLeida ? Colors.green[50] : Colors.orange[50],
-                    //     borderRadius: BorderRadius.circular(8),
-                    //     border: Border.all(
-                    //       color: yaLeida ? Colors.green[200]! : Colors.orange[200]!,
-                    //     ),
-                    //   ),
-                    //   child: Row(
-                    //     children: [
-                    //       Icon(
-                    //         yaLeida ? Icons.check_circle : Icons.visibility,
-                    //         color: yaLeida ? Colors.green[700] : Colors.orange[700],
-                    //         size: 20,
-                    //       ),
-                    //       const SizedBox(width: 12),
-                    //       Expanded(
-                    //         child: Column(
-                    //           crossAxisAlignment: CrossAxisAlignment.start,
-                    //           children: [
-                    //             Text(
-                    //               yaLeida ? 'Multa Leída' : 'Multa Marcada como Leída',
-                    //               style: TextStyle(
-                    //                 fontWeight: FontWeight.bold,
-                    //                 color: yaLeida ? Colors.green[700] : Colors.orange[700],
-                    //               ),
-                    //             ),
-                    //             if (yaLeida && multa.isRead![currentUser.uid] is Map)
-                    //               Text(
-                    //                 'Leída el ${_formatearFechaHora(multa.isRead![currentUser.uid]['fechaHora'])}',
-                    //                 style: TextStyle(
-                    //                   color: Colors.green[600],
-                    //                   fontSize: 12,
-                    //                 ),
-                    //               ),
-                    //             if (!yaLeida)
-                    //               Text(
-                    //                 'Esta multa se ha marcado automáticamente como leída',
-                    //                 style: TextStyle(
-                    //                   color: Colors.orange[600],
-                    //                   fontSize: 12,
-                    //                 ),
-                    //               ),
-                    //           ],
-                    //         ),
-                    //       ),   
-                    //     ],
-                    //   ),
-                    // ),
-                  
+                    // Estado de lectura detallado
+                    _buildReadStatusSection(multa.isRead),
                   ],
                 ),
               ),
@@ -484,6 +409,126 @@ class _MultaDetalleModal extends StatelessWidget {
     );
   }
 
+  Widget _buildReadStatusSection(Map<String, dynamic>? isRead) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.visibility, color: Colors.green[700], size: 20),
+            const SizedBox(width: 12),
+            Text(
+              'Estado de Lectura:',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.green[700],
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: (isRead?.isEmpty ?? true) ? Colors.orange[50] : Colors.green[50],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: (isRead?.isEmpty ?? true) ? Colors.orange[200]! : Colors.green[200]!,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (isRead?.isEmpty ?? true)
+                Row(
+                  children: [
+                    Icon(Icons.warning, color: Colors.orange[700], size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'No leída por ningún residente',
+                      style: TextStyle(
+                        color: Colors.orange[700],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                )
+              else ...[
+                Text(
+                  'Leída por ${isRead!.length} residente(s):',
+                  style: TextStyle(
+                    color: Colors.green[700],
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ...isRead.entries.map((entry) {
+                  final readData = entry.value as Map<String, dynamic>;
+                  final nombre = readData['nombre'] ?? 'Usuario';
+                  final fechaHora = readData['fechaHora'] ?? '';
+                  
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.green[300]!),
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 16,
+                          backgroundColor: Colors.green[100],
+                          child: Icon(
+                            Icons.person,
+                            color: Colors.green[700],
+                            size: 16,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                nombre,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              Text(
+                                'Leída el ${_formatearFechaHora(fechaHora)}',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          Icons.check_circle,
+                          color: Colors.green[600],
+                          size: 20,
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Métodos auxiliares similares a los del modal del residente...
   Widget _buildDetailRow(String label, String value, IconData icon, Color color) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

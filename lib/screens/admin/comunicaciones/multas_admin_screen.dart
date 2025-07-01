@@ -1,8 +1,8 @@
-import 'package:comunidad_activa/screens/admin/gestion_multas_screen.dart';
-import 'package:comunidad_activa/screens/admin/historial_multas_screen.dart';
+import 'package:comunidad_activa/screens/admin/comunicaciones/gestion_multas_screen.dart';
+import 'package:comunidad_activa/screens/admin/comunicaciones/historial_multas_screen.dart';
 import 'package:flutter/material.dart';
-import '../../services/multa_service.dart';
-import '../../models/user_model.dart';
+import '../../../services/multa_service.dart';
+import '../../../models/user_model.dart';
 
 
 class MultasAdminScreen extends StatelessWidget {

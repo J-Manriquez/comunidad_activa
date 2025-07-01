@@ -1,4 +1,4 @@
-import 'package:comunidad_activa/screens/residente/chat_screen.dart';
+import 'package:comunidad_activa/screens/chat_screen.dart';
 import 'package:comunidad_activa/widgets/crear_multa_dialog.dart';
 import 'package:flutter/material.dart';
 import '../../models/condominio_model.dart';
@@ -7,7 +7,7 @@ import '../../services/firestore_service.dart';
 import '../../services/multa_service.dart';
 import '../../services/mensaje_service.dart';
 import '../../models/residente_model.dart';
-import 'mensajes_admin_screen.dart';
+import 'comunicaciones/mensajes_admin_screen.dart';
 
 class ComunidadScreen extends StatefulWidget {
   final String condominioId;

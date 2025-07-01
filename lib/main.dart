@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
-import 'screens/welcome_screen.dart';
+import 'screens/cuenta/welcome_screen.dart';
 import 'screens/home_screen.dart';
-import 'screens/login_screen.dart';
-import 'screens/register_screen.dart';
+import 'screens/cuenta/login_screen.dart';
+import 'screens/cuenta/register_screen.dart';
 import 'screens/admin/admin_screen.dart';
 import 'screens/residente/residente_screen.dart';
 import 'screens/residente/r_seleccion_vivienda_screen.dart';
-import 'screens/admin/admin_notifications_screen.dart';
-import 'screens/residente/r_notifications_screen.dart';
+import 'screens/admin/comunicaciones/admin_notifications_screen.dart';
+import 'screens/residente/comunicaciones/r_notifications_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

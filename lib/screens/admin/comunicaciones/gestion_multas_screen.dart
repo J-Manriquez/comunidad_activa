@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../services/multa_service.dart';
-import '../../models/user_model.dart';
-import '../../models/multa_model.dart';
+import '../../../services/multa_service.dart';
+import '../../../models/user_model.dart';
+import '../../../models/multa_model.dart';
 
 class GestionMultasScreen extends StatefulWidget {
   final UserModel currentUser;

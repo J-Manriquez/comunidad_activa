@@ -1,14 +1,14 @@
 import 'package:comunidad_activa/models/administrador_model.dart';
 import 'package:comunidad_activa/services/notification_service.dart';
 import 'package:flutter/material.dart';
-import '../../models/user_model.dart';
-import '../../models/mensaje_model.dart';
-import '../../models/residente_model.dart';
-import '../../services/mensaje_service.dart';
-import '../../services/firestore_service.dart';
-import '../../services/unread_messages_service.dart';
-import '../../widgets/unread_messages_badge.dart';
-import 'chat_screen.dart';
+import '../../../models/user_model.dart';
+import '../../../models/mensaje_model.dart';
+import '../../../models/residente_model.dart';
+import '../../../services/mensaje_service.dart';
+import '../../../services/firestore_service.dart';
+import '../../../services/unread_messages_service.dart';
+import '../../../widgets/unread_messages_badge.dart';
+import '../../chat_screen.dart';
 import 'package:intl/intl.dart';
 
 class MensajesResidenteScreen extends StatefulWidget {

@@ -45,6 +45,32 @@ cada vez que un adimistrador se registra crea una nueva colección principal:
     │       ├── condominioId: String
     │       └── fechaRegistro: String (ISO 8601)
     │
+    ├──── gastosComunes (documento)
+    │       ├── condominioId: String
+    │       │
+    │       ├── fijo (subcolección)
+    │       │     ├── {id_gasto_fijo} (documento)
+    │       │           ├── monto: Integer
+    │       │           ├── descripcion: String
+    │       │           ├── pctjePorRes: Map<String, dynamic> (nullable)
+    │       │           └── tipoCobro: String (igual para todos o porcentaje por residente)
+    │       │
+    │       ├── variable (subcolección)
+    │       │     ├── {id_gasto_variable} (documento)
+    │       │           ├── monto: Integer
+    │       │           ├── descripcion: String
+    │       │           ├── pctjePorRes: Map<String, dynamic> (nullable)
+    │       │           └── tipoCobro: String (igual para todos o porcentaje por residente)
+    │       │
+    │       └── adicional (subcolección)
+    │             ├── {id_gasto_adicional} (documento)
+    │                   ├── monto: Integer
+    │                   ├── descripcion: String
+    │                   ├── perido: String desde , hasta formato dd-mm-aaaa en un mismo campo (nullable)
+    │                   ├── pctjePorRes: Map<String, dynamic> (nullable)
+    │                   └── tipoCobro: String (igual para todos o porcentaje por residente)
+    │           
+    │       
     │
     ├──── comunicaciones (Document)
     │        ├── notificaciones (Subcollection)

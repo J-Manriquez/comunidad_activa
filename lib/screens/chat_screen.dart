@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../models/user_model.dart';
-import '../../models/mensaje_model.dart';
-import '../../services/mensaje_service.dart';
-import '../../services/firestore_service.dart';
-import '../../services/unread_messages_service.dart';
+import '../models/user_model.dart';
+import '../models/mensaje_model.dart';
+import '../services/mensaje_service.dart';
+import '../services/firestore_service.dart';
+import '../services/unread_messages_service.dart';
 import 'package:intl/intl.dart';
 
 class ChatScreen extends StatefulWidget {

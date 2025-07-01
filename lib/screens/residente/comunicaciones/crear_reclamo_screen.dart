@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../models/user_model.dart';
-import '../../services/reclamo_service.dart';
+import '../../../models/user_model.dart';
+import '../../../services/reclamo_service.dart';
 
 class CrearReclamoScreen extends StatefulWidget {
   final UserModel currentUser;

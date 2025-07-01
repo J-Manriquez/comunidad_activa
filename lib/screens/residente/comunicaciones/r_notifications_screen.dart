@@ -1,15 +1,15 @@
 import 'package:comunidad_activa/models/residente_model.dart';
 import 'package:comunidad_activa/models/user_model.dart';
-import 'package:comunidad_activa/screens/residente/chat_screen.dart';
-import 'package:comunidad_activa/screens/residente/r_multas_screen.dart';
-import 'package:comunidad_activa/screens/residente/r_reclamos_screen.dart';
+import 'package:comunidad_activa/screens/chat_screen.dart';
+import 'package:comunidad_activa/screens/residente/comunicaciones/r_multas_screen.dart';
+import 'package:comunidad_activa/screens/residente/comunicaciones/r_reclamos_screen.dart';
 import 'package:comunidad_activa/screens/residente/r_seleccion_vivienda_screen.dart';
 import 'package:comunidad_activa/services/mensaje_service.dart';
 import 'package:flutter/material.dart';
-import '../../models/notification_model.dart';
-import '../../services/notification_service.dart';
-import '../../services/firestore_service.dart';
-import '../../services/auth_service.dart';
+import '../../../models/notification_model.dart';
+import '../../../services/notification_service.dart';
+import '../../../services/firestore_service.dart';
+import '../../../services/auth_service.dart';
 
 class ResidenteNotificationsScreen extends StatefulWidget {
   final String condominioId;
