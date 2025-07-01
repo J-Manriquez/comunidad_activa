@@ -1,4 +1,5 @@
 import 'package:comunidad_activa/models/administrador_model.dart';
+import 'package:comunidad_activa/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import '../../models/user_model.dart';
 import '../../models/mensaje_model.dart';
@@ -25,6 +26,7 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
   final MensajeService _mensajeService = MensajeService();
   final FirestoreService _firestoreService = FirestoreService();
   final UnreadMessagesService _unreadService = UnreadMessagesService();
+  NotificationService _notificationService = NotificationService();
   bool _comunicacionEntreResidentesHabilitada = false;
   bool _permitirMensajesResidentes = true;
   String? _chatGrupalId;
@@ -75,16 +77,17 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
       );
 
       // Cargar chat conserjería
-      final chatConserjeriaId = await _mensajeService.crearOObtenerChatConserjeria(
-        condominioId: widget.currentUser.condominioId.toString(),
-        residenteId: widget.currentUser.uid,
-      );
+      final chatConserjeriaId = await _mensajeService
+          .crearOObtenerChatConserjeria(
+            condominioId: widget.currentUser.condominioId.toString(),
+            residenteId: widget.currentUser.uid,
+          );
 
       // Cargar chat administrador
       final administrador = await _firestoreService.getAdministradorData(
         widget.currentUser.condominioId.toString(),
       );
-      
+
       String? chatAdministradorId;
       if (administrador != null) {
         chatAdministradorId = await _mensajeService.crearOObtenerChatPrivado(
@@ -372,18 +375,11 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
           leading: CircleAvatar(
             backgroundColor: Colors.orange[100],
             radius: 25,
-            child: Icon(
-              Icons.security,
-              color: Colors.orange[700],
-              size: 28,
-            ),
+            child: Icon(Icons.security, color: Colors.orange[700], size: 28),
           ),
           title: const Text(
             'Conserjería',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           subtitle: const Text(
             'Chat con el personal de conserjería',
@@ -411,6 +407,12 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
         usuarioId: widget.currentUser.uid,
         nombreUsuario: widget.currentUser.nombre,
         tipoUsuario: 'residentes',
+      );
+
+      // ✅ NUEVO: Borrar notificaciones de mensajes del condominio para este chat
+      await _notificationService.borrarNotificacionesMensajeCondominio(
+        condominioId: widget.currentUser.condominioId.toString(),
+        chatId: chatId,
       );
 
       if (mounted) {
@@ -575,7 +577,7 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
                       style: const TextStyle(fontSize: 12),
                     ),
                     contentPadding: const EdgeInsets.all(16),
-                     onTap: () => _abrirChatPrivado(chat, nombreUsuario),
+                    onTap: () => _abrirChatPrivado(chat, nombreUsuario),
                   ),
                 ),
               );
@@ -637,6 +639,12 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
         tipoUsuario: 'residentes',
       );
 
+      // ✅ NUEVO: Borrar notificaciones de mensajes del condominio para este chat
+      await _notificationService.borrarNotificacionesMensajeCondominio(
+        condominioId: widget.currentUser.condominioId.toString(),
+        chatId: chatId,
+      );
+
       if (mounted) {
         Navigator.push(
           context,
@@ -663,7 +671,10 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
   }
 
   // Método para abrir chat privado con otro residente
-  Future<void> _abrirChatPrivado(MensajeModel chat, String nombreResidente) async {
+  Future<void> _abrirChatPrivado(
+    MensajeModel chat,
+    String nombreResidente,
+  ) async {
     try {
       // Marcar mensajes como leídos
       await _unreadService.markMessagesAsRead(
@@ -672,6 +683,12 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
         usuarioId: widget.currentUser.uid,
         nombreUsuario: widget.currentUser.nombre,
         tipoUsuario: 'residentes',
+      );
+
+      // ✅ NUEVO: Borrar notificaciones de mensajes del condominio para este chat
+      await _notificationService.borrarNotificacionesMensajeCondominio(
+        condominioId: widget.currentUser.condominioId.toString(),
+        chatId: chat.id,
       );
 
       if (mounted) {

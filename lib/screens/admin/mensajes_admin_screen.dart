@@ -410,6 +410,12 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
         tipoUsuario: 'administrador',
       );
 
+      // ✅ NUEVO: Borrar notificaciones de mensajes del condominio para este chat
+      await _notificationService.borrarNotificacionesMensajeCondominio(
+        condominioId: widget.currentUser.condominioId.toString(),
+        chatId: chatId,
+      );
+
       if (mounted) {
         Navigator.push(
           context,
