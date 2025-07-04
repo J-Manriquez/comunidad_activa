@@ -601,4 +601,22 @@ class FirestoreService {
       return false;
     }
   }
+
+  //updateCobrarMultasConGastos
+   Future<bool> updateCampoCondominio(
+    String condominioId,
+    String campo,
+    bool valor,
+  ) async {
+    try {
+      await _firestore
+          .collection(condominioId)
+          .doc('condominio')
+          .update({campo: valor});
+      return true;
+    } catch (e) {
+      print('Error al actualizar estado de vivienda: $e');
+      return false;
+    }
+}
 }

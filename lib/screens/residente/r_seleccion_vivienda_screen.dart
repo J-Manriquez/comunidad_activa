@@ -120,9 +120,8 @@ class _ResidenteSeleccionViviendaScreenState
 
   Future<void> _seleccionarVivienda(
     String vivienda,
-    String tipo, {
-    String? etiquetaEdificio,
-  }) async {
+    String tipo,
+  ) async {
     print('🏠 Iniciando selección de vivienda: $vivienda, tipo: $tipo');
     try {
       final user = _authService.currentUser;
@@ -169,6 +168,18 @@ class _ResidenteSeleccionViviendaScreenState
         }
 
         print('📨 Creando notificación para el administrador');
+        // Procesar etiquetaEdificio según el tipo de vivienda
+        String? etiquetaEdificio;
+        String? numeroDepartamento;
+        
+        if (tipo == 'Departamento') {
+          final partes = vivienda.split('-');
+          if (partes.length >= 2) {
+            etiquetaEdificio = partes[0];
+            numeroDepartamento = partes[1];
+          }
+        }
+
         await _notificationService.createCondominioNotification(
           condominioId: widget.condominioId,
           tipoNotificacion: 'solicitud_vivienda',
@@ -181,6 +192,7 @@ class _ResidenteSeleccionViviendaScreenState
             'vivienda': vivienda,
             'tipo': tipo,
             'etiquetaEdificio': etiquetaEdificio,
+            'numeroDepartamento': numeroDepartamento,
             'descripcionVivienda': descripcionVivienda,
           },
         );
@@ -266,6 +278,17 @@ class _ResidenteSeleccionViviendaScreenState
         print('✅ Selección directa - actualizando estado a seleccionada');
         // Selección directa (código existente)
         ResidenteModel residenteActualizado;
+        // Procesar etiquetaEdificio según el tipo de vivienda
+        String? etiquetaEdificio;
+        String? numeroDepartamento;
+        
+        if (tipo == 'Departamento') {
+          final partes = vivienda.split('-');
+          if (partes.length >= 2) {
+            etiquetaEdificio = partes[0];
+            numeroDepartamento = partes[1];
+          }
+        }
 
         if (tipo == 'Casa') {
           residenteActualizado = residenteActual.copyWith(
@@ -276,12 +299,12 @@ class _ResidenteSeleccionViviendaScreenState
             viviendaSeleccionada: 'seleccionada',
           );
         } else {
-          final partes = vivienda.split('-');
+          // final partes = vivienda.split('-');
           residenteActualizado = residenteActual.copyWith(
             tipoVivienda: 'departamento',
             numeroVivienda: null,
-            etiquetaEdificio: partes[0],
-            numeroDepartamento: partes[1],
+            etiquetaEdificio: etiquetaEdificio,
+            numeroDepartamento: numeroDepartamento,
             viviendaSeleccionada: 'seleccionada',
           );
         }
@@ -696,7 +719,7 @@ class _ResidenteSeleccionViviendaScreenState
   }
 
   Widget _buildDepartamentosWrap(
-    String torre,
+    String etiqueta,
     int apartamentosPorTorre,
     String? numeracion,
   ) {
@@ -724,7 +747,7 @@ class _ResidenteSeleccionViviendaScreenState
               onTapDown: (TapDownDetails details) {
                 _mostrarMenuVivienda(
                   context,
-                  '$torre-$depto',
+                  '$etiqueta-$depto',
                   'Departamento',
                   details.globalPosition,
                 );
@@ -740,7 +763,7 @@ class _ResidenteSeleccionViviendaScreenState
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  '$torre-$depto',
+                  '$etiqueta-$depto',
                   style: TextStyle(
                     fontWeight: FontWeight.w500,
                     color: Colors.blue.shade700,

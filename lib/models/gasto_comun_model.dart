@@ -2,9 +2,11 @@ class GastoComunModel {
   final String id;
   final int monto;
   final String descripcion;
-  final Map<String, dynamic>? pctjePorRes;
-  final String tipoCobro; // 'igual' o 'porcentaje'
+  final Map<String, dynamic>? pctjePorRes; // Contiene nombre de lista y datos de respaldo
+  final String tipoCobro; // 'igual para todos' o 'porcentaje por residente'
   final String? periodo; // Solo para gastos adicionales, formato "dd-mm-aaaa hasta dd-mm-aaaa"
+  final String? periodicidad; // Para gastos fijos y variables: 'mensual', 'bimestral', 'trimestral', 'semestral', 'anual'
+  final Map<String, Map<String, dynamic>>? additionalData; // Mapa de mapas para datos adicionales
   final TipoGasto tipo;
 
   GastoComunModel({
@@ -14,6 +16,8 @@ class GastoComunModel {
     this.pctjePorRes,
     required this.tipoCobro,
     this.periodo,
+    this.periodicidad,
+    this.additionalData,
     required this.tipo,
   });
 
@@ -29,10 +33,19 @@ class GastoComunModel {
       pctjePorRes: data['pctjePorRes'],
       tipoCobro: data['tipoCobro'] ?? 'igual',
       periodo: data['periodo'],
+      periodicidad: data['periodicidad'],
+      additionalData: data['additionalData'] != null 
+          ? Map<String, Map<String, dynamic>>.from(
+              data['additionalData'].map((key, value) => 
+                MapEntry(key, Map<String, dynamic>.from(value))
+              )
+            )
+          : null,
       tipo: tipo,
     );
   }
 
+// conservar este metodo
   Map<String, dynamic> toFirestore() {
     final data = {
       'monto': monto,
@@ -48,6 +61,14 @@ class GastoComunModel {
       data['periodo'] = periodo!;
     }
 
+    if (periodicidad != null) {
+      data['periodicidad'] = periodicidad!;
+    }
+
+    if (additionalData != null) {
+      data['additionalData'] = additionalData!;
+    }
+
     return data;
   }
 
@@ -58,6 +79,8 @@ class GastoComunModel {
     Map<String, dynamic>? pctjePorRes,
     String? tipoCobro,
     String? periodo,
+    String? periodicidad,
+    Map<String, Map<String, dynamic>>? additionalData,
     TipoGasto? tipo,
   }) {
     return GastoComunModel(
@@ -67,6 +90,8 @@ class GastoComunModel {
       pctjePorRes: pctjePorRes ?? this.pctjePorRes,
       tipoCobro: tipoCobro ?? this.tipoCobro,
       periodo: periodo ?? this.periodo,
+      periodicidad: periodicidad ?? this.periodicidad,
+      additionalData: additionalData ?? this.additionalData,
       tipo: tipo ?? this.tipo,
     );
   }

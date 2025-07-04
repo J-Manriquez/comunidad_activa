@@ -91,11 +91,24 @@ class ResidenteModel {
     if (tipoVivienda == 'casa') {
       return 'Casa $numeroVivienda';
     } else if (tipoVivienda == 'departamento') {
-      return '$etiquetaEdificio-$numeroDepartamento';
+      return '$numeroDepartamento';
     }
     
     return 'Vivienda no especificada';
   }
+
+  // // Método para obtener una clave única de la vivienda
+  // String get vivienda {
+  //   if (viviendaSeleccionada != 'seleccionada') return '';
+    
+  //   if (tipoVivienda == 'casa') {
+  //     return 'casa_$numeroVivienda';
+  //   } else if (tipoVivienda == 'departamento') {
+  //     return 'depto_${etiquetaEdificio}_$numeroDepartamento';
+  //   }
+    
+  //   return '';
+  // }
 
   // Método para crear una copia con nuevos valores
   ResidenteModel copyWith({

@@ -122,6 +122,16 @@ class _CrearMultaDialogState extends State<CrearMultaDialog> {
                       );
                       _valorSeleccionado = tipoEncontrado.valor;
                       _unidadSeleccionada = tipoEncontrado.unidadMedida;
+                      // Resetear flags de personalización cuando se selecciona un tipo predefinido
+                      _usarValorPersonalizado = false;
+                      _usarUnidadPersonalizada = false;
+                    } else if (value == 'otro') {
+                      // Cuando se selecciona "otro", limpiar valores predefinidos
+                      _valorSeleccionado = null;
+                      _unidadSeleccionada = null;
+                      // Forzar el uso de valores personalizados
+                      _usarValorPersonalizado = true;
+                      _usarUnidadPersonalizada = true;
                     }
                   });
                 },
@@ -161,7 +171,7 @@ class _CrearMultaDialogState extends State<CrearMultaDialog> {
                       children: [
                         const Text('Valor:', style: TextStyle(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 8),
-                        if (!_usarValorPersonalizado && _valorSeleccionado != null)
+                        if (!_usarValorPersonalizado && _valorSeleccionado != null && !_usarTipoPersonalizado)
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
@@ -207,7 +217,7 @@ class _CrearMultaDialogState extends State<CrearMultaDialog> {
                       children: [
                         const Text('Unidad:', style: TextStyle(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 8),
-                        if (!_usarUnidadPersonalizada && _unidadSeleccionada != null)
+                        if (!_usarUnidadPersonalizada && _unidadSeleccionada != null && !_usarTipoPersonalizado)
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
@@ -308,13 +318,19 @@ class _CrearMultaDialogState extends State<CrearMultaDialog> {
             ? _tipoPersonalizadoController.text 
             : _tipoSeleccionado!;
             
-        int valor = _usarValorPersonalizado 
-            ? int.parse(_valorPersonalizadoController.text)
-            : _valorSeleccionado!;
+        int valor;
+        if (_usarValorPersonalizado || _usarTipoPersonalizado) {
+          valor = int.parse(_valorPersonalizadoController.text);
+        } else {
+          valor = _valorSeleccionado ?? 0;
+        }
             
-        String unidadMedida = _usarUnidadPersonalizada 
-            ? _unidadPersonalizadaController.text
-            : _unidadSeleccionada!;
+        String unidadMedida;
+        if (_usarUnidadPersonalizada || _usarTipoPersonalizado) {
+          unidadMedida = _unidadPersonalizadaController.text;
+        } else {
+          unidadMedida = _unidadSeleccionada ?? '';
+        }
         
         await _multaService.crearMulta(
           condominioId: widget.condominioId,

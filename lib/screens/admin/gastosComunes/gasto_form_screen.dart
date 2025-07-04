@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../models/user_model.dart';
 import '../../../models/gasto_comun_model.dart';
+import '../../../models/lista_porcentajes_model.dart';
 import '../../../services/gastos_comunes_service.dart';
 
 class GastoFormScreen extends StatefulWidget {
@@ -29,13 +30,26 @@ class _GastoFormScreenState extends State<GastoFormScreen> {
   late TextEditingController _periodoController;
   
   String _tipoCobro = 'igual para todos';
+  String? _periodicidad;
+  List<ListaPorcentajesModel> _listasPorcentajes = [];
+  ListaPorcentajesModel? _listaSeleccionada;
   bool _isLoading = false;
+  bool _isLoadingListas = false;
   bool get _isEditing => widget.gasto != null;
+  
+  final List<String> _opcionesPeriodicidad = [
+    'mensual',
+    'bimestral', 
+    'trimestral',
+    'semestral',
+    'anual'
+  ];
 
   @override
   void initState() {
     super.initState();
     _inicializarControladores();
+    _cargarListasPorcentajes();
   }
 
   void _inicializarControladores() {
@@ -51,6 +65,53 @@ class _GastoFormScreenState extends State<GastoFormScreen> {
     
     if (widget.gasto != null) {
       _tipoCobro = widget.gasto!.tipoCobro;
+      _periodicidad = widget.gasto!.periodicidad;
+      
+      // Si tiene una lista de porcentajes guardada, la buscaremos después de cargar las listas
+      if (widget.gasto!.pctjePorRes != null && widget.gasto!.pctjePorRes!.isNotEmpty) {
+        // Se manejará en _cargarListasPorcentajes()
+      }
+    }
+  }
+
+  Future<void> _cargarListasPorcentajes() async {
+    setState(() {
+      _isLoadingListas = true;
+    });
+
+    try {
+      final listas = await _gastosService.obtenerListasPorcentajes(
+        condominioId: widget.currentUser.condominioId.toString(),
+      );
+      
+      setState(() {
+        _listasPorcentajes = listas;
+        _isLoadingListas = false;
+      });
+      
+      // Si estamos editando y hay una lista guardada, buscarla
+      if (widget.gasto != null && 
+          widget.gasto!.pctjePorRes != null && 
+          widget.gasto!.pctjePorRes!.containsKey('nombre')) {
+        final nombreLista = widget.gasto!.pctjePorRes!['nombre'];
+        _listaSeleccionada = listas.firstWhere(
+          (lista) => lista.nombre == nombreLista,
+          orElse: () => listas.isNotEmpty ? listas.first : ListaPorcentajesModel(
+            id: '',
+            nombre: '',
+            condominioId: '',
+            viviendas: {},
+            fechaCreacion: DateTime.now(),
+            fechaModificacion: DateTime.now(),
+          ),
+        );
+        setState(() {});
+      }
+    } catch (e) {
+      setState(() {
+        _isLoadingListas = false;
+      });
+      print('Error al cargar listas de porcentajes: $e');
     }
   }
 
@@ -66,12 +127,39 @@ class _GastoFormScreenState extends State<GastoFormScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+    
+    // Validar que se haya seleccionado una lista si el tipo de cobro es por porcentaje
+    if (_tipoCobro == 'porcentaje por residente' && _listaSeleccionada == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Debe seleccionar una lista de porcentajes'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     setState(() {
       _isLoading = true;
     });
 
     try {
+      // Preparar datos de la lista de porcentajes si es necesario
+      Map<String, dynamic>? pctjePorResData;
+      if (_tipoCobro == 'porcentaje por residente' && _listaSeleccionada != null) {
+        pctjePorResData = {
+          'nombre': _listaSeleccionada!.nombre,
+          'listaId': _listaSeleccionada!.id,
+          'viviendas': _listaSeleccionada!.viviendas.map(
+            (key, value) => MapEntry(key, {
+              'porcentaje': value.porcentaje,
+              'descripcionVivienda': value.descripcionVivienda,
+              'listaIdsResidentes': value.listaIdsResidentes,
+            }),
+          ),
+        };
+      }
+      
       final gasto = GastoComunModel(
         id: widget.gasto?.id ?? '',
         monto: int.parse(_montoController.text.replaceAll('.', '').replaceAll(',', '')),
@@ -81,7 +169,11 @@ class _GastoFormScreenState extends State<GastoFormScreen> {
         periodo: widget.tipoGasto == TipoGasto.adicional && _periodoController.text.isNotEmpty
             ? _periodoController.text.trim()
             : null,
-        pctjePorRes: _tipoCobro == 'porcentaje por residente' ? {} : null,
+        periodicidad: (widget.tipoGasto == TipoGasto.fijo || widget.tipoGasto == TipoGasto.variable) 
+            ? _periodicidad 
+            : null,
+        pctjePorRes: pctjePorResData,
+        additionalData: widget.gasto?.additionalData,
       );
 
       if (_isEditing) {
@@ -257,6 +349,40 @@ class _GastoFormScreenState extends State<GastoFormScreen> {
               ),
               const SizedBox(height: 24),
               
+              // Periodicidad (solo para gastos fijos y variables)
+              if (widget.tipoGasto == TipoGasto.fijo || widget.tipoGasto == TipoGasto.variable) ...[
+                _buildSectionTitle('Periodicidad'),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: _periodicidad,
+                  decoration: InputDecoration(
+                    hintText: 'Seleccione la periodicidad',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    prefixIcon: const Icon(Icons.schedule),
+                  ),
+                  items: _opcionesPeriodicidad.map((String periodicidad) {
+                    return DropdownMenuItem<String>(
+                      value: periodicidad,
+                      child: Text(periodicidad.toUpperCase()),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      _periodicidad = newValue;
+                    });
+                  },
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'La periodicidad es obligatoria para gastos ${widget.tipoGasto.nombre.toLowerCase()}s';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 24),
+              ],
+              
               // Tipo de cobro
               _buildSectionTitle('Tipo de Cobro'),
               const SizedBox(height: 8),
@@ -295,6 +421,101 @@ class _GastoFormScreenState extends State<GastoFormScreen> {
                   ],
                 ),
               ),
+              
+              // Selección de lista de porcentajes (solo cuando se selecciona porcentaje por residente)
+              if (_tipoCobro == 'porcentaje por residente') ...[
+                const SizedBox(height: 24),
+                _buildSectionTitle('Lista de Porcentajes'),
+                const SizedBox(height: 8),
+                if (_isLoadingListas)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                else if (_listasPorcentajes.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.grey.shade50,
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: Colors.grey.shade600,
+                          size: 32,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'No hay listas de porcentajes disponibles',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Debe crear al menos una lista de porcentajes antes de usar este tipo de cobro',
+                          style: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontSize: 12,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  DropdownButtonFormField<ListaPorcentajesModel>(
+                    value: _listaSeleccionada,
+                    decoration: InputDecoration(
+                      hintText: 'Seleccione una lista de porcentajes',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      prefixIcon: const Icon(Icons.list),
+                    ),
+                    items: _listasPorcentajes.map((ListaPorcentajesModel lista) {
+                      return DropdownMenuItem<ListaPorcentajesModel>(
+                        value: lista,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              lista.nombre,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              '${lista.viviendas.length} viviendas',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (ListaPorcentajesModel? newValue) {
+                      setState(() {
+                        _listaSeleccionada = newValue;
+                      });
+                    },
+                    validator: (value) {
+                      if (_tipoCobro == 'porcentaje por residente' && value == null) {
+                        return 'Debe seleccionar una lista de porcentajes';
+                      }
+                      return null;
+                    },
+                  ),
+              ],
               
               // Período (solo para gastos adicionales)
               if (widget.tipoGasto == TipoGasto.adicional) ...[

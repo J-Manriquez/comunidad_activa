@@ -7,6 +7,7 @@ import '../../services/notification_service.dart';
 import '../../widgets/notification_card_widget.dart';
 import 'comunicaciones/r_notifications_screen.dart';
 import 'r_config_screen.dart';
+import 'gastos_comunes_residente_screen.dart';
 import '../home_screen.dart';
 
 class ResidenteScreen extends StatefulWidget {
@@ -251,6 +252,21 @@ class _ResidenteScreenState extends State<ResidenteScreen> {
                                 ),
                               ),
                               const SizedBox(height: 16),
+                              _buildActionTile(
+                                'Mis Gastos Comunes',
+                                'Ver desglose de gastos y montos a pagar',
+                                Icons.receipt_long,
+                                () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const GastosComunesResidenteScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 8),
                               _buildActionTile(
                                 'Configuración',
                                 'Gestionar configuración personal',

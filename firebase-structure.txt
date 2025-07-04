@@ -48,6 +48,26 @@ cada vez que un adimistrador se registra crea una nueva colección principal:
     ├──── gastosComunes (documento)
     │       ├── condominioId: String
     │       │
+    │       ├── historial: (subcolección)
+    │       │     ├── {mes-año formato mm-aaaa} (documento)
+    │       │     │      ├── mes-año formato mm-aaaa: String
+    │       │     │      ├── fechaCortePago: String 
+    │       │     │      ├── mensajes: Map<String, dynamic> (nullable)
+    │       │     │      ├── montoTotal: Integer
+    │       │     │      ├── desgloseMonto: Map<String, dynamic> lista de gastos comunes con todos los datos de cada gasto comun cobrado ese mes
+    │       │     │      └── multasDelMes: Map<String, dynamic> (nullable)
+    │       │     └── ...
+    │       │
+    │       ├── listaPorcentajes (subcolección)
+    │       │     ├── {nombre-lista} (documento)
+    │       │     │      ├── id: lista o mapa de mapas (debe crearse un mapa por residente)
+    │       │     │      │      ├── vivienda: String
+    │       │     │      │      ├── listaIdsResidentes: String
+    │       │     │      │      ├── porcentaje: Integer
+    │       │     │      │      ├── ...
+    │       │     │      └── ...
+    │       │     └── ...
+    │       │
     │       ├── fijo (subcolección)
     │       │     ├── {id_gasto_fijo} (documento)
     │       │           ├── monto: Integer
@@ -73,23 +93,22 @@ cada vez que un adimistrador se registra crea una nueva colección principal:
     │       
     │
     ├──── comunicaciones (Document)
-    │        ├── notificaciones (Subcollection)
-    │        │    ├── {id} (Document)
-    │        │    │   ├── id: String
-    │        │    │   ├── fechaRegistro: String (ISO 8601)
-    │        │    │   ├── tipoNotificacion: String
-    │        │    │   ├── contenido: String
-    │        │    │   ├── isRead: Map<String, dynamic> (nullable)
-    │        │    │   ├── estado: String
-    │        │    │   └── additionalData: Map<String, dynamic> (nullable)
-    │        │    └── _placeholder (Document - se elimina cuando se agrega la primera notificación real)
-    │        │        └── created: String (ISO 8601)
-    │        │
     │        ├── multas (Subcollection)
     │        │    ├── {id} (Document)
     │        │    │   ├── id: String
     │        │    │   ├── fechaRegistro: String (ISO 8601)
     │        │    │   ├── tipoMulta: String
+    │        │    │   ├── contenido: String
+    │        │    │   ├── isRead: Map<String, dynamic> (nullable)
+    │        │    │   ├── estado: String
+    │        │    │   └── additionalData: Map<String, dynamic> (nullable)
+    │        │    └── ...
+    │        │
+    │        ├── notificaciones (Subcollection)
+    │        │    ├── {id} (Document)
+    │        │    │   ├── id: String
+    │        │    │   ├── fechaRegistro: String (ISO 8601)
+    │        │    │   ├── tipoNotificacion: String
     │        │    │   ├── contenido: String
     │        │    │   ├── isRead: Map<String, dynamic> (nullable)
     │        │    │   ├── estado: String

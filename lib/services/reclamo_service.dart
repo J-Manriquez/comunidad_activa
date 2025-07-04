@@ -79,7 +79,7 @@ class ReclamoService {
       
     } catch (e, stackTrace) {
       print('❌ Error al crear reclamo: $e');
-      print('📍 Stack trace: $stackTrace');
+      //print('📍 Stack trace: $stackTrace');
       print('🔧 Tipo de error: ${e.runtimeType}');
       rethrow;
     }
@@ -151,7 +151,7 @@ class ReclamoService {
               print('💡 SOLUCIÓN: Crear índice en Firebase Console o cambiar consulta');
               print('🔗 URL sugerida en el error para crear índice');
             }
-            print('📍 Stack trace completo: ${StackTrace.current}');
+            //print('📍 Stack trace completo: ${StackTrace.current}');
             print('🔧 Tipo de error: ${error.runtimeType}');
             throw error;
           });

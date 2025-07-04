@@ -19,6 +19,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   CondominioModel? _condominio;
   bool _isLoading = true;
   bool _comunicacionEntreResidentes = false;
+  bool _cobrarMultasConGastos = false;
 
   @override
   void initState() {
@@ -77,12 +78,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _toggleCobrarMultasConGastos(bool value) async {
+    try {
+      await _firestoreService.updateCampoCondominio(
+        widget.condominioId,
+        'cobrarMultasConGastos',
+        value,
+      );
+      
+      if (mounted) {
+        setState(() {
+          _cobrarMultasConGastos = value;
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              value 
+                  ? 'Multas se cobrarán junto con gastos comunes'
+                  : 'Multas se cobrarán por separado',
+            ),
+            backgroundColor: value ? Colors.green : Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al actualizar configuración: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _loadCondominioData() async {
     try {
       final condominio = await _firestoreService.getCondominioData(widget.condominioId);
       if (mounted) {
         setState(() {
           _condominio = condominio;
+          _cobrarMultasConGastos = condominio?.cobrarMultasConGastos ?? false;
           _isLoading = false;
         });
       }
@@ -159,6 +197,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
               value: _comunicacionEntreResidentes,
               onChanged: _toggleComunicacionResidentes,
               activeColor: Colors.blue,
+            ),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.account_balance_wallet, color: Colors.green),
+            title: const Text('Cobrar Multas con Gastos Comunes'),
+            subtitle: Text(
+              _cobrarMultasConGastos
+                  ? 'Las multas se incluyen en el cálculo de gastos comunes'
+                  : 'Las multas se cobran por separado de los gastos comunes',
+            ),
+            trailing: Switch(
+              value: _cobrarMultasConGastos,
+              onChanged: _toggleCobrarMultasConGastos,
+              activeColor: Colors.green,
             ),
           ),
         ],

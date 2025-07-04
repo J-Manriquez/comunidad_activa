@@ -337,4 +337,190 @@ class MultaService {
       throw e;
     }
   }
+
+  // Obtener multas de una vivienda específica
+  Future<List<MultaModel>> obtenerMultasVivienda({
+    required String condominioId,
+    required String tipoVivienda,
+    required String numeroVivienda,
+    String? etiquetaEdificio,
+    String? numeroDepartamento,
+  }) async {
+    try {
+      print('🔍 Buscando multas para vivienda:');
+      print('   - Condominio: $condominioId');
+      print('   - Tipo: $tipoVivienda');
+      print('   - Número: $numeroVivienda');
+      print('   - Etiqueta edificio: $etiquetaEdificio');
+      print('   - Número departamento: $numeroDepartamento');
+      // print('   - Stack trace: ${StackTrace.current}');
+      
+      QuerySnapshot snapshot = await _firestore
+          .collection(condominioId)
+          .doc('comunicaciones')
+          .collection('multas')
+          .get();
+
+      print('📋 Total de multas en el condominio: ${snapshot.docs.length}');
+      
+      List<MultaModel> multasVivienda = [];
+      
+      for (var doc in snapshot.docs) {
+        MultaModel multa = MultaModel.fromMap(doc.data() as Map<String, dynamic>);
+        print('🧾 Evaluando multa: ${multa.id}');
+        
+        if (multa.additionalData != null) {
+          String? multaTipoVivienda = multa.additionalData!['tipoVivienda'];
+          String? multaNumeroVivienda = multa.additionalData!['numeroVivienda'];
+          String? multaEtiquetaEdificio = multa.additionalData!['etiquetaEdificio'];
+          String? multaNumeroDepartamento = multa.additionalData!['numeroDepartamento'];
+          
+          print('🏠 Datos de vivienda en multa:');
+          print('   - Tipo: $multaTipoVivienda');
+          print('   - Número: $multaNumeroVivienda');
+          print('   - Etiqueta edificio: $multaEtiquetaEdificio');
+          print('   - Número departamento: $multaNumeroDepartamento');
+          
+          bool esLaMismaVivienda = false;
+          
+          if (tipoVivienda.toLowerCase() == 'casa') {
+            esLaMismaVivienda = multaTipoVivienda?.toLowerCase() == 'casa' &&
+                               multaNumeroVivienda == numeroVivienda;
+            print('🔍 Comparando casa: ${multaTipoVivienda?.toLowerCase() == 'casa'} && ${multaNumeroVivienda == numeroVivienda}');
+          } else if (tipoVivienda.toLowerCase() == 'departamento') {
+            esLaMismaVivienda = multaTipoVivienda?.toLowerCase() == 'departamento' &&
+                               multaEtiquetaEdificio == etiquetaEdificio &&
+                               multaNumeroDepartamento == numeroDepartamento;
+            print('🔍 Comparando departamento: ${multaTipoVivienda?.toLowerCase() == 'departamento'} && ${multaEtiquetaEdificio == etiquetaEdificio} && ${multaNumeroDepartamento == numeroDepartamento}');
+          }
+          
+          print('🔍 ¿Es la misma vivienda? $esLaMismaVivienda');
+          
+          if (esLaMismaVivienda) {
+            multasVivienda.add(multa);
+            print('✅ Multa ${multa.id} añadida a la lista');
+          } else {
+            print('❌ Multa ${multa.id} no corresponde a esta vivienda');
+          }
+        } else {
+          print('⚠️ Multa ${multa.id} no tiene additionalData');
+        }
+      }
+      
+      print('📊 Total de multas encontradas para esta vivienda: ${multasVivienda.length}');
+      return multasVivienda;
+    } catch (e) {
+      print('❌ Error al obtener multas de vivienda: $e');
+      //print('📍 Stack trace: ${StackTrace.current}');
+      return [];
+    }
+  }
+
+  // Calcular total de multas de una vivienda
+  Future<int> calcularTotalMultasVivienda({
+    required String condominioId,
+    required String tipoVivienda,
+    required String numeroVivienda,
+    String? etiquetaEdificio,
+    String? numeroDepartamento,
+  }) async {
+    try {
+      print('💰 Calculando total de multas para vivienda:');
+      print('   - Condominio: $condominioId');
+      print('   - Tipo: $tipoVivienda');
+      print('   - Número: $numeroVivienda');
+      print('   - Etiqueta edificio: $etiquetaEdificio');
+      print('   - Número departamento: $numeroDepartamento');
+      
+      List<MultaModel> multas = await obtenerMultasVivienda(
+        condominioId: condominioId,
+        tipoVivienda: tipoVivienda,
+        numeroVivienda: numeroVivienda,
+        etiquetaEdificio: etiquetaEdificio,
+        numeroDepartamento: numeroDepartamento,
+      );
+      
+      print('📋 Procesando ${multas.length} multas para calcular total');
+      
+      int total = 0;
+      for (MultaModel multa in multas) {
+        print('🧾 Procesando multa: ${multa.id}');
+        
+        if (multa.additionalData != null && multa.additionalData!['valor'] != null) {
+          // Manejar diferentes tipos de datos para el valor
+          dynamic valorDynamic = multa.additionalData!['valor'];
+          print('💲 Valor original: $valorDynamic (${valorDynamic.runtimeType})');
+          
+          int valorMulta;
+          
+          if (valorDynamic is int) {
+            valorMulta = valorDynamic;
+            print('💲 Valor es entero: $valorMulta');
+          } else if (valorDynamic is double) {
+            valorMulta = valorDynamic.round();
+            print('💲 Valor es double, redondeado a: $valorMulta');
+          } else if (valorDynamic is String) {
+            valorMulta = int.tryParse(valorDynamic) ?? 0;
+            print('💲 Valor es string, convertido a: $valorMulta');
+          } else {
+            print('⚠️ Valor de multa en formato no reconocido: $valorDynamic (${valorDynamic.runtimeType})');
+            continue;
+          }
+          
+          final totalAntes = total;
+          total += valorMulta;
+          print('💰 Total multas: $totalAntes → $total (+$valorMulta)');
+        } else {
+          print('⚠️ Multa ${multa.id} no tiene additionalData o valor válido');
+          if (multa.additionalData == null) {
+            print('⚠️ additionalData es null');
+          } else {
+            print('⚠️ valor en additionalData: ${multa.additionalData!['valor']}');
+          }
+        }
+      }
+      
+      print('💰 Total final de multas: $total');
+      return total;
+    } catch (e) {
+      print('❌ Error al calcular total de multas: $e');
+      //print('📍 Stack trace: ${StackTrace.current}');
+      return 0;
+    }
+  }
+
+  // Calcular total de multas de un residente
+  Future<int> calcularTotalMultasResidente(String condominioId, String uid) async {
+    try {
+      QuerySnapshot snapshot = await _firestore
+          .collection(condominioId)
+          .doc('comunicaciones')
+          .collection('multas')
+          .get();
+
+      int total = 0;
+      
+      for (var doc in snapshot.docs) {
+        MultaModel multa = MultaModel.fromMap(doc.data() as Map<String, dynamic>);
+        
+        if (multa.additionalData != null && 
+            multa.additionalData!['residentesIds'] != null &&
+            multa.additionalData!['valor'] != null) {
+          try {
+            List<String> residentesIds = List<String>.from(multa.additionalData!['residentesIds']);
+            if (residentesIds.contains(uid)) {
+              total += (multa.additionalData!['valor'] as int);
+            }
+          } catch (e) {
+            print('Error al procesar residentesIds para multa ${multa.id}: $e');
+          }
+        }
+      }
+      
+      return total;
+    } catch (e) {
+      print('Error al calcular total de multas del residente: $e');
+      return 0;
+    }
+  }
 }

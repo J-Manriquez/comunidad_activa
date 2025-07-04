@@ -80,6 +80,9 @@ class CondominioModel {
   
   // Nueva propiedad para gestión de multas
   final List<GestionMulta>? gestionMultas;
+  
+  // Configuración para cobrar multas junto con gastos comunes
+  final bool? cobrarMultasConGastos;
 
   CondominioModel({
     required this.id,
@@ -102,6 +105,7 @@ class CondominioModel {
     this.totalInmuebles,
     this.requiereConfirmacionAdmin,
     this.gestionMultas,
+    this.cobrarMultasConGastos,
   });
 
   // Método para calcular el total de inmuebles
@@ -148,6 +152,7 @@ class CondominioModel {
       'totalInmuebles': calcularTotalInmuebles(),
       'requiereConfirmacionAdmin': requiereConfirmacionAdmin,
       'gestionMultas': gestionMultas?.map((e) => e.toMap()).toList(),
+      'cobrarMultasConGastos': cobrarMultasConGastos,
     };
   }
 
@@ -202,6 +207,7 @@ class CondominioModel {
       totalInmuebles: map['totalInmuebles'],
       requiereConfirmacionAdmin: map['requiereConfirmacionAdmin'],
       gestionMultas: gestionMultasList,
+      cobrarMultasConGastos: map['cobrarMultasConGastos'],
     );
   }
 
