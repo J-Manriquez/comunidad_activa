@@ -169,7 +169,7 @@ class MensajeService {
   Future<void> enviarMensaje({
     required String condominioId,
     required String chatId,
-    required String texto,
+    String? texto,
     required String autorUid,
     Map<String, dynamic>? additionalData,
   }) async {
@@ -219,7 +219,8 @@ class MensajeService {
               chatId: chatId,
               nombreRemitente: nombreAutor,
               tipoChat: tipoChat,
-              texto: texto,
+              texto: texto ?? '',
+              esImagen: additionalData != null && additionalData['imagenBase64'] != null,
             );
           }
         }
@@ -287,6 +288,7 @@ class MensajeService {
     required String nombreRemitente,
     required String tipoChat,
     required String texto,
+    bool esImagen = false,
   }) async {
     try {
       final notificationService = NotificationService();
@@ -300,15 +302,20 @@ class MensajeService {
 
       // Crear contenido de la notificación
       String contenido;
+      String mensajeTexto = esImagen && texto.isEmpty ? '📷 Imagen' : texto;
+      
       if (tipoChat == 'grupal') {
-        contenido =
-            '$nombreRemitente envió un mensaje al chat grupal: "${texto.length > 50 ? '${texto.substring(0, 50)}...' : texto}"';
+        contenido = esImagen && texto.isEmpty
+            ? '$nombreRemitente envió una imagen al chat grupal'
+            : '$nombreRemitente envió un mensaje al chat grupal: "${mensajeTexto.length > 50 ? '${mensajeTexto.substring(0, 50)}...' : mensajeTexto}"';
       } else if (tipoChat == 'conserjeria') {
-        contenido =
-            '$nombreRemitente te envió un mensaje desde conserjería: "${texto.length > 50 ? '${texto.substring(0, 50)}...' : texto}"';
+        contenido = esImagen && texto.isEmpty
+            ? '$nombreRemitente te envió una imagen desde conserjería'
+            : '$nombreRemitente te envió un mensaje desde conserjería: "${mensajeTexto.length > 50 ? '${mensajeTexto.substring(0, 50)}...' : mensajeTexto}"';
       } else {
-        contenido =
-            '$nombreRemitente te envió un mensaje: "${texto.length > 50 ? '${texto.substring(0, 50)}...' : texto}"';
+        contenido = esImagen && texto.isEmpty
+            ? '$nombreRemitente te envió una imagen'
+            : '$nombreRemitente te envió un mensaje: "${mensajeTexto.length > 50 ? '${mensajeTexto.substring(0, 50)}...' : mensajeTexto}"';
       }
 
       // ✅ CORRECCIÓN: Enviar notificación según el tipo de destinatario

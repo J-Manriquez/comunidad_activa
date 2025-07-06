@@ -1,6 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/user_model.dart';
 import '../models/mensaje_model.dart';
 import '../services/mensaje_service.dart';
@@ -32,16 +36,20 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final MensajeService _mensajeService = MensajeService();
   final FirestoreService _firestoreService = FirestoreService();
   late final UnreadMessagesService _unreadService;
+  final ImagePicker _imagePicker = ImagePicker();
 
   Map<String, String> _nombresUsuarios = {};
   bool _isLoading = false;
   bool _isLoadingMoreMessages = false;
+  bool _isUploadingImage = false;
   List<ContenidoMensajeModel> _mensajes = [];
   DocumentSnapshot? _lastDocument;
   bool _hasMoreMessages = true;
   bool _isInitialLoad = true;
   StreamSubscription<QuerySnapshot>? _mensajesSubscription;
   Timer? _marcadoAutomaticoTimer;
+  String? _imagenSeleccionadaBase64;
+  FocusNode _textFieldFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -60,6 +68,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _messageController.dispose();
     _scrollController.dispose();
+    _textFieldFocusNode.dispose();
     _unreadService.dispose();
     _mensajesSubscription?.cancel();
     _marcadoAutomaticoTimer?.cancel();
@@ -448,7 +457,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   const SizedBox(height: 4),
                 ],
                 // Contenido del mensaje
-                Text(mensaje.texto ?? '', style: const TextStyle(fontSize: 16)),
+                if (mensaje.texto != null && mensaje.texto!.isNotEmpty)
+                  Text(mensaje.texto!, style: const TextStyle(fontSize: 16)),
+                // Mostrar imagen si existe
+                if (mensaje.additionalData != null && mensaje.additionalData!['imagenBase64'] != null)
+                  _buildImagenMensaje(mensaje.additionalData!['imagenBase64']),
                 const SizedBox(height: 8),
                 // Información del mensaje
                 Row(
@@ -499,44 +512,70 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: TextField(
-              controller: _messageController,
-              decoration: InputDecoration(
-                hintText: 'Escribe un mensaje...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(25),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: Colors.grey[100],
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
+          // Vista previa de imagen seleccionada
+          if (_imagenSeleccionadaBase64 != null)
+            _buildVistaPrevia(),
+          Row(
+            children: [
+              // Botón de imagen
+              IconButton(
+                icon: _isUploadingImage
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                        ),
+                      )
+                    : Icon(
+                        Icons.image,
+                        color: Colors.blue[700],
+                      ),
+                onPressed: _isUploadingImage ? null : _seleccionarImagen,
+              ),
+              Expanded(
+                child: TextField(
+                  controller: _messageController,
+                  focusNode: _textFieldFocusNode,
+                  decoration: InputDecoration(
+                    hintText: 'Escribe un mensaje...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(25),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
+                  ),
+                  maxLines: null,
+                  textCapitalization: TextCapitalization.sentences,
+                  onSubmitted: (_) => _enviarMensaje(),
                 ),
               ),
-              maxLines: null,
-              textCapitalization: TextCapitalization.sentences,
-            ),
-          ),
-          const SizedBox(width: 8),
-          CircleAvatar(
-            backgroundColor: Colors.blue[700],
-            child: IconButton(
-              icon: _isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : const Icon(Icons.send, color: Colors.white),
-              onPressed: _isLoading ? null : _enviarMensaje,
-            ),
+              const SizedBox(width: 8),
+              CircleAvatar(
+                backgroundColor: Colors.blue[700],
+                child: IconButton(
+                  icon: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Icon(Icons.send, color: Colors.white),
+                  onPressed: _isLoading ? null : _enviarMensaje,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -545,20 +584,32 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   Future<void> _enviarMensaje() async {
     final texto = _messageController.text.trim();
-    if (texto.isEmpty) return;
+    if (texto.isEmpty && _imagenSeleccionadaBase64 == null) return;
 
     setState(() => _isLoading = true);
 
     try {
+      // Preparar additionalData si hay imagen
+      Map<String, dynamic>? additionalData;
+      if (_imagenSeleccionadaBase64 != null) {
+        additionalData = {
+          'imagenBase64': _imagenSeleccionadaBase64,
+        };
+      }
+
       // Enviar mensaje a Firestore
       await _mensajeService.enviarMensaje(
         condominioId: widget.currentUser.condominioId.toString(),
         chatId: widget.chatId,
         autorUid: widget.currentUser.uid,
-        texto: texto,
+        texto: texto.isNotEmpty ? texto : null,
+        additionalData: additionalData,
       );
 
       _messageController.clear();
+      setState(() {
+        _imagenSeleccionadaBase64 = null;
+      });
 
       // El listener en tiempo real se encargará de agregar el mensaje
       // Solo hacemos scroll al final
@@ -738,6 +789,133 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             child: const Text('Cerrar'),
           ),
         ],
+      ),
+    );
+  }
+
+  // Método para seleccionar imagen
+  Future<void> _seleccionarImagen() async {
+    try {
+      setState(() => _isUploadingImage = true);
+
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        final bytes = await image.readAsBytes();
+        final base64String = base64Encode(bytes);
+        
+        setState(() {
+          _imagenSeleccionadaBase64 = base64String;
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al seleccionar imagen: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() => _isUploadingImage = false);
+    }
+  }
+
+  // Widget para vista previa de imagen seleccionada
+  Widget _buildVistaPrevia() {
+    if (_imagenSeleccionadaBase64 == null) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.memory(
+              base64Decode(_imagenSeleccionadaBase64!),
+              width: 60,
+              height: 60,
+              fit: BoxFit.cover,
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'Imagen seleccionada',
+              style: TextStyle(fontSize: 14),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, color: Colors.red),
+            onPressed: () {
+              setState(() {
+                _imagenSeleccionadaBase64 = null;
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Widget para mostrar imagen en mensaje
+  Widget _buildImagenMensaje(String imagenBase64) {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      child: GestureDetector(
+        onTap: () => _mostrarImagenCompleta(imagenBase64),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.memory(
+            base64Decode(imagenBase64),
+            width: 200,
+            height: 200,
+            fit: BoxFit.cover,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Mostrar imagen en pantalla completa
+  void _mostrarImagenCompleta(String imagenBase64) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.black,
+        child: Stack(
+          children: [
+            Center(
+              child: InteractiveViewer(
+                child: Image.memory(
+                  base64Decode(imagenBase64),
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+            Positioned(
+              top: 40,
+              right: 20,
+              child: IconButton(
+                icon: const Icon(
+                  Icons.close,
+                  color: Colors.white,
+                  size: 30,
+                ),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
