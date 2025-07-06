@@ -3,6 +3,7 @@ import '../../../services/multa_service.dart';
 import '../../../models/user_model.dart';
 import '../../../models/multa_model.dart';
 import 'package:intl/intl.dart';
+import 'dart:convert';
 
 class HistorialMultasScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -227,8 +228,102 @@ class _HistorialMultasScreenState extends State<HistorialMultasScreen> {
       final dateTime = DateTime.parse(fechaHora);
       return '${dateTime.day.toString().padLeft(2, '0')}/${dateTime.month.toString().padLeft(2, '0')}/${dateTime.year} a las ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
     } catch (e) {
-      return fechaHora;
-    }
+       return fechaHora;
+     }
+   }
+
+  void _mostrarImagenCompleta(String imagenBase64) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Stack(
+          children: [
+            Center(
+              child: InteractiveViewer(
+                child: Image.memory(
+                  base64Decode(imagenBase64),
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+            Positioned(
+              top: 40,
+              right: 20,
+              child: IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(
+                  Icons.close,
+                  color: Colors.white,
+                  size: 30,
+                ),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.black54,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImagenesEvidenciaModal(Map<String, dynamic> additionalData) {
+    List<String> imagenes = [];
+    
+    // Extraer imágenes del additionalData
+    if (additionalData['imagen1'] != null) imagenes.add(additionalData['imagen1']);
+    if (additionalData['imagen2'] != null) imagenes.add(additionalData['imagen2']);
+    if (additionalData['imagen3'] != null) imagenes.add(additionalData['imagen3']);
+    
+    if (imagenes.isEmpty) return const SizedBox.shrink();
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Icon(Icons.photo_library, color: Colors.purple[700], size: 20),
+            const SizedBox(width: 12),
+            Text(
+              'Imágenes de evidencia:',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.purple[700],
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          height: 120,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: imagenes.length,
+            itemBuilder: (context, index) {
+              return Container(
+                width: 120,
+                margin: EdgeInsets.only(right: index < imagenes.length - 1 ? 12 : 0),
+                child: GestureDetector(
+                  onTap: () => _mostrarImagenCompleta(imagenes[index]),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.memory(
+                      base64Decode(imagenes[index]),
+                      fit: BoxFit.cover,
+                      width: 120,
+                      height: 120,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildAdditionalInfo(Map<String, dynamic> additionalData) {
@@ -369,6 +464,10 @@ class _MultaDetalleModalAdmin extends StatelessWidget {
                     // Información adicional
                     if (multa.additionalData != null)
                       _buildAdditionalInfo(multa.additionalData!),
+                    
+                    // Imágenes de evidencia
+                    if (multa.additionalData != null)
+                      // _buildImagenesEvidenciaModal(multa.additionalData!),
                     
                     const SizedBox(height: 20),
                     
@@ -664,16 +763,21 @@ class _MultaDetalleModalAdmin extends StatelessWidget {
                   ),
                 ),
               if (additionalData['etiquetaEdificio'] != null)
-                Row(
-                  children: [
-                    Icon(Icons.apartment, color: Colors.blue[700], size: 18),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Edificio: ${additionalData['etiquetaEdificio']} - Depto: ${additionalData['numeroDepartamento']}',
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                  ],
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    children: [
+                      Icon(Icons.apartment, color: Colors.blue[700], size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Edificio: ${additionalData['etiquetaEdificio']} - Depto: ${additionalData['numeroDepartamento']}',
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ],
+                  ),
                 ),
+              // Agregar imágenes de evidencia
+              _buildImagenesEvidencia(additionalData),
             ],
           ),
         ),
@@ -697,5 +801,101 @@ class _MultaDetalleModalAdmin extends StatelessWidget {
     } catch (e) {
       return fechaHora;
     }
+  }
+
+  Widget _buildImagenesEvidencia(Map<String, dynamic> additionalData) {
+    List<String> imagenes = [];
+    
+    // Extraer imágenes del additionalData
+    if (additionalData['imagen1'] != null) imagenes.add(additionalData['imagen1']);
+    if (additionalData['imagen2'] != null) imagenes.add(additionalData['imagen2']);
+    if (additionalData['imagen3'] != null) imagenes.add(additionalData['imagen3']);
+    
+    if (imagenes.isEmpty) return const SizedBox.shrink();
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Icon(Icons.photo_library, color: Colors.purple[700], size: 18),
+            const SizedBox(width: 8),
+            Text(
+              'Imágenes de evidencia:',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.purple[700],
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          height: 80,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: imagenes.length,
+            itemBuilder: (context, index) {
+              return Container(
+                width: 80,
+                margin: EdgeInsets.only(right: index < imagenes.length - 1 ? 8 : 0),
+                child: GestureDetector(
+                  onTap: () => _mostrarImagenCompleta(imagenes[index], context),
+
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: Image.memory(
+                      base64Decode(imagenes[index]),
+                      fit: BoxFit.cover,
+                      width: 80,
+                      height: 80,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+  
+  void _mostrarImagenCompleta(String imagenBase64, BuildContext context) {
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Stack(
+          children: [
+            Center(
+              child: InteractiveViewer(
+                child: Image.memory(
+                  base64Decode(imagenBase64),
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+            Positioned(
+              top: 40,
+              right: 20,
+              child: IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(
+                  Icons.close,
+                  color: Colors.white,
+                  size: 30,
+                ),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.black54,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

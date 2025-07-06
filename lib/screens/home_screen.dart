@@ -1,6 +1,7 @@
 import 'package:comunidad_activa/screens/admin/comunicaciones/admin_reclamos_screen.dart';
 import 'package:comunidad_activa/screens/admin/settings_screen.dart';
 import 'package:comunidad_activa/screens/residente/comunicaciones/r_reclamos_screen.dart';
+import 'package:comunidad_activa/screens/residente/gastos_comunes_residente_screen.dart';
 import 'package:comunidad_activa/screens/residente/residente_screen.dart';
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
@@ -20,7 +21,10 @@ import 'admin/gastosComunes/gastos_comunes_screen.dart';
 import 'residente/comunicaciones/r_multas_screen.dart';
 import 'residente/r_config_screen.dart'; // Nueva importación
 import 'residente/comunicaciones/mensajes_residente_screen.dart';
+import 'residente/comunicaciones/publicaciones_residente_screen.dart';
 import 'admin/comunicaciones/mensajes_admin_screen.dart';
+import 'admin/comunicaciones/crear_publicacion_screen.dart';
+import 'admin/comunicaciones/gestion_publicaciones_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -375,6 +379,19 @@ class HomeScreen extends StatelessWidget {
               },
             ),
             ListTile(
+              leading: const Icon(Icons.article),
+              title: const Text('Gestión de Publicaciones'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => GestionPublicacionesScreen(currentUser: user),
+                  ),
+                );
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.account_balance_wallet),
               title: const Text('Gastos Comunes'),
               onTap: () {
@@ -435,6 +452,19 @@ class HomeScreen extends StatelessWidget {
               },
             ),
             ListTile(
+              leading: const Icon(Icons.account_balance_wallet),
+              title: const Text('Mis Gastos Comunes'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const GastosComunesResidenteScreen(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.receipt_long),
               title: const Text('Mis Multas'),
               onTap: () {
@@ -444,6 +474,19 @@ class HomeScreen extends StatelessWidget {
                   MaterialPageRoute(
                     builder: (context) => MultasResidenteScreen(currentUser: user,
                     ),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.article),
+              title: const Text('Publicaciones'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PublicacionesResidenteScreen(currentUser: user),
                   ),
                 );
               },

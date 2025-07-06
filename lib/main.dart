@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/date_symbol_data_local.dart'; // Agregar esta línea
 import 'firebase_options.dart';
 import 'screens/cuenta/welcome_screen.dart';
 import 'screens/home_screen.dart';
@@ -17,6 +18,8 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  // Agregar esta línea para inicializar datos de localización en español
+  await initializeDateFormatting('es', null);
   runApp(const MainApp());
 }
 

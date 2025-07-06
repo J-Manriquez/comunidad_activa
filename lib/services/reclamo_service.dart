@@ -15,6 +15,7 @@ class ReclamoService {
     required String residenteId,
     required String tipoReclamo,
     required String contenido,
+    Map<String, dynamic>? imagenesBase64,
   }) async {
     try {
       print('🔄 Iniciando creación de reclamo para residente: $residenteId');
@@ -50,6 +51,8 @@ class ReclamoService {
           'nombreResidente': nombreResidente,
           'fechaCreacion': now.toIso8601String(),
           'version': '2.0', // Para identificar nuevos documentos
+          // Agregar imágenes si existen
+          if (imagenesBase64 != null) ...imagenesBase64,
         },
       };
   

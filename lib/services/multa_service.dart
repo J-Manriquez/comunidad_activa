@@ -68,6 +68,7 @@ class MultaService {
     String? numeroDepartamento,
     required int valor,
     required String unidadMedida,
+    Map<String, dynamic>? imagenesBase64,
   }) async {
     try {
       String multaId = DateTime.now().millisecondsSinceEpoch.toString();
@@ -95,6 +96,11 @@ class MultaService {
       }
       if (numeroDepartamento != null) {
         additionalData['numeroDepartamento'] = numeroDepartamento;
+      }
+      
+      // Agregar imágenes si existen
+      if (imagenesBase64 != null && imagenesBase64.isNotEmpty) {
+        additionalData.addAll(imagenesBase64);
       }
 
       MultaModel multa = MultaModel(

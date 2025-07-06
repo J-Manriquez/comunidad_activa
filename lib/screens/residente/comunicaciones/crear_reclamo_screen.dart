@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:convert';
 import '../../../models/user_model.dart';
 import '../../../services/reclamo_service.dart';
+import '../../../utils/storage_service.dart';
 
 class CrearReclamoScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -17,10 +20,17 @@ class _CrearReclamoScreenState extends State<CrearReclamoScreen> {
   final _contenidoController = TextEditingController();
   final _tipoPersonalizadoController = TextEditingController();
   final ReclamoService _reclamoService = ReclamoService();
+  final StorageService _storageService = StorageService();
   
   String? _tipoSeleccionado;
   bool _usarTipoPersonalizado = false;
   bool _isLoading = false;
+  bool _isUploadingImage = false;
+  
+  // Variables para las imágenes
+  String? _imagen1Base64;
+  String? _imagen2Base64;
+  String? _imagen3Base64;
 
   @override
   Widget build(BuildContext context) {
@@ -185,6 +195,27 @@ class _CrearReclamoScreenState extends State<CrearReclamoScreen> {
                 },
               ),
               
+              const SizedBox(height: 20),
+              
+              // Sección de imágenes
+              const Text(
+                'Imágenes de Evidencia',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Puede agregar hasta 3 imágenes como evidencia de su reclamo',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildImagenesSection(),
+              
               const SizedBox(height: 30),
               
               // Botón para enviar
@@ -234,11 +265,18 @@ class _CrearReclamoScreenState extends State<CrearReclamoScreen> {
             ? _tipoPersonalizadoController.text 
             : _tipoSeleccionado!;
             
+        // Preparar additionalData con imágenes
+        Map<String, dynamic> additionalData = {};
+        if (_imagen1Base64 != null) additionalData['imagen1Base64'] = _imagen1Base64!;
+        if (_imagen2Base64 != null) additionalData['imagen2Base64'] = _imagen2Base64!;
+        if (_imagen3Base64 != null) additionalData['imagen3Base64'] = _imagen3Base64!;
+        
         await _reclamoService.crearReclamo(
           condominioId: widget.currentUser.condominioId.toString(),
           residenteId: widget.currentUser.uid,
           tipoReclamo: tipoReclamo,
           contenido: _contenidoController.text,
+          imagenesBase64: additionalData,
         );
         
         if (mounted) {
@@ -265,6 +303,140 @@ class _CrearReclamoScreenState extends State<CrearReclamoScreen> {
         }
       }
     }
+  }
+
+  Widget _buildImagenesSection() {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(child: _buildImagePicker(1, _imagen1Base64)),
+            const SizedBox(width: 8),
+            Expanded(child: _buildImagePicker(2, _imagen2Base64)),
+            const SizedBox(width: 8),
+            Expanded(child: _buildImagePicker(3, _imagen3Base64)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildImagePicker(int imageNumber, String? imageBase64) {
+    return Container(
+      height: 100,
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey[300]!),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: imageBase64 != null
+          ? Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.memory(
+                    base64Decode(imageBase64),
+                    width: double.infinity,
+                    height: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                Positioned(
+                  top: 4,
+                  right: 4,
+                  child: GestureDetector(
+                    onTap: () => _removeImage(imageNumber),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : _isUploadingImage
+          ? const Center(child: CircularProgressIndicator())
+          : InkWell(
+              onTap: () => _selectImage(imageNumber),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.add_photo_alternate,
+                    color: Colors.grey[400],
+                    size: 32,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Imagen $imageNumber',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Future<void> _selectImage(int imageNumber) async {
+    setState(() => _isUploadingImage = true);
+
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        final bytes = await image.readAsBytes();
+        final base64String = base64Encode(bytes);
+
+        setState(() {
+          switch (imageNumber) {
+            case 1:
+              _imagen1Base64 = base64String;
+              break;
+            case 2:
+              _imagen2Base64 = base64String;
+              break;
+            case 3:
+              _imagen3Base64 = base64String;
+              break;
+          }
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al seleccionar imagen: $e')),
+      );
+    } finally {
+      setState(() => _isUploadingImage = false);
+    }
+  }
+
+  void _removeImage(int imageNumber) {
+    setState(() {
+      switch (imageNumber) {
+        case 1:
+          _imagen1Base64 = null;
+          break;
+        case 2:
+          _imagen2Base64 = null;
+          break;
+        case 3:
+          _imagen3Base64 = null;
+          break;
+      }
+    });
   }
 
   @override

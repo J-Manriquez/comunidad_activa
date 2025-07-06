@@ -3,6 +3,8 @@ import '../../../models/user_model.dart';
 import '../../../models/reclamo_model.dart';
 import '../../../services/reclamo_service.dart';
 import 'package:intl/intl.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 
 class AdminReclamosScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -248,6 +250,20 @@ class _AdminReclamosScreenState extends State<AdminReclamosScreen> {
                           color: Colors.grey.shade500,
                         ),
                       ),
+                      // Mostrar indicador de imágenes si existen
+                      if (_tieneImagenes(reclamo.additionalData)) ...[
+                        const SizedBox(width: 8),
+                        Icon(Icons.image, size: 16, color: Colors.blue[600]),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Con imágenes',
+                          style: TextStyle(
+                            color: Colors.blue[600],
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                   Text(
@@ -276,6 +292,20 @@ class _AdminReclamosScreenState extends State<AdminReclamosScreen> {
         reclamoService: _reclamoService,
       ),
     );
+  }
+
+  bool _tieneImagenes(Map<String, dynamic>? additionalData) {
+    if (additionalData == null) return false;
+    
+    for (int i = 1; i <= 3; i++) {
+      final imagenKey = 'imagen${i}Base64';
+      if (additionalData.containsKey(imagenKey) && 
+          additionalData[imagenKey] != null && 
+          additionalData[imagenKey].toString().isNotEmpty) {
+        return true;
+      }
+    }
+    return false;
   }
 }
 
@@ -414,6 +444,9 @@ class _ReclamoDetalleDialogState extends State<_ReclamoDetalleDialog> {
                         style: const TextStyle(fontSize: 14),
                       ),
                     ),
+                    
+                    // Mostrar imágenes de evidencia si existen
+                    _buildImagenesEvidencia(widget.reclamo.additionalData),
                     
                     // Mostrar respuesta si existe
                     if (isResuelto && widget.reclamo.estado?['mensajeRespuesta'] != null) ...[
@@ -588,6 +621,137 @@ class _ReclamoDetalleDialogState extends State<_ReclamoDetalleDialog> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Widget _buildImagenesEvidencia(Map<String, dynamic>? additionalData) {
+    if (additionalData == null) return const SizedBox.shrink();
+
+    // Extraer las imágenes del additionalData
+    List<String> imagenes = [];
+    for (int i = 1; i <= 3; i++) {
+      final imagenKey = 'imagen${i}Base64';
+      if (additionalData.containsKey(imagenKey) && 
+          additionalData[imagenKey] != null && 
+          additionalData[imagenKey].toString().isNotEmpty) {
+        imagenes.add(additionalData[imagenKey]);
+      }
+    }
+
+    if (imagenes.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 20),
+        const Text(
+          'Imágenes de Evidencia:',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 120,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: imagenes.length,
+            itemBuilder: (context, index) {
+              return Container(
+                margin: const EdgeInsets.only(right: 12),
+                child: GestureDetector(
+                  onTap: () => _mostrarImagenCompleta(context, imagenes[index]),
+                  child: Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.memory(
+                        base64Decode(imagenes[index]),
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey[200],
+                            child: const Icon(
+                              Icons.error,
+                              color: Colors.grey,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Toca una imagen para verla en pantalla completa',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _mostrarImagenCompleta(BuildContext context, String imagenBase64) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.black,
+          child: Stack(
+            children: [
+              Center(
+                child: InteractiveViewer(
+                  panEnabled: true,
+                  boundaryMargin: const EdgeInsets.all(20),
+                  minScale: 0.5,
+                  maxScale: 4.0,
+                  child: Image.memory(
+                    base64Decode(imagenBase64),
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: Colors.grey[800],
+                        child: const Center(
+                          child: Icon(
+                            Icons.error,
+                            color: Colors.white,
+                            size: 50,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 40,
+                right: 20,
+                child: IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(
+                    Icons.close,
+                    color: Colors.white,
+                    size: 30,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override

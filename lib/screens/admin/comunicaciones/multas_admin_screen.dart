@@ -1,5 +1,6 @@
 import 'package:comunidad_activa/screens/admin/comunicaciones/gestion_multas_screen.dart';
 import 'package:comunidad_activa/screens/admin/comunicaciones/historial_multas_screen.dart';
+import 'package:comunidad_activa/screens/admin/comunidad_screen.dart';
 import 'package:flutter/material.dart';
 import '../../../services/multa_service.dart';
 import '../../../models/user_model.dart';
@@ -23,6 +24,26 @@ class MultasAdminScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
+            Card(
+              elevation: 4,
+              child: ListTile(
+                leading: Icon(Icons.add_circle, color: Colors.green[700]),
+                title: const Text('Crear Multa a Residente'),
+                subtitle: const Text('Aplicar multa a un residente específico'),
+                trailing: const Icon(Icons.arrow_forward_ios),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ComunidadScreen(
+                        condominioId: currentUser.condominioId!,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
             Card(
               elevation: 4,
               child: ListTile(

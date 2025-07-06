@@ -118,7 +118,7 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => CrearMultaDialog(
+        builder: (context) => CrearMultaScreen(
           condominioId: widget.condominioId,
           tipoVivienda: tipo,
           numeroVivienda: vivienda,

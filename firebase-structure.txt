@@ -93,6 +93,18 @@ cada vez que un adimistrador se registra crea una nueva colección principal:
     │       
     │
     ├──── comunicaciones (Document)
+    │        ├── publicaciones (Subcollection)
+    │        │    ├── {id} (Document)
+    │        │    │   ├── id: String
+    │        │    │   ├── tipoPublicacion: String (residentes/trabajadores)
+    │        │    │   ├── contenido: String
+    │        │    │   ├── titulo: String
+    │        │    │   ├── fechaPublicacion: String
+    │        │    │   ├── isRead: Map<String, dynamic> (nullable)
+    │        │    │   ├── estado: String
+    │        │    │   └── additionalData: Map<String, dynamic> (nullable)
+    │        │    └── ...
+    │        │
     │        ├── multas (Subcollection)
     │        │    ├── {id} (Document)
     │        │    │   ├── id: String

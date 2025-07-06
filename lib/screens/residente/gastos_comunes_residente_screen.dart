@@ -58,7 +58,7 @@ class _GastosComunesResidenteScreenState extends State<GastosComunesResidenteScr
       if (condominioDoc.exists) {
         print('📄 Documento del condominio encontrado');
         final condominioData = CondominioModel.fromMap(condominioDoc.data()!);
-        _cobrarMultasConGastos = condominioData.cobrarMultasConGastos!;
+        _cobrarMultasConGastos = condominioData.cobrarMultasConGastos ?? false; // ✅ Valor por defecto
         print('💰 Configuración cobrarMultasConGastos: $_cobrarMultasConGastos');
         print('📄 Datos del condominio: ${condominioDoc.data()}');
       } else {
@@ -257,7 +257,7 @@ class _GastosComunesResidenteScreenState extends State<GastosComunesResidenteScr
     }
     
     // Verificar si hay multas pero no se muestran
-    if (!_cobrarMultasConGastos && montoMultas > 0) {
+    if (_cobrarMultasConGastos && montoMultas > 0) {
       print('⚠️ ADVERTENCIA en UI: Hay multas ($montoMultas) pero no se mostrarán porque cobrarMultasConGastos=$_cobrarMultasConGastos');
     }
 
@@ -387,6 +387,8 @@ class _GastosComunesResidenteScreenState extends State<GastosComunesResidenteScr
     
     print('📊 Detalle de gastos disponibles: ${detalleGastos.length} items');
     print('📊 Detalle de multas disponibles: ${detalleMultas.length} items');
+    print('💰 cobrarMultasConGastos: $_cobrarMultasConGastos');
+    print('📋 Contenido completo de _gastosResidente: $_gastosResidente');
 
     if (detalleGastos.isEmpty && detalleMultas.isEmpty) {
       print('⚠️ No hay gastos ni multas para mostrar');
@@ -426,7 +428,7 @@ class _GastosComunesResidenteScreenState extends State<GastosComunesResidenteScr
     });
     
     // Verificar si hay multas pero no se mostrarán
-    if (!_cobrarMultasConGastos && detalleMultas.isNotEmpty) {
+    if (_cobrarMultasConGastos && detalleMultas.isNotEmpty) {
       print('⚠️ ADVERTENCIA: Hay ${detalleMultas.length} multas en el detalle pero no se mostrarán porque cobrarMultasConGastos=$_cobrarMultasConGastos');
     }
 
@@ -444,12 +446,38 @@ class _GastosComunesResidenteScreenState extends State<GastosComunesResidenteScr
         const SizedBox(height: 16),
         ...gastosPorTipo.entries.map((entry) => _buildTipoGastoCard(entry.key, entry.value)),
         
-        // Mostrar desglose de multas si están incluidas y existen
-        if (_cobrarMultasConGastos && detalleMultas.isNotEmpty) ...[          
-          // print('✅ Mostrando sección de multas (${detalleMultas.length} items)');
+        // Mostrar desglose de multas si están incluidas
+        if (!_cobrarMultasConGastos) ...[
           const SizedBox(height: 16),
-          _buildMultasCard(detalleMultas),
-        ] 
+          if (detalleMultas.isNotEmpty) 
+            _buildMultasCard(detalleMultas)
+          else
+            Card(
+              elevation: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Icon(Icons.gavel, color: Colors.orange[600]),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'No hay multas registradas para esta vivienda',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ]
       ],
     );
   }
@@ -698,12 +726,26 @@ class _GastosComunesResidenteScreenState extends State<GastosComunesResidenteScr
     }
     
     final contenido = multa['contenido'] as String?;
+    final fechaRegistro = multa['fechaRegistro'] as String?;
+    
+    // Formatear fecha de aplicación
+    String fechaAplicacion = 'Fecha no disponible';
+    if (fechaRegistro != null && fechaRegistro.isNotEmpty) {
+      try {
+        final dateTime = DateTime.parse(fechaRegistro);
+        fechaAplicacion = '${dateTime.day.toString().padLeft(2, '0')}/${dateTime.month.toString().padLeft(2, '0')}/${dateTime.year}';
+      } catch (e) {
+        print('⚠️ Error al formatear fecha de multa: $e');
+        fechaAplicacion = fechaRegistro;
+      }
+    }
     
     print('🔄 Procesando multa: $tipoMulta');
     print('📊 Datos de la multa:');
     print('   - Valor original: $valorOriginal (${valorOriginal?.runtimeType})');
     print('   - Valor procesado: $valor');
     print('   - Contenido: $contenido');
+    print('   - Fecha de aplicación: $fechaAplicacion');
     
     // Verificar datos inválidos
     if (valor < 0) {
@@ -711,8 +753,8 @@ class _GastosComunesResidenteScreenState extends State<GastosComunesResidenteScr
     }
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.red[50],
         borderRadius: BorderRadius.circular(8),
@@ -721,38 +763,93 @@ class _GastosComunesResidenteScreenState extends State<GastosComunesResidenteScr
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Primera fila: Tipo de multa y valor
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: Text(
-                  tipoMulta,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                    color: Colors.red,
+              Row(
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.red[600],
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    tipoMulta,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Colors.red[800],
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.red[100],
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: Colors.red[300]!,
+                    width: 1,
                   ),
                 ),
-              ),
-              Text(
-                '\$${_formatearMonto(valor)}',
-                style: TextStyle(
-                  color: Colors.red[600],
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                child: Text(
+                  '\$${_formatearMonto(valor)}',
+                  style: TextStyle(
+                    color: Colors.red[700],
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
                 ),
               ),
             ],
           ),
-          if (contenido != null && contenido.isNotEmpty) ...[            const SizedBox(height: 8),
+          
+          // Segunda fila: Descripción (si existe)
+          if (contenido != null && contenido.isNotEmpty) ...[
+            const SizedBox(height: 8),
             Text(
               contenido,
               style: TextStyle(
                 color: Colors.grey[700],
-                fontSize: 14,
+                fontSize: 13,
               ),
             ),
           ],
+          
+          // Tercera fila: Fecha de aplicación
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(
+                Icons.calendar_today,
+                size: 14,
+                color: Colors.grey[600],
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Aplicada el: ',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                fechaAplicacion,
+                style: TextStyle(
+                  color: Colors.grey[700],
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
