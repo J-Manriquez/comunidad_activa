@@ -83,7 +83,7 @@ class ResidenteModel {
     return ResidenteModel.fromMap(data);
   }
 
-  // Método para obtener la descripción completa de la vivienda
+  // Método para obtener la el numero de cada o etiqueta depto y numero depto segun el tipo de vivienda
   String get descripcionVivienda {
     if (viviendaSeleccionada == 'no_seleccionada') return 'Sin vivienda asignada';
     if (viviendaSeleccionada == 'pendiente') return 'Solicitud pendiente';

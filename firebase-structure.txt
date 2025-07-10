@@ -3,7 +3,86 @@ ESTRUCTURA DE DATOS DE FIREBASE - COMUNIDAD ACTIVA
 
 cada vez que un adimistrador se registra crea una nueva colección principal: 
 
-{condominioId} (Collection - formato: nombre_condominio_XXX)
+{condominioId} (Collection - formato: nombre_condominio_XXX) (ya creado)
+    ├──── estacionamiento (Document)
+    │        ├── activo: Boolean 
+    │        ├── cantidadDisponible: Integer
+    │        ├── numeracion: array string
+    │        ├── permitirSeleccion: Boolean
+    │        ├── autoAsignacion: Boolean
+    │        ├── permitirPrestamos: Boolean
+    │        ├── estVisitas: Boolean
+    │        ├── ReservasEstVisitas: Boolean
+    │        ├── cantidadEstVisitas: Integer
+    │        ├── numeracionestVisitas: array string
+    │        ├── estacionamientos (Subcollection)
+    │        │    ├── {id} (Document)
+    │        │    │   ├── id: String
+    │        │    │   ├── estVisita: Boolean
+    │        │    │   ├── nroEstacionamiento: String
+    │        │    │   ├── viviendaAsignada: String
+    │        │    │   ├── fechaHoraSolicitud: String (ISO 8601)
+    │        │    │   ├── idSolicitante: array list
+    │        │    │   ├── nombreSolicitante: array list
+    │        │    │   ├── viviendaSolicitante: array list
+    │        │    │   ├── estadoSolicitud: String
+    │        │    │   ├── respuestaSolicitud: String (mensaje)
+    │        │    │   ├── nombreEspacioComun: String
+    │        │    │   ├── prestado: Boolean
+    │        │    │   ├── fechaHoraInicio: String (ISO 8601)
+    │        │    │   ├── fechaHoraFin: String (ISO 8601)
+    │        │    │   └── viviendaPrestamo: String
+    │        │    └── ...
+    │        │
+    │        └── visitas (Subcollection)
+    │             ├── {id} (Document)
+    │             │   ├── id: String
+    │             │   ├── visitaVivienda: String
+    │             │   ├── fechaHoraSolicitud: String (ISO 8601)
+    │             │   ├── idSolicitante: String
+    │             │   ├── nombreSolicitante: String
+    │             │   ├── viviendaSolicitante: String
+    │             │   ├── estadoSolicitud: String
+    │             │   ├── respuestaSolicitud: String (mensaje)
+    │             │   └── nroEstSolicitado: Integer
+    │             └── ...
+    │ 
+
+
+no modificar
+    ├──── espaciosComunes (Document)
+    │        ├── espaciosComunes (Subcollection)
+    │        │    ├── {id} (Document)
+    │        │    │   ├── id: String
+    │        │    │   ├── nombre: String
+    │        │    │   ├── capacidad: Integer
+    │        │    │   ├── precio: Integer (nullable)
+    │        │    │   ├── estado: String
+    │        │    │   └── additionalData: Map<String, dynamic> (nullable) imagenesBase64
+    │        │    └── ...
+    │        │
+    │        └── reservas (Subcollection)
+    │             ├── {id} (Document)
+    │             │   ├── id: String
+    │             │   ├── fechaHoraSolicitud: String (ISO 8601)
+    │             │   ├── fechaHoraReserva: String (ISO 8601)
+    │             │   ├── participantes: array list
+    │             │   ├── espacioComunId: String
+    │             │   ├── nombreEspacioComun: String
+    │             │   ├── idSolicitante: array list
+    │             │   ├── vivienda: String
+    │             │   ├── estado: String  pagado, pendiente, cancelado
+    │             │   └── revisionPostUso: Map<String, dynamic> (nullable)
+    │             │            ├── id: String
+    │             │            │  ├── fecha: String (ISO 8601)
+    │             │            │  ├── descripcion: String
+    │             │            │  ├── estado: String
+    │             │            │  ├── costo: Integer (nullable)
+    │             │            │  └── additionalData: Map<String, dynamic> (nullable) imagenesBase64
+    │             │            └── ...
+    │             │   
+    │             └── ...
+    │        
     ├──── condominio (Document)
     │      ├── id: String
     │      ├── nombre: String

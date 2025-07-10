@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../services/gastos_comunes_service.dart';
+import '../../services/espacios_comunes_service.dart';
 import '../../services/auth_service.dart';
 import '../../models/user_model.dart';
 import '../../models/condominio_model.dart';
@@ -14,6 +15,7 @@ class GastosComunesResidenteScreen extends StatefulWidget {
 
 class _GastosComunesResidenteScreenState extends State<GastosComunesResidenteScreen> {
   final GastosComunesService _gastosService = GastosComunesService();
+  final EspaciosComunesService _espaciosComunesService = EspaciosComunesService();
   final AuthService _authService = AuthService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -22,6 +24,9 @@ class _GastosComunesResidenteScreenState extends State<GastosComunesResidenteScr
   String? _error;
   UserModel? _currentUser;
   bool _cobrarMultasConGastos = false;
+  bool _cobrarEspaciosConGastos = false;
+  int _montoEspaciosComunes = 0;
+  List<Map<String, dynamic>> _detalleEspaciosComunes = [];
 
   @override
   void initState() {
@@ -59,7 +64,9 @@ class _GastosComunesResidenteScreenState extends State<GastosComunesResidenteScr
         print('📄 Documento del condominio encontrado');
         final condominioData = CondominioModel.fromMap(condominioDoc.data()!);
         _cobrarMultasConGastos = condominioData.cobrarMultasConGastos ?? false; // ✅ Valor por defecto
+        _cobrarEspaciosConGastos = condominioData.cobrarEspaciosConGastos ?? false; // ✅ Valor por defecto
         print('💰 Configuración cobrarMultasConGastos: $_cobrarMultasConGastos');
+        print('💰 Configuración cobrarEspaciosConGastos: $_cobrarEspaciosConGastos');
         print('📄 Datos del condominio: ${condominioDoc.data()}');
       } else {
         print('⚠️ Documento del condominio no existe');
@@ -99,6 +106,11 @@ class _GastosComunesResidenteScreenState extends State<GastosComunesResidenteScr
         print('⚠️ No se encontraron gastos para el residente');
       }
 
+      // Calcular costos de espacios comunes si está habilitado
+      if (_cobrarEspaciosConGastos) {
+        await _calcularCostosEspaciosComunes();
+      }
+
       setState(() {
         _gastosResidente = gastos;
         _isLoading = false;
@@ -110,6 +122,86 @@ class _GastosComunesResidenteScreenState extends State<GastosComunesResidenteScr
         _error = 'Error al cargar gastos: $e';
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _calcularCostosEspaciosComunes() async {
+    try {
+      print('🏢 Calculando costos de espacios comunes para residente ${_currentUser!.uid}');
+      
+      int costoTotal = 0;
+      List<Map<String, dynamic>> detalles = [];
+      
+      // Obtener todas las reservas aprobadas del usuario
+      final reservas = await _espaciosComunesService.obtenerReservasPorResidente(
+        _currentUser!.condominioId!,
+        _currentUser!.uid!,
+      );
+      
+      final reservasAprobadas = reservas.where((reserva) => reserva.estado == 'aprobada').toList();
+      
+      for (final reserva in reservasAprobadas) {
+        int costoReserva = 0;
+        String nombreEspacio = 'Espacio desconocido';
+        
+        // Obtener datos del espacio común para verificar si tiene precio
+        final espacioComun = await _espaciosComunesService.obtenerEspacioComunPorId(
+          _currentUser!.condominioId!,
+          reserva.espacioId ?? '',
+        );
+        
+        if (espacioComun != null) {
+          nombreEspacio = espacioComun.nombre;
+          costoReserva += espacioComun.precio ?? 0;
+        }
+        
+        // Sumar costos de revisiones si existen
+        List<Map<String, dynamic>> revisionesDetalle = [];
+        if (reserva.revisionesUso != null) {
+          for (final revision in reserva.revisionesUso!) {
+            final costo = revision.costo ?? 0;
+            if (costo > 0) {
+              costoReserva += costo;
+              revisionesDetalle.add({
+                'tipo': revision.tipoRevision == 'pre' ? 'Pre-uso' : 'Post-uso',
+                'costo': costo,
+                'descripcion': revision.descripcion ?? '',
+              });
+            }
+          }
+        }
+        
+        // Solo agregar si hay algún costo
+        if (costoReserva > 0) {
+          costoTotal += costoReserva;
+          
+          // Calcular costo total de revisiones
+          int costoTotalRevisiones = 0;
+          for (final revision in revisionesDetalle) {
+            costoTotalRevisiones += revision['costo'] as int;
+          }
+          
+          detalles.add({
+            'nombreEspacio': nombreEspacio,
+            'fecha': reserva.fechaUso?.toString().split(' ')[0] ?? 'Sin fecha',
+            'costoEspacio': espacioComun?.precio ?? 0,
+            'costoRevisiones': costoTotalRevisiones,
+            'revisiones': revisionesDetalle,
+            'total': costoReserva,
+          });
+        }
+      }
+      
+      _montoEspaciosComunes = costoTotal;
+      _detalleEspaciosComunes = detalles;
+      
+      print('💰 Total espacios comunes: $costoTotal');
+      print('📋 Detalles: ${detalles.length} reservas con costo');
+      
+    } catch (e) {
+      print('❌ Error al calcular costos de espacios comunes: $e');
+      _montoEspaciosComunes = 0;
+      _detalleEspaciosComunes = [];
     }
   }
 
@@ -244,6 +336,9 @@ class _GastosComunesResidenteScreenState extends State<GastosComunesResidenteScr
     final montoMultas = (_gastosResidente!['montoMultas'] as int?) ?? 0;
     final vivienda = (_gastosResidente!['descripcion'] as String?) ?? 'Vivienda no especificada';
     
+    // Calcular total incluyendo espacios comunes si está habilitado
+    final montoTotalConEspacios = montoTotal + (_cobrarEspaciosConGastos ? _montoEspaciosComunes : 0);
+    
     print('📊 Datos para tarjeta de resumen:');
     print('   - Monto gastos: $montoGastos');
     print('   - Monto multas: $montoMultas');
@@ -305,9 +400,8 @@ class _GastosComunesResidenteScreenState extends State<GastosComunesResidenteScr
             ),
             const SizedBox(height: 16),
             
-            // Mostrar subtotales si las multas están incluidas
-            if (_cobrarMultasConGastos && montoMultas > 0) ...[              
-              // print('✅ Mostrando sección de multas en el resumen'),
+            // Mostrar subtotales si hay multas o espacios comunes incluidos
+            if ((_cobrarMultasConGastos && montoMultas > 0) || (_cobrarEspaciosConGastos && _montoEspaciosComunes > 0)) ...[              
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -329,27 +423,58 @@ class _GastosComunesResidenteScreenState extends State<GastosComunesResidenteScr
                 ],
               ),
               const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Multas:',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
+              
+              // Mostrar multas si están incluidas
+              if (_cobrarMultasConGastos && montoMultas > 0) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Multas:',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
                     ),
-                  ),
-                  Text(
-                    '\$${_formatearMonto(montoMultas)}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
+                    Text(
+                      '\$${_formatearMonto(montoMultas)}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
+              
+              // Mostrar espacios comunes si están incluidos
+              if (_cobrarEspaciosConGastos && _montoEspaciosComunes > 0) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Espacios Comunes:',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      '\$${_formatearMonto(_montoEspaciosComunes)}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
+              
+              const SizedBox(height: 4),
               Container(
                 height: 1,
                 color: Colors.white30,
@@ -366,7 +491,7 @@ class _GastosComunesResidenteScreenState extends State<GastosComunesResidenteScr
             ),
             const SizedBox(height: 8),
             Text(
-              '\$${_formatearMonto(montoTotal)}',
+              '\$${_formatearMonto(montoTotalConEspacios)}',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 32,
@@ -467,6 +592,39 @@ class _GastosComunesResidenteScreenState extends State<GastosComunesResidenteScr
                     const Expanded(
                       child: Text(
                         'No hay multas registradas para esta vivienda',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+        
+        // Mostrar desglose de espacios comunes si están incluidos
+        if (_cobrarEspaciosConGastos) ...[
+          const SizedBox(height: 16),
+          if (_detalleEspaciosComunes.isNotEmpty) 
+            _buildEspaciosComunesCard(_detalleEspaciosComunes)
+          else
+            Card(
+              elevation: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Icon(Icons.home_work, color: Colors.purple[600]),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'No hay costos de espacios comunes para esta vivienda',
                         style: TextStyle(
                           fontSize: 16,
                           color: Colors.grey,
@@ -700,6 +858,167 @@ class _GastosComunesResidenteScreenState extends State<GastosComunesResidenteScr
           ),
         ),
         children: multas.map((multa) => _buildMultaItem(multa)).toList(),
+      ),
+    );
+  }
+
+  Widget _buildEspaciosComunesCard(List<Map<String, dynamic>> espacios) {
+    print('🔄 Construyendo tarjeta de espacios comunes con ${espacios.length} espacios');
+    
+    return Card(
+      elevation: 4,
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ExpansionTile(
+        leading: Icon(Icons.home_work, color: Colors.purple[600]),
+        title: const Text(
+          'Espacios Comunes',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        subtitle: Text(
+          '\$${_formatearMonto(_montoEspaciosComunes)}',
+          style: TextStyle(
+            color: Colors.purple[600],
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+          ),
+        ),
+        children: espacios.map((espacio) => _buildEspacioComunItem(espacio)).toList(),
+      ),
+    );
+  }
+
+  Widget _buildEspacioComunItem(Map<String, dynamic> espacio) {
+    final nombreEspacio = espacio['nombreEspacio'] as String? ?? 'Espacio sin nombre';
+    final costoEspacio = espacio['costoEspacio'] as int? ?? 0;
+    final costoRevisiones = espacio['costoRevisiones'] as int? ?? 0;
+    final fecha = espacio['fecha'] as String? ?? '';
+    final totalCosto = costoEspacio + costoRevisiones;
+    
+    // Formatear fecha
+    String fechaFormateada = 'Fecha no disponible';
+    if (fecha.isNotEmpty) {
+      try {
+        final dateTime = DateTime.parse(fecha);
+        fechaFormateada = '${dateTime.day.toString().padLeft(2, '0')}/${dateTime.month.toString().padLeft(2, '0')}/${dateTime.year}';
+      } catch (e) {
+        fechaFormateada = fecha;
+      }
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.purple[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.purple[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Primera fila: Nombre del espacio y costo total
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.location_on,
+                    color: Colors.purple[600],
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    nombreEspacio,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Colors.purple[800],
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.purple[100],
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: Colors.purple[300]!,
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  '\$${_formatearMonto(totalCosto)}',
+                  style: TextStyle(
+                    color: Colors.purple[700],
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          
+          // Segunda fila: Desglose de costos
+          if (costoEspacio > 0 || costoRevisiones > 0) ...[
+            const SizedBox(height: 8),
+            if (costoEspacio > 0)
+              Text(
+                'Costo del espacio: \$${_formatearMonto(costoEspacio)}',
+                style: TextStyle(
+                  color: Colors.grey[700],
+                  fontSize: 13,
+                ),
+              ),
+            if (costoRevisiones > 0)
+              Text(
+                'Costo de revisiones: \$${_formatearMonto(costoRevisiones)}',
+                style: TextStyle(
+                  color: Colors.grey[700],
+                  fontSize: 13,
+                ),
+              ),
+          ],
+          
+          // Tercera fila: Fecha de reserva
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(
+                Icons.calendar_today,
+                size: 14,
+                color: Colors.grey[600],
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Fecha de reserva: ',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                fechaFormateada,
+                style: TextStyle(
+                  color: Colors.grey[700],
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

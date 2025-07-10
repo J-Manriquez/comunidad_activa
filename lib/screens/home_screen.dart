@@ -8,6 +8,7 @@ import '../models/user_model.dart';
 import '../models/residente_bloqueado_model.dart';
 import '../services/auth_service.dart';
 import '../services/bloqueo_service.dart';
+import '../services/estacionamiento_service.dart';
 import 'cuenta/welcome_screen.dart';
 import '../models/user_model.dart';
 import 'package:comunidad_activa/screens/admin/admin_screen.dart';
@@ -18,6 +19,7 @@ import 'admin/vivienda/config_viviendas_screen.dart';
 import 'admin/comunidad_screen.dart';
 import 'admin/comunicaciones/multas_admin_screen.dart'; // Nueva importación
 import 'admin/gastosComunes/gastos_comunes_screen.dart';
+import 'admin/estacionamientos/estacionamientos_admin_screen.dart';
 import 'residente/comunicaciones/r_multas_screen.dart';
 import 'residente/r_config_screen.dart'; // Nueva importación
 import 'residente/comunicaciones/mensajes_residente_screen.dart';
@@ -25,9 +27,38 @@ import 'residente/comunicaciones/publicaciones_residente_screen.dart';
 import 'admin/comunicaciones/mensajes_admin_screen.dart';
 import 'admin/comunicaciones/crear_publicacion_screen.dart';
 import 'admin/comunicaciones/gestion_publicaciones_screen.dart';
+import 'admin/espaciosComunes/espacios_comunes_screen.dart';
+import 'residente/espacios_comunes_residente_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final EstacionamientoService _estacionamientoService = EstacionamientoService();
+  bool _estacionamientosActivos = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _verificarEstacionamientos();
+  }
+
+  Future<void> _verificarEstacionamientos() async {
+    final authService = AuthService();
+    final user = await authService.getCurrentUserData();
+    if (user != null && user.condominioId != null) {
+      final activos = await _estacionamientoService.verificarEstacionamientosActivos(user.condominioId!);
+      if (mounted) {
+        setState(() {
+          _estacionamientosActivos = activos;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -420,6 +451,37 @@ class HomeScreen extends StatelessWidget {
                 );
               },
             ),
+            // Nueva opción para administradores - Espacios Comunes
+            ListTile(
+              leading: const Icon(Icons.business),
+              title: const Text('Espacios Comunes'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        EspaciosComunesScreen(currentUser: user),
+                  ),
+                );
+              },
+            ),
+            // Nueva opción para administradores - Estacionamientos (solo si están activos)
+             if (_estacionamientosActivos)
+               ListTile(
+                 leading: const Icon(Icons.local_parking),
+                 title: const Text('Estacionamientos'),
+                 onTap: () {
+                   Navigator.pop(context);
+                   Navigator.push(
+                     context,
+                     MaterialPageRoute(
+                       builder: (context) =>
+                           EstacionamientosAdminScreen(condominioId: user.condominioId!),
+                     ),
+                   );
+                 },
+               ),
             ListTile(
               leading: const Icon(Icons.settings),
               title: const Text('Configuraciones'),
@@ -505,6 +567,35 @@ class HomeScreen extends StatelessWidget {
                 );
               },
             ),
+            // Nueva opción para residentes - Espacios Comunes
+            ListTile(
+              leading: const Icon(Icons.business),
+              title: const Text('Espacios Comunes'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => EspaciosComunesResidenteScreen(currentUser: user),
+                  ),
+                );
+              },
+            ),
+            // Nueva opción para residentes - Estacionamientos (solo si están activos)
+              if (_estacionamientosActivos)
+                ListTile(
+                  leading: const Icon(Icons.local_parking),
+                  title: const Text('Estacionamientos'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // TODO: Implementar EstacionamientosResidenteScreen
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Funcionalidad en desarrollo'),
+                      ),
+                    );
+                  },
+                ),
             ListTile(
               leading: const Icon(Icons.settings),
               title: const Text('Configuración'),

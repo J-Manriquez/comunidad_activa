@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/condominio_model.dart';
 import '../../services/firestore_service.dart';
 import '../../services/mensaje_service.dart';
+import '../../services/estacionamiento_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   final String condominioId;
@@ -16,16 +17,20 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final MensajeService _mensajeService = MensajeService();
+  final EstacionamientoService _estacionamientoService = EstacionamientoService();
   CondominioModel? _condominio;
   bool _isLoading = true;
   bool _comunicacionEntreResidentes = false;
   bool _cobrarMultasConGastos = false;
+  bool _cobrarEspaciosConGastos = false;
+  bool _estacionamientosActivos = false;
 
   @override
   void initState() {
     super.initState();
     _loadCondominioData();
     _loadMensajeSettings();
+    _loadEstacionamientoSettings();
   }
 
   Future<void> _loadMensajeSettings() async {
@@ -40,6 +45,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     } catch (e) {
       print('Error al cargar configuración de mensajes: $e');
+    }
+  }
+
+  Future<void> _loadEstacionamientoSettings() async {
+    try {
+      final configuracion = await _estacionamientoService
+          .obtenerConfiguracion(widget.condominioId);
+      
+      if (mounted) {
+        setState(() {
+          _estacionamientosActivos = configuracion?.activo ?? false;
+        });
+      }
+    } catch (e) {
+      print('Error al cargar configuración de estacionamientos: $e');
     }
   }
 
@@ -114,6 +134,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _toggleCobrarEspaciosConGastos(bool value) async {
+    try {
+      await _firestoreService.updateCampoCondominio(
+        widget.condominioId,
+        'cobrarEspaciosConGastos',
+        value,
+      );
+      
+      if (mounted) {
+        setState(() {
+          _cobrarEspaciosConGastos = value;
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              value 
+                  ? 'Espacios comunes se cobrarán junto con gastos comunes'
+                  : 'Espacios comunes se cobrarán por separado',
+            ),
+            backgroundColor: value ? Colors.green : Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al actualizar configuración: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _toggleEstacionamientos(bool value) async {
+    try {
+      await _estacionamientoService.cambiarEstadoActivo(
+        widget.condominioId,
+        value,
+      );
+      
+      if (mounted) {
+        setState(() {
+          _estacionamientosActivos = value;
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              value 
+                  ? 'Gestión de estacionamientos activada'
+                  : 'Gestión de estacionamientos desactivada',
+            ),
+            backgroundColor: value ? Colors.green : Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al actualizar configuración: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _loadCondominioData() async {
     try {
       final condominio = await _firestoreService.getCondominioData(widget.condominioId);
@@ -121,6 +212,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         setState(() {
           _condominio = condominio;
           _cobrarMultasConGastos = condominio?.cobrarMultasConGastos ?? false;
+          _cobrarEspaciosConGastos = condominio?.cobrarEspaciosConGastos ?? false;
           _isLoading = false;
         });
       }
@@ -212,6 +304,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
               value: _cobrarMultasConGastos,
               onChanged: _toggleCobrarMultasConGastos,
               activeColor: Colors.green,
+            ),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.home_work, color: Colors.purple),
+            title: const Text('Cobrar Espacios Comunes con Gastos'),
+            subtitle: Text(
+              _cobrarEspaciosConGastos
+                  ? 'Los costos de espacios comunes se incluyen en gastos comunes'
+                  : 'Los espacios comunes se cobran por separado',
+            ),
+            trailing: Switch(
+              value: _cobrarEspaciosConGastos,
+              onChanged: _toggleCobrarEspaciosConGastos,
+              activeColor: Colors.purple,
+            ),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.local_parking, color: Colors.indigo),
+            title: const Text('Gestión de Estacionamientos'),
+            subtitle: Text(
+              _estacionamientosActivos
+                  ? 'Los residentes pueden gestionar estacionamientos'
+                  : 'La gestión de estacionamientos está desactivada',
+            ),
+            trailing: Switch(
+              value: _estacionamientosActivos,
+              onChanged: _toggleEstacionamientos,
+              activeColor: Colors.indigo,
             ),
           ),
         ],

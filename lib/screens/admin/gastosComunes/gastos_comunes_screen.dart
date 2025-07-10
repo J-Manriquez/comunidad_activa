@@ -703,6 +703,32 @@ class _GastosComunesScreenState extends State<GastosComunesScreen> {
                           ],
                         ),
                         const SizedBox(width: 8),
+                        // Subtotal Espacios Comunes
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              '\$${(datos['montoEspaciosComunes'] ?? 0).toString().replaceAllMapped(
+                                RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                                (Match m) => '${m[1]}.',
+                              )}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                                color: Colors.purple,
+                              ),
+                            ),
+                            const Text(
+                              'Espacios',
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 8),
                         // Log para verificar multas
                         Builder(builder: (context) {
                           final montoMultas = datos['montoMultas'] as int? ?? 0;
@@ -838,6 +864,76 @@ class _GastosComunesScreenState extends State<GastosComunesScreen> {
                                   .toList()),
                             ],
                             
+                            // Mostrar detalle de espacios comunes si existen
+                            if ((datos['detalleEspaciosComunes'] as List<dynamic>).isNotEmpty) ...[
+                              const SizedBox(height: 16),
+                              const Text(
+                                'Detalle de espacios comunes:',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              ...((datos['detalleEspaciosComunes'] as List<Map<String, dynamic>>)
+                                  .map((espacio) => Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 4),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    espacio['nombreEspacio'] ?? 'Espacio',
+                                                    style: const TextStyle(
+                                                      fontSize: 14,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: Colors.purple,
+                                                    ),
+                                                  ),
+                                                ),
+                                                Text(
+                                                  '\$${espacio['total'].toString().replaceAllMapped(
+                                                    RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                                                    (Match m) => '${m[1]}.',
+                                                  )}',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.w500,
+                                                    fontSize: 14,
+                                                    color: Colors.purple,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            if (espacio['fecha'] != null && espacio['fecha'].toString().isNotEmpty)
+                                              Padding(
+                                                padding: const EdgeInsets.only(top: 2),
+                                                child: Text(
+                                                  'Fecha: ${espacio['fecha']}',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.grey.shade600,
+                                                  ),
+                                                ),
+                                              ),
+                                            if ((espacio['costoEspacio'] ?? 0) > 0 || (espacio['costoRevisiones'] ?? 0) > 0)
+                                              Padding(
+                                                padding: const EdgeInsets.only(top: 2),
+                                                child: Text(
+                                                  'Espacio: \$${(espacio['costoEspacio'] ?? 0).toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} | Revisiones: \$${(espacio['costoRevisiones'] ?? 0).toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: Colors.grey.shade500,
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ))
+                                  .toList()),
+                            ],
+                            
                             const SizedBox(height: 16),
                             const Divider(),
                             
@@ -885,6 +981,30 @@ class _GastosComunesScreenState extends State<GastosComunesScreen> {
                                     fontWeight: FontWeight.w600,
                                     fontSize: 14,
                                     color: Colors.red,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Subtotal Espacios:',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                Text(
+                                  '\$${datos['montoEspaciosComunes'].toString().replaceAllMapped(
+                                    RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                                    (Match m) => '${m[1]}.',
+                                  )}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                    color: Colors.purple,
                                   ),
                                 ),
                               ],

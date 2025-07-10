@@ -83,6 +83,9 @@ class CondominioModel {
   
   // Configuración para cobrar multas junto con gastos comunes
   final bool? cobrarMultasConGastos;
+  
+  // Configuración para cobrar espacios comunes junto con gastos comunes
+  final bool? cobrarEspaciosConGastos;
 
   CondominioModel({
     required this.id,
@@ -106,6 +109,7 @@ class CondominioModel {
     this.requiereConfirmacionAdmin,
     this.gestionMultas,
     this.cobrarMultasConGastos,
+    this.cobrarEspaciosConGastos,
   });
 
   // Método para calcular el total de inmuebles
@@ -153,6 +157,7 @@ class CondominioModel {
       'requiereConfirmacionAdmin': requiereConfirmacionAdmin,
       'gestionMultas': gestionMultas?.map((e) => e.toMap()).toList(),
       'cobrarMultasConGastos': cobrarMultasConGastos,
+      'cobrarEspaciosConGastos': cobrarEspaciosConGastos,
     };
   }
 
@@ -208,6 +213,7 @@ class CondominioModel {
       requiereConfirmacionAdmin: map['requiereConfirmacionAdmin'],
       gestionMultas: gestionMultasList,
       cobrarMultasConGastos: map['cobrarMultasConGastos'],
+      cobrarEspaciosConGastos: map['cobrarEspaciosConGastos'],
     );
   }
 

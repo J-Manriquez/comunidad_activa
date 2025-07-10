@@ -459,24 +459,28 @@ class GastosComunesService {
       );
       //print('📍 Stack trace de inicio: ${StackTrace.current}');
 
-      // Verificar configuración de multas
+      // Verificar configuración de multas y espacios comunes
       DocumentSnapshot condominioDoc = await _firestore
           .collection(condominioId)
           .doc('condominio')
           .get();
 
       bool cobrarMultasConGastos = false;
+      bool cobrarEspaciosConGastos = false;
       if (condominioDoc.exists) {
         Map<String, dynamic> condominioData =
             condominioDoc.data() as Map<String, dynamic>;
         cobrarMultasConGastos =
             condominioData['cobrarMultasConGastos'] ?? false;
+        cobrarEspaciosConGastos =
+            condominioData['cobrarEspaciosConGastos'] ?? false;
         print('📄 Datos del condominio: ${condominioData.toString()}');
       } else {
         print('⚠️ Documento del condominio no existe');
       }
 
       print('💰 Configuración multas con gastos: $cobrarMultasConGastos');
+      print('🏢 Configuración espacios comunes con gastos: $cobrarEspaciosConGastos');
 
       // Obtener todos los gastos comunes
       final todosLosGastos = await obtenerTodosLosGastos(
@@ -519,8 +523,10 @@ class GastosComunesService {
           'montoTotal': 0,
           'montoGastos': 0,
           'montoMultas': 0,
+          'montoEspaciosComunes': 0,
           'detalleGastos': <Map<String, dynamic>>[],
           'detalleMultas': <Map<String, dynamic>>[],
+          'detalleEspaciosComunes': <Map<String, dynamic>>[]
         };
       }
 
@@ -840,6 +846,160 @@ class GastosComunesService {
         );
       }
 
+      // Agregar espacios comunes si la configuración está activada
+      if (cobrarEspaciosConGastos) {
+        print('🏢 Agregando espacios comunes al cálculo de gastos comunes');
+        print('🏢 Estado de cobrarEspaciosConGastos: $cobrarEspaciosConGastos');
+
+        for (final viviendaKey in viviendas.keys) {
+          final vivienda = viviendas[viviendaKey]!;
+          print('🏠 Procesando espacios comunes para vivienda: $viviendaKey');
+          print('🏠 Residentes: ${vivienda.listaIdsResidentes}');
+
+          int totalEspaciosComunes = 0;
+          List<Map<String, dynamic>> detalleEspaciosComunes = [];
+
+          // Procesar cada residente de la vivienda
+          for (String residenteId in vivienda.listaIdsResidentes) {
+            try {
+              print('👤 Calculando espacios comunes para residente: $residenteId');
+              
+              // Obtener todas las reservas aprobadas del residente
+              QuerySnapshot reservasSnapshot = await _firestore
+                  .collection(condominioId)
+                  .doc('espaciosComunes')
+                  .collection('reservas')
+                  .where('residenteId', isEqualTo: residenteId)
+                  .where('estado', isEqualTo: 'aprobada')
+                  .get();
+
+              print('📋 Reservas aprobadas encontradas: ${reservasSnapshot.docs.length}');
+
+              for (QueryDocumentSnapshot reservaDoc in reservasSnapshot.docs) {
+                Map<String, dynamic> reservaData = reservaDoc.data() as Map<String, dynamic>;
+                print('🔍 Procesando reserva: ${reservaDoc.id}');
+                
+                int costoReserva = 0;
+                String nombreEspacio = 'Espacio desconocido';
+                String espacioId = reservaData['espacioId'] ?? '';
+                
+                // Obtener datos del espacio común
+                if (espacioId.isNotEmpty) {
+                  try {
+                    DocumentSnapshot espacioDoc = await _firestore
+                        .collection(condominioId)
+                        .doc('espaciosComunes')
+                        .collection('espaciosComunes')
+                        .doc(espacioId)
+                        .get();
+                    
+                    if (espacioDoc.exists) {
+                      Map<String, dynamic> espacioData = espacioDoc.data() as Map<String, dynamic>;
+                      nombreEspacio = espacioData['nombre'] ?? 'Espacio sin nombre';
+                      int precioEspacio = espacioData['precio'] ?? 0;
+                      costoReserva += precioEspacio;
+                      print('💰 Precio del espacio "$nombreEspacio": $precioEspacio');
+                      print('💰 Costo reserva después de agregar precio base: $costoReserva');
+                    } else {
+                      print('❌ Documento del espacio $espacioId no existe');
+                    }
+                  } catch (e) {
+                    print('❌ Error al obtener datos del espacio $espacioId: $e');
+                  }
+                }
+                
+                // Sumar costos de revisiones si existen
+                int costoRevisiones = 0;
+                if (reservaData['revisionesUso'] != null) {
+                  dynamic revisionesData = reservaData['revisionesUso'];
+                  
+                  // Manejar tanto List como Map para revisionesUso
+                  if (revisionesData is List<dynamic>) {
+                    // Si es una lista, procesar cada elemento
+                    for (dynamic revision in revisionesData) {
+                      if (revision is Map<String, dynamic>) {
+                        int costo = revision['costo'] ?? 0;
+                        if (costo > 0) {
+                          costoRevisiones += costo;
+                          print('🔧 Costo de revisión (lista): $costo');
+                        }
+                      }
+                    }
+                  } else if (revisionesData is Map<String, dynamic>) {
+                    // Si es un mapa, procesar cada valor
+                    revisionesData.forEach((key, revision) {
+                      if (revision is Map<String, dynamic>) {
+                        int costo = revision['costo'] ?? 0;
+                        if (costo > 0) {
+                          costoRevisiones += costo;
+                          print('🔧 Costo de revisión (mapa): $costo');
+                        }
+                      }
+                    });
+                  } else {
+                    print('⚠️ Formato inesperado para revisionesUso: ${revisionesData.runtimeType}');
+                  }
+                }
+                
+                costoReserva += costoRevisiones;
+                print('💰 Costo total de la reserva (base + revisiones): $costoReserva (base: ${costoReserva - costoRevisiones}, revisiones: $costoRevisiones)');
+                
+                // Solo agregar si hay algún costo
+                if (costoReserva > 0) {
+                  totalEspaciosComunes += costoReserva;
+                  
+                  // Formatear fecha
+                  String fechaUso = 'Sin fecha';
+                  if (reservaData['fechaUso'] != null) {
+                    try {
+                      DateTime fecha;
+                      if (reservaData['fechaUso'] is Timestamp) {
+                        fecha = (reservaData['fechaUso'] as Timestamp).toDate();
+                      } else if (reservaData['fechaUso'] is String) {
+                        fecha = DateTime.parse(reservaData['fechaUso'] as String);
+                      } else {
+                        throw Exception('Formato de fecha no soportado: ${reservaData['fechaUso'].runtimeType}');
+                      }
+                      fechaUso = '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}';
+                    } catch (e) {
+                      print('⚠️ Error al formatear fecha: $e');
+                      fechaUso = 'Fecha inválida';
+                    }
+                  }
+                  
+                  detalleEspaciosComunes.add({
+                    'nombreEspacio': nombreEspacio,
+                    'fecha': fechaUso,
+                    'costoEspacio': costoReserva - costoRevisiones,
+                    'costoRevisiones': costoRevisiones,
+                    'total': costoReserva,
+                  });
+                  
+                  print('📝 Espacio común agregado: $nombreEspacio - $costoReserva');
+                }
+              }
+            } catch (e) {
+              print('❌ Error al procesar espacios comunes del residente $residenteId: $e');
+            }
+          }
+
+          final montoTotalAntes = gastosCalculados[viviendaKey]!['montoTotal'];
+
+          gastosCalculados[viviendaKey]!['montoEspaciosComunes'] = totalEspaciosComunes;
+          gastosCalculados[viviendaKey]!['montoTotal'] += totalEspaciosComunes;
+          gastosCalculados[viviendaKey]!['detalleEspaciosComunes'] = detalleEspaciosComunes;
+
+          print('🏢 Vivienda $viviendaKey: Espacios Comunes = $totalEspaciosComunes');
+          print(
+            '💵 Vivienda $viviendaKey - Total: $montoTotalAntes → ${gastosCalculados[viviendaKey]!['montoTotal']}',
+          );
+        }
+      } else {
+        print(
+          '⚠️ No se agregarán espacios comunes porque cobrarEspaciosConGastos = $cobrarEspaciosConGastos',
+        );
+      }
+
       print(
         '✅ Cálculo completado. Viviendas procesadas: ${gastosCalculados.length}',
       );
@@ -847,7 +1007,7 @@ class GastosComunesService {
       // Mostrar resumen
       gastosCalculados.forEach((viviendaKey, datos) {
         print(
-          '🏠 $viviendaKey: Gastos = ${datos['montoGastos']}, Multas = ${datos['montoMultas']}, Total = ${datos['montoTotal']}',
+          '🏠 $viviendaKey: Gastos = ${datos['montoGastos']}, Multas = ${datos['montoMultas']}, Espacios = ${datos['montoEspaciosComunes']}, Total = ${datos['montoTotal']}',
         );
       });
 
@@ -919,20 +1079,26 @@ class GastosComunesService {
               'montoTotal': viviendaData['montoTotal'] ?? 0,
               'montoGastos': viviendaData['montoGastos'] ?? 0,
               'montoMultas': viviendaData['montoMultas'] ?? 0,
+              'montoEspaciosComunes': viviendaData['montoEspaciosComunes'] ?? 0,
               'detalleGastos':
                   viviendaData['detalleGastos'] ?? <Map<String, dynamic>>[],
               'detalleMultas':
                   viviendaData['detalleMultas'] ?? <Map<String, dynamic>>[],
+              'detalleEspaciosComunes':
+                  viviendaData['detalleEspaciosComunes'] ?? <Map<String, dynamic>>[],
             };
 
             print(
-              '📋 Datos del residente: Gastos=${resultado['montoGastos']}, Multas=${resultado['montoMultas']}, Total=${resultado['montoTotal']}',
+              '📋 Datos del residente: Gastos=${resultado['montoGastos']}, Multas=${resultado['montoMultas']}, Espacios=${resultado['montoEspaciosComunes']}, Total=${resultado['montoTotal']}',
             );
             print(
               '📋 Detalle de gastos: ${(resultado['detalleGastos'] as List).length} items',
             );
             print(
               '📋 Detalle de multas: ${(resultado['detalleMultas'] as List).length} items',
+            );
+            print(
+              '📋 Detalle de espacios comunes: ${(resultado['detalleEspaciosComunes'] as List).length} items',
             );
 
             // Verificar si hay multas pero no están incluidas en el total
@@ -943,13 +1109,14 @@ class GastosComunesService {
               );
             }
 
-            // Verificar si la suma de gastos y multas coincide con el total
+            // Verificar si la suma de gastos, multas y espacios comunes coincide con el total
             int sumaCalculada =
                 (resultado['montoGastos'] as int) +
-                (resultado['montoMultas'] as int);
+                (resultado['montoMultas'] as int) +
+                (resultado['montoEspaciosComunes'] as int);
             if (sumaCalculada != (resultado['montoTotal'] as int)) {
               print(
-                '⚠️ ADVERTENCIA: La suma de gastos (${resultado['montoGastos']}) y multas (${resultado['montoMultas']}) = $sumaCalculada no coincide con el total (${resultado['montoTotal']})',
+                '⚠️ ADVERTENCIA: La suma de gastos (${resultado['montoGastos']}), multas (${resultado['montoMultas']}) y espacios comunes (${resultado['montoEspaciosComunes']}) = $sumaCalculada no coincide con el total (${resultado['montoTotal']})',
               );
             }
 
