@@ -327,4 +327,23 @@ class NotificationService {
       print('❌ Error al eliminar notificaciones de mensaje: $e');
     }
   }
+
+  // Método enviarNotificacion (alias para createUserNotification)
+  Future<void> enviarNotificacion({
+    required String condominioId,
+    required String userId,
+    required String userType,
+    required String tipoNotificacion,
+    required String contenido,
+    Map<String, dynamic>? additionalData,
+  }) async {
+    await createUserNotification(
+      condominioId: condominioId,
+      userId: userId,
+      userType: userType,
+      tipoNotificacion: tipoNotificacion,
+      contenido: contenido,
+      additionalData: additionalData,
+    );
+  }
 }

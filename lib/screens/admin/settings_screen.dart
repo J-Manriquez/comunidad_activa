@@ -55,7 +55,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       
       if (mounted) {
         setState(() {
-          _estacionamientosActivos = configuracion?.activo ?? false;
+          _estacionamientosActivos = configuracion?['activo'] ?? false;
         });
       }
     } catch (e) {

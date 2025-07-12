@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
+import '../models/residente_model.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -61,6 +62,32 @@ class AuthService {
       return null;
     } catch (e) {
       debugPrint('Error al obtener datos del usuario: $e');
+      return null;
+    }
+  }
+
+  // Obtener datos del residente actual con descripción de vivienda
+  Future<dynamic> getCurrentResidenteData() async {
+    try {
+      User? user = _auth.currentUser;
+      if (user != null) {
+        FirestoreService firestoreService = FirestoreService();
+        
+        // Primero verificar el tipo de usuario
+        Map<String, dynamic>? userData = await firestoreService.checkUserRegistration(user.uid);
+        if (userData == null) return null;
+        
+        // Si es residente, obtener datos completos del residente
+        if (userData['tipoUsuario'] == 'residente') {
+          return await firestoreService.getResidenteData(user.uid);
+        } else {
+          // Si no es residente, devolver UserModel
+          return UserModel.fromMap(userData);
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error al obtener datos del residente: $e');
       return null;
     }
   }

@@ -48,8 +48,6 @@ cada vez que un adimistrador se registra crea una nueva colección principal:
     │             └── ...
     │ 
 
-
-no modificar
     ├──── espaciosComunes (Document)
     │        ├── espaciosComunes (Subcollection)
     │        │    ├── {id} (Document)

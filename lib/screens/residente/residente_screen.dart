@@ -8,6 +8,7 @@ import '../../widgets/notification_card_widget.dart';
 import 'comunicaciones/r_notifications_screen.dart';
 import 'r_config_screen.dart';
 import 'gastos_comunes_residente_screen.dart';
+import 'estacionamientos_residente_screen.dart';
 import '../home_screen.dart';
 
 class ResidenteScreen extends StatefulWidget {
@@ -253,6 +254,21 @@ class _ResidenteScreenState extends State<ResidenteScreen> {
                               ),
                               const SizedBox(height: 16),
 
+                              _buildActionTile(
+                                'Estacionamientos',
+                                'Gestionar estacionamientos y solicitudes',
+                                Icons.local_parking,
+                                () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const EstacionamientosResidenteScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 8),
                               _buildActionTile(
                                 'Configuración',
                                 'Gestionar configuración personal',

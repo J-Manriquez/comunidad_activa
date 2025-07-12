@@ -817,6 +817,12 @@ String _getNotificationTypeText(String type) {
     case 'reclamo_resuelto':
       _showReclamoNotificationDialog(notification);
       break;
+    case 'estacionamiento_aprobado':
+    case 'estacionamiento_rechazado':
+    case 'estacionamiento_visita_aprobado':
+    case 'estacionamiento_visita_rechazado':
+      _showEstacionamientoNotificationDialog(notification);
+      break;
     default:
       _showGeneralNotificationDialog(notification);
       break;
@@ -965,6 +971,108 @@ String _getNotificationTypeText(String type) {
     // );
  
  }
+
+  void _showEstacionamientoNotificationDialog(NotificationModel notification) {
+    final bool isApproved = notification.notificationType.contains('aprobado');
+    final bool isVisita = notification.notificationType.contains('visita');
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(
+                isApproved ? Icons.check_circle : Icons.cancel,
+                color: isApproved ? Colors.green.shade600 : Colors.red.shade600,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  isVisita 
+                      ? (isApproved ? 'Estacionamiento de Visitas Aprobado' : 'Estacionamiento de Visitas Rechazado')
+                      : (isApproved ? 'Estacionamiento Aprobado' : 'Estacionamiento Rechazado'),
+                  style: const TextStyle(fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (notification.additionalData?['numeroEstacionamiento'] != null)
+                  _buildDetailRow(
+                    'Estacionamiento',
+                    'N° ${notification.additionalData!['numeroEstacionamiento']}',
+                  ),
+                _buildDetailRow(
+                  'Fecha',
+                  '${notification.date} - ${notification.time}',
+                ),
+                _buildDetailRow(
+                  'Tipo',
+                  isVisita ? 'Estacionamiento de Visitas' : 'Estacionamiento Regular',
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  notification.content,
+                  style: const TextStyle(fontSize: 14),
+                ),
+                // Mostrar motivo de rechazo si existe
+                if (!isApproved && notification.additionalData?['motivoRechazo'] != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.message,
+                              color: Colors.red.shade600,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Motivo del Rechazo:',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red.shade600,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          notification.additionalData!['motivoRechazo'],
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   Widget _buildDetailRow(String label, String value) {
     return Padding(

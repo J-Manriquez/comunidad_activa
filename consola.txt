@@ -1,241 +1,290 @@
-📋 Datos completos del gasto: {monto: 500000, descripcion: agua, tipoCobro:
-porcentaje por residente, pctjePorRes: {nombre: L3, listaId:
-QOmU9sJvG0bwl2ynthP9, viviendas: {Casa 8: {descripcionVivienda: Casa 8,    
-porcentaje: 25, listaIdsResidentes: [uH6ZRZZhobZANzDpFukeQMQ35Vg2]}, Casa  
-2: {descripcionVivienda: Casa 2, listaIdsResidentes:
-[U5BRl02XdjaDFyXRFtdhkhPtmK13], porcentaje: 0}, A-109:
-{descripcionVivienda: A-109, porcentaje: 25, listaIdsResidentes:
-[tgCpt3XoP7WdXXE3O5oLUyErZW73]}, A-106: {listaIdsResidentes:
-[Wk1hXtjuy0SYGnkidWF4qcwMdBh1], descripcionVivienda: A-106, porcentaje:    
-50}}}, periodicidad: mensual}
-📊 Usando lista de porcentajes: L3
-📊 Datos completos de la lista: {nombre: L3, listaId: QOmU9sJvG0bwl2ynthP9,
-viviendas: {Casa 8: {descripcionVivienda: Casa 8, porcentaje: 25,
-listaIdsResidentes: [uH6ZRZZhobZANzDpFukeQMQ35Vg2]}, Casa 2:
-{descripcionVivienda: Casa 2, listaIdsResidentes:
-[U5BRl02XdjaDFyXRFtdhkhPtmK13], porcentaje: 0}, A-109:
-{descripcionVivienda: A-109, porcentaje: 25, listaIdsResidentes:
-[tgCpt3XoP7WdXXE3O5oLUyErZW73]}, A-106: {listaIdsResidentes:
-[Wk1hXtjuy0SYGnkidWF4qcwMdBh1], descripcionVivienda: A-106, porcentaje:    
-50}}}
-📈 Porcentajes disponibles: 4
-📈 Viviendas con porcentaje: Casa 8, Casa 2, A-109, A-106
-🔍 Encontrado porcentaje para vivienda Casa 2: 0%
-🔍 Datos completos: {descripcionVivienda: Casa 2, listaIdsResidentes:      
-[U5BRl02XdjaDFyXRFtdhkhPtmK13], porcentaje: 0}
-! No se encontró porcentaje para vivienda Casa 2 en gasto agua
-🔍 Encontrado porcentaje para vivienda A-106: 50%
-🔍 Datos completos: {listaIdsResidentes: [Wk1hXtjuy0SYGnkidWF4qcwMdBh1],
-descripcionVivienda: A-106, porcentaje: 50}
-🏠 Vivienda A-106: 50% = 250000
-🏠 Cálculo: 500000 * 50 / 100 = 250000
-💵 Vivienda A-106 - Gastos: 0 → 250000
-💵 Vivienda A-106 - Total: 0 → 250000
-🔍 Encontrado porcentaje para vivienda A-109: 25%
-🔍 Datos completos: {descripcionVivienda: A-109, porcentaje: 25,
-listaIdsResidentes: [tgCpt3XoP7WdXXE3O5oLUyErZW73]}
-🏠 Vivienda A-109: 25% = 125000
-🏠 Cálculo: 500000 * 25 / 100 = 125000
-💵 Vivienda A-109 - Gastos: 0 → 125000
-💵 Vivienda A-109 - Total: 0 → 125000
-🔍 Encontrado porcentaje para vivienda Casa 8: 25%
-🔍 Datos completos: {descripcionVivienda: Casa 8, porcentaje: 25,
-listaIdsResidentes: [uH6ZRZZhobZANzDpFukeQMQ35Vg2]}
-🏠 Vivienda Casa 8: 25% = 125000
-🏠 Cálculo: 500000 * 25 / 100 = 125000
-💵 Vivienda Casa 8 - Gastos: 0 → 125000
-💵 Vivienda Casa 8 - Total: 0 → 125000
-📋 Procesando gasto: luz - Monto: 350000 - Tipo cobro: igual para todos
-📋 Datos completos del gasto: {monto: 350000, descripcion: luz, tipoCobro: 
-igual para todos, periodicidad: mensual}
-🔢 Monto por vivienda (igual para todos): 87500
-🔢 Cálculo: 350000 / 4 = 87500
-💵 Vivienda Casa 2 - Gastos: 0 → 87500
-💵 Vivienda Casa 2 - Total: 0 → 87500
-💵 Vivienda A-106 - Gastos: 250000 → 337500
-💵 Vivienda A-106 - Total: 250000 → 337500
-💵 Vivienda A-109 - Gastos: 125000 → 212500
-💵 Vivienda A-109 - Total: 125000 → 212500
-💵 Vivienda Casa 8 - Gastos: 125000 → 212500
-💵 Vivienda Casa 8 - Total: 125000 → 212500
-💰 Procesando 0 gastos de tipo: Variable
-💰 Procesando 0 gastos de tipo: Adicional
-🚨 Agregando multas al cálculo de gastos comunes
-🚨 Estado de cobrarMultasConGastos: true
-🏠 Procesando multas para vivienda: Casa 2
-🏠 Descripción: Casa 2
-🏠 Residentes: [U5BRl02XdjaDFyXRFtdhkhPtmK13]
-🔑 Partes de la clave: [Casa 2]
-! Formato de clave de vivienda incorrecto: Casa 2
-🔍 Buscando multas para vivienda Casa 2
-🔍 Buscando multas para vivienda:
-   - Condominio: prueba_119
-   - Tipo: 
-   - Número:
-   - Etiqueta edificio: null
-   - Número departamento: null
-📋 Total de multas en el condominio: 1
-🧾 Evaluando multa: 1751583133111
-🏠 Datos de vivienda en multa:
-   - Tipo: Casa
-   - Número: 8
-   - Etiqueta edificio: null
-   - Número departamento: null
-🔍 ¿Es la misma vivienda? false
-❌ Multa 1751583133111 no corresponde a esta vivienda
-📊 Total de multas encontradas para esta vivienda: 0
-📋 Multas encontradas: 0
-🚨 Vivienda Casa 2: Multas = 0
-💵 Vivienda Casa 2 - Total: 87500 → 87500
-📊 Resumen para vivienda Casa 2:
-   - Gastos: 87500
-   - Multas: 0
-   - Total: 87500
-🏠 Procesando multas para vivienda: A-106
-🏠 Descripción: A-106
-🏠 Residentes: [Wk1hXtjuy0SYGnkidWF4qcwMdBh1]
-🔑 Partes de la clave: [A-106]
-! Formato de clave de vivienda incorrecto: A-106
-🔍 Buscando multas para vivienda A-106
-🔍 Buscando multas para vivienda:
-   - Condominio: prueba_119
-   - Tipo:
-   - Número:
-   - Etiqueta edificio: null
-   - Número departamento: null
-📋 Total de multas en el condominio: 1
-🧾 Evaluando multa: 1751583133111
-🏠 Datos de vivienda en multa:
-   - Tipo: Casa
-   - Número: 8
-   - Etiqueta edificio: null
-   - Número departamento: null
-🔍 ¿Es la misma vivienda? false
-❌ Multa 1751583133111 no corresponde a esta vivienda
-📊 Total de multas encontradas para esta vivienda: 0
-📋 Multas encontradas: 0
-🚨 Vivienda A-106: Multas = 0
-💵 Vivienda A-106 - Total: 337500 → 337500
-📊 Resumen para vivienda A-106:
-   - Gastos: 337500
-   - Multas: 0
-   - Total: 337500
-🏠 Procesando multas para vivienda: A-109
-🏠 Descripción: A-109
-🏠 Residentes: [tgCpt3XoP7WdXXE3O5oLUyErZW73]
-🔑 Partes de la clave: [A-109]
-! Formato de clave de vivienda incorrecto: A-109
-🔍 Buscando multas para vivienda A-109
-🔍 Buscando multas para vivienda:
-   - Condominio: prueba_119
-   - Tipo:
-   - Número:
-   - Etiqueta edificio: null
-   - Número departamento: null
-📋 Total de multas en el condominio: 1
-🧾 Evaluando multa: 1751583133111
-🏠 Datos de vivienda en multa:
-   - Tipo: Casa
-   - Número: 8
-   - Etiqueta edificio: null
-   - Número departamento: null
-🔍 ¿Es la misma vivienda? false
-❌ Multa 1751583133111 no corresponde a esta vivienda
-📊 Total de multas encontradas para esta vivienda: 0
-📋 Multas encontradas: 0
-🚨 Vivienda A-109: Multas = 0
-💵 Vivienda A-109 - Total: 212500 → 212500
-📊 Resumen para vivienda A-109:
-   - Gastos: 212500
-   - Multas: 0
-   - Total: 212500
-🏠 Procesando multas para vivienda: Casa 8
-🏠 Descripción: Casa 8
-🏠 Residentes: [uH6ZRZZhobZANzDpFukeQMQ35Vg2]
-🔑 Partes de la clave: [Casa 8]
-! Formato de clave de vivienda incorrecto: Casa 8
-🔍 Buscando multas para vivienda Casa 8
-🔍 Buscando multas para vivienda:
-   - Condominio: prueba_119
-   - Tipo:
-   - Número:
-   - Etiqueta edificio: null
-   - Número departamento: null
-📋 Total de multas en el condominio: 1
-🧾 Evaluando multa: 1751583133111
-🏠 Datos de vivienda en multa:
-   - Tipo: Casa
-   - Número: 8
-   - Etiqueta edificio: null
-   - Número departamento: null
-🔍 ¿Es la misma vivienda? false
-❌ Multa 1751583133111 no corresponde a esta vivienda
-📊 Total de multas encontradas para esta vivienda: 0
-📋 Multas encontradas: 0
-🚨 Vivienda Casa 8: Multas = 0
-💵 Vivienda Casa 8 - Total: 212500 → 212500
-📊 Resumen para vivienda Casa 8:
-   - Gastos: 212500
-   - Multas: 0
-   - Total: 212500
-✅ Cálculo completado. Viviendas procesadas: 4
-🏠 Casa 2: Gastos = 87500, Multas = 0, Total = 87500
-🏠 A-106: Gastos = 337500, Multas = 0, Total = 337500
-🏠 A-109: Gastos = 212500, Multas = 0, Total = 212500
-🏠 Casa 8: Gastos = 212500, Multas = 0, Total = 212500
-✅ Gastos calculados: 4 viviendas
-📊 Vivienda: Casa 2
-   - Monto total: 87500
-   - Monto gastos: 87500
-   - Monto multas: 0
-   - Residentes: 1
-   - Detalle gastos: 1 items
-   - Detalle multas: 0 items
-📊 Vivienda: A-106
-   - Monto total: 337500
-   - Monto gastos: 337500
-   - Monto multas: 0
-   - Residentes: 1
-   - Detalle gastos: 2 items
-   - Detalle multas: 0 items
-📊 Vivienda: A-109
-   - Monto total: 212500
-   - Monto gastos: 212500
-   - Monto multas: 0
-   - Residentes: 1
-   - Detalle gastos: 2 items
-   - Detalle multas: 0 items
-📊 Vivienda: Casa 8
-   - Monto total: 212500
-   - Monto gastos: 212500
-   - Monto multas: 0
-   - Residentes: 1
-   - Detalle gastos: 2 items
-   - Detalle multas: 0 items
-🔄 Mostrando bottom sheet con detalle de gastos por vivienda
-🔄 Construyendo bottom sheet de detalle de gastos por vivienda
-📊 Número de viviendas a mostrar: 4
-🏠 Construyendo item 0: Casa 2
-   - Monto gastos: 87500
-   - Monto multas: 0
-   - Monto total: 87500
-   ℹ️ Vivienda no tiene multas
-   📊 Multas en UI: 0 (0 items)
-🏠 Construyendo item 1: A-106
-   - Monto gastos: 337500
-   - Monto multas: 0
-   - Monto total: 337500
-   ℹ️ Vivienda no tiene multas
-   📊 Multas en UI: 0 (0 items)
-🏠 Construyendo item 2: A-109
-   - Monto gastos: 212500
-   - Monto multas: 0
-   - Monto total: 212500
-   ℹ️ Vivienda no tiene multas
-   📊 Multas en UI: 0 (0 items)
-🏠 Construyendo item 3: Casa 8
-   - Monto gastos: 212500
-   - Monto multas: 0
-   - Monto total: 212500
-   ℹ️ Vivienda no tiene multas
-   📊 Multas en UI: 0 (0 items)
+
+lib/screens/residente/estacionamientos_residente_screen.dart:48:105: Error:
+The getter 'descripcionVivienda' isn't defined for the class 'UserModel'.  
+ - 'UserModel' is from 'package:comunidad_activa/models/user_model.dart'   
+ ('lib/models/user_model.dart').
+Try correcting the name to the name of an existing getter, or defining a   
+getter or field named 'descripcionVivienda'.
+      print('🟢 [ESTACIONAMIENTOS_RESIDENTE] Usuario cargado:
+      ${_currentUser!.nombre} - ${_currentUser!.descripcionVivienda}');    
+                                                                 ^^^^^^^^^^
+                                                                 ^^^^^^^^^ 
+lib/screens/residente/estacionamientos_residente_screen.dart:69:56: Error: 
+The getter 'permitirReservas' isn't defined for the class
+'EstacionamientoConfigModel'.
+ - 'EstacionamientoConfigModel' is from
+ 'package:comunidad_activa/models/estacionamiento_model.dart'
+ ('lib/models/estacionamiento_model.dart').
+Try correcting the name to the name of an existing getter, or defining a   
+getter or field named 'permitirReservas'.
+      print('   - Permitir reservas: ${_configuracion!.permitirReservas}');
+                                                       ^^^^^^^^^^^^^^^^    
+lib/screens/residente/estacionamientos_residente_screen.dart:78:113: Error:
+The getter 'descripcionVivienda' isn't defined for the class 'UserModel'.  
+ - 'UserModel' is from 'package:comunidad_activa/models/user_model.dart'   
+ ('lib/models/user_model.dart').
+Try correcting the name to the name of an existing getter, or defining a   
+getter or field named 'descripcionVivienda'.
+        print('🟡 [ESTACIONAMIENTOS_RESIDENTE] Buscando estacionamiento    
+        asignado para vivienda: ${_currentUser!.descripcionVivienda}');    
+                                                                 ^^^^^^^^^^
+                                                                 ^^^^^^^^^ 
+lib/screens/residente/estacionamientos_residente_screen.dart:108:45: Error:
+The getter 'descripcionVivienda' isn't defined for the class 'UserModel'.  
+ - 'UserModel' is from 'package:comunidad_activa/models/user_model.dart'   
+ ('lib/models/user_model.dart').
+Try correcting the name to the name of an existing getter, or defining a   
+getter or field named 'descripcionVivienda'.
+      final viviendaUsuario = _currentUser!.descripcionVivienda;
+                                            ^^^^^^^^^^^^^^^^^^^
+lib/screens/residente/estacionamientos_residente_screen.dart:280:33: Error:
+The getter 'permitirReservas' isn't defined for the class
+'EstacionamientoConfigModel'.
+ - 'EstacionamientoConfigModel' is from
+ 'package:comunidad_activa/models/estacionamiento_model.dart'
+ ('lib/models/estacionamiento_model.dart').
+Try correcting the name to the name of an existing getter, or defining a   
+getter or field named 'permitirReservas'.
+                _configuracion!.permitirReservas ? 'Permitidas' : 'Solo uso
+                inmediato'),
+                                ^^^^^^^^^^^^^^^^
+lib/screens/residente/estacionamientos_residente_screen.dart:333:49: Error:
+The getter 'descripcionVivienda' isn't defined for the class 'UserModel'.  
+ - 'UserModel' is from 'package:comunidad_activa/models/user_model.dart'   
+ ('lib/models/user_model.dart').
+Try correcting the name to the name of an existing getter, or defining a   
+getter or field named 'descripcionVivienda'.
+          print('   - Vivienda: ${_currentUser!.descripcionVivienda}');    
+                                                ^^^^^^^^^^^^^^^^^^^        
+lib/screens/residente/estacionamientos_residente_screen.dart:513:73: Error:
+Expected an identifier, but got '..'.
+Try inserting an identifier before '..'.
+                        if (_estacionamientoAsignado?.prestado == true) ..[
+                                                                 ^^        
+lib/screens/residente/estacionamientos_residente_screen.dart:514:52: Error:
+Expected ']' before this.
+                          const SizedBox(height: 8),
+                                                   ^
+lib/screens/residente/estacionamientos_residente_screen.dart:556:60: Error:
+The getter 'permitirReservas' isn't defined for the class
+'EstacionamientoConfigModel'.
+ - 'EstacionamientoConfigModel' is from
+ 'package:comunidad_activa/models/estacionamiento_model.dart'
+ ('lib/models/estacionamiento_model.dart').
+Try correcting the name to the name of an existing getter, or defining a   
+getter or field named 'permitirReservas'.
+          print('   - Permitir reservas:
+          ${_configuracion!.permitirReservas}');
+                                                           ^^^^^^^^^^^^^^^^
+lib/screens/residente/estacionamientos_residente_screen.dart:560:49: Error:
+The getter 'descripcionVivienda' isn't defined for the class 'UserModel'.  
+ - 'UserModel' is from 'package:comunidad_activa/models/user_model.dart'   
+ ('lib/models/user_model.dart').
+Try correcting the name to the name of an existing getter, or defining a   
+getter or field named 'descripcionVivienda'.
+          print('   - Vivienda: ${_currentUser!.descripcionVivienda}');    
+                                                ^^^^^^^^^^^^^^^^^^^        
+lib/screens/residente/estacionamientos_residente_screen.dart:571:45: Error:
+The getter 'descripcionVivienda' isn't defined for the class 'UserModel'.  
+ - 'UserModel' is from 'package:comunidad_activa/models/user_model.dart'   
+ ('lib/models/user_model.dart').
+Try correcting the name to the name of an existing getter, or defining a   
+getter or field named 'descripcionVivienda'.
+                  'vivienda': _currentUser!.descripcionVivienda,
+                                            ^^^^^^^^^^^^^^^^^^^
+lib/screens/admin/estacionamientos/estacionamientos_visitas_screen.dart:51:
+97: Error: The getter 'descripcionVivienda' isn't defined for the class    
+'UserModel'.
+ - 'UserModel' is from 'package:comunidad_activa/models/user_model.dart'   
+ ('lib/models/user_model.dart').
+Try correcting the name to the name of an existing getter, or defining a   
+getter or field named 'descripcionVivienda'.
+          print('🟢 [ESTACIONAMIENTOS_VISITAS] Usuario cargado:
+          ${userData.nombre} - ${userData.descripcionVivienda}');
+                                                                 ^^^^^^^^^^
+                                                                 ^^^^^^^^^ 
+lib/screens/admin/estacionamientos/estacionamientos_visitas_screen.dart:74:
+58: Error: The getter 'permitirReservas' isn't defined for the class       
+'EstacionamientoConfigModel'.
+ - 'EstacionamientoConfigModel' is from
+ 'package:comunidad_activa/models/estacionamiento_model.dart'
+ ('lib/models/estacionamiento_model.dart').
+Try correcting the name to the name of an existing getter, or defining a   
+getter or field named 'permitirReservas'.
+        print('   - Permitir reservas:
+        ${_configuracion?.permitirReservas}');
+                                                         ^^^^^^^^^^^^^^^^  
+lib/screens/admin/estacionamientos/estacionamientos_visitas_screen.dart:101
+3:67: Error: Expected an identifier, but got '..'.
+Try inserting an identifier before '..'.
+                    if (_configuracion?.permitirReservas == true) ..[      
+                                                                 ^^        
+lib/screens/admin/estacionamientos/estacionamientos_visitas_screen.dart:105
+7:24: Error: Expected ']' before this.
+                      ),
+                       ^
+lib/screens/admin/estacionamientos/estacionamientos_visitas_screen.dart:110
+8:39: Error: Expected an identifier, but got '..'.
+Try inserting an identifier before '..'.
+                    if (isProcessing) ..[
+                                      ^^
+lib/screens/admin/estacionamientos/estacionamientos_visitas_screen.dart:110
+9:49: Error: Expected ']' before this.
+                      const SizedBox(height: 16),
+                                                ^
+lib/screens/admin/estacionamientos/estacionamientos_visitas_screen.dart:980
+:35: Error: The getter 'permitirReservas' isn't defined for the class      
+'EstacionamientoConfigModel'.
+ - 'EstacionamientoConfigModel' is from
+ 'package:comunidad_activa/models/estacionamiento_model.dart'
+ ('lib/models/estacionamiento_model.dart').
+Try correcting the name to the name of an existing getter, or defining a   
+getter or field named 'permitirReservas'.
+              if (_configuracion?.permitirReservas == true) {
+                                  ^^^^^^^^^^^^^^^^
+lib/screens/admin/estacionamientos/estacionamientos_visitas_screen.dart:101
+3:41: Error: The getter 'permitirReservas' isn't defined for the class     
+'EstacionamientoConfigModel'.
+ - 'EstacionamientoConfigModel' is from
+ 'package:comunidad_activa/models/estacionamiento_model.dart'
+ ('lib/models/estacionamiento_model.dart').
+Try correcting the name to the name of an existing getter, or defining a   
+getter or field named 'permitirReservas'.
+                    if (_configuracion?.permitirReservas == true) ..[      
+                                        ^^^^^^^^^^^^^^^^
+lib/screens/admin/estacionamientos/estacionamientos_visitas_screen.dart:127
+5:43: Error: Expected an identifier, but got '..'.
+Try inserting an identifier before '..'.
+              if (estado == 'Solicitado') ..[
+                                          ^^
+lib/screens/admin/estacionamientos/estacionamientos_visitas_screen.dart:127
+9:18: Error: Expected ']' before this.
+                ),
+                 ^
+lib/screens/admin/estacionamientos/estacionamientos_visitas_screen.dart:128
+0:46: Error: Expected an identifier, but got '..'.
+Try inserting an identifier before '..'.
+              ] else if (estado == 'Usando') ..[
+                                             ^^
+lib/screens/admin/estacionamientos/estacionamientos_visitas_screen.dart:128
+4:18: Error: Expected ']' before this.
+                ),
+                 ^
+lib/screens/admin/estacionamientos/solicitudes_estacionamiento_admin_screen
+.dart:186:37: Error: Expected an identifier, but got '..'.
+Try inserting an identifier before '..'.
+                  if (isProcessing) ..[
+                                    ^^
+lib/screens/admin/estacionamientos/solicitudes_estacionamiento_admin_screen
+.dart:187:47: Error: Expected ']' before this.
+                    const SizedBox(height: 16),
+                                              ^
+lib/screens/admin/estacionamientos/solicitudes_estacionamiento_admin_screen
+.dart:506:55: Error: Expected an identifier, but got '..'.
+Try inserting an identifier before '..'.
+            if (solicitud.fechaHoraSolicitud != null) ..[
+                                                      ^^
+lib/screens/admin/estacionamientos/solicitudes_estacionamiento_admin_screen
+.dart:507:40: Error: Expected ']' before this.
+              const SizedBox(height: 4),
+                                       ^
+lib/screens/residente/seleccion_estacionamiento_residente_screen.dart:58:10
+4: Error: The getter 'descripcionVivienda' isn't defined for the class     
+'UserModel'.
+ - 'UserModel' is from 'package:comunidad_activa/models/user_model.dart'   
+ ('lib/models/user_model.dart').
+Try correcting the name to the name of an existing getter, or defining a   
+getter or field named 'descripcionVivienda'.
+      print('🟢 [SELECCION_ESTACIONAMIENTO] Usuario cargado:
+      ${_currentUser!.nombre} - ${_currentUser!.descripcionVivienda}');    
+                                                                 ^^^^^^^^^^
+                                                                 ^^^^^^^^^ 
+lib/screens/residente/seleccion_estacionamiento_residente_screen.dart:177:5
+7: Error: The getter 'descripcionVivienda' isn't defined for the class     
+'UserModel'.
+ - 'UserModel' is from 'package:comunidad_activa/models/user_model.dart'   
+ ('lib/models/user_model.dart').
+Try correcting the name to the name of an existing getter, or defining a   
+getter or field named 'descripcionVivienda'.
+      print('   - Descripción vivienda:
+      ${_currentUser!.descripcionVivienda}');
+                                                        ^^^^^^^^^^^^^^^^^^^
+lib/screens/residente/seleccion_estacionamiento_residente_screen.dart:186:4
+5: Error: The getter 'descripcionVivienda' isn't defined for the class     
+'UserModel'.
+ - 'UserModel' is from 'package:comunidad_activa/models/user_model.dart'   
+ ('lib/models/user_model.dart').
+Try correcting the name to the name of an existing getter, or defining a   
+getter or field named 'descripcionVivienda'.
+          'viviendaAsignada': _currentUser!.descripcionVivienda,
+                                            ^^^^^^^^^^^^^^^^^^^
+lib/screens/residente/seleccion_estacionamiento_residente_screen.dart:212:5
+7: Error: The getter 'descripcionVivienda' isn't defined for the class     
+'UserModel'.
+ - 'UserModel' is from 'package:comunidad_activa/models/user_model.dart'   
+ ('lib/models/user_model.dart').
+Try correcting the name to the name of an existing getter, or defining a   
+getter or field named 'descripcionVivienda'.
+      print('   - Solicitante vivienda:
+      ${_currentUser!.descripcionVivienda}');
+                                                        ^^^^^^^^^^^^^^^^^^^
+lib/screens/residente/seleccion_estacionamiento_residente_screen.dart:225:4
+9: Error: The getter 'descripcionVivienda' isn't defined for the class     
+'UserModel'.
+ - 'UserModel' is from 'package:comunidad_activa/models/user_model.dart'   
+ ('lib/models/user_model.dart').
+Try correcting the name to the name of an existing getter, or defining a   
+getter or field named 'descripcionVivienda'.
+          'viviendaSolicitante': [_currentUser!.descripcionVivienda],      
+                                                ^^^^^^^^^^^^^^^^^^^        
+lib/screens/residente/seleccion_estacionamiento_residente_screen.dart:232:3
+4: Error: The method 'enviarNotificacion' isn't defined for the class      
+'NotificationService'.
+ - 'NotificationService' is from
+ 'package:comunidad_activa/services/notification_service.dart'
+ ('lib/services/notification_service.dart').
+Try correcting the name to the name of an existing method, or defining a   
+method named 'enviarNotificacion'.
+      await _notificationService.enviarNotificacion(
+                                 ^^^^^^^^^^^^^^^^^^
+lib/screens/residente/seleccion_estacionamiento_residente_screen.dart:235:6
+0: Error: The getter 'descripcionVivienda' isn't defined for the class     
+'UserModel'.
+ - 'UserModel' is from 'package:comunidad_activa/models/user_model.dart'
+ ('lib/models/user_model.dart').
+Try correcting the name to the name of an existing getter, or defining a   
+getter or field named 'descripcionVivienda'.
+        mensaje: '${_currentUser!.nombre}
+        (${_currentUser!.descripcionVivienda}) solicita el estacionamiento 
+        N° ${estacionamiento.nroEstacionamiento}',
+                                                           ^^^^^^^^^^^^^^^^
+                                                           ^^^
+lib/screens/residente/seleccion_estacionamiento_residente_screen.dart:243:4
+8: Error: The getter 'descripcionVivienda' isn't defined for the class     
+'UserModel'.
+ - 'UserModel' is from 'package:comunidad_activa/models/user_model.dart'
+ ('lib/models/user_model.dart').
+Try correcting the name to the name of an existing getter, or defining a
+getter or field named 'descripcionVivienda'.
+          'solicitanteVivienda': _currentUser!.descripcionVivienda,        
+                                               ^^^^^^^^^^^^^^^^^^^
+lib/screens/residente/seleccion_estacionamiento_residente_screen.dart:369:4
+2: Error: The getter 'descripcionVivienda' isn't defined for the class     
+'UserModel'.
+ - 'UserModel' is from 'package:comunidad_activa/models/user_model.dart'   
+ ('lib/models/user_model.dart').
+Try correcting the name to the name of an existing getter, or defining a   
+getter or field named 'descripcionVivienda'.
+              'Vivienda: ${_currentUser?.descripcionVivienda ?? 'No        
+              asignada'}',
+                                         ^^^^^^^^^^^^^^^^^^^
+lib/screens/residente/seleccion_estacionamiento_residente_screen.dart:493:4
+1: Error: The getter 'descripcionVivienda' isn't defined for the class     
+'UserModel'.
+ - 'UserModel' is from 'package:comunidad_activa/models/user_model.dart'   
+ ('lib/models/user_model.dart').
+Try correcting the name to the name of an existing getter, or defining a
+getter or field named 'descripcionVivienda'.
+                          _currentUser?.descripcionVivienda ?? 'No
+                          asignada',
+                                        ^^^^^^^^^^^^^^^^^^^

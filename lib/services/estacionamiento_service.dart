@@ -1,41 +1,40 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/estacionamiento_model.dart';
+import '../models/historial_estacionamiento_visita_model.dart';
+import '../models/residente_model.dart';
 
 class EstacionamientoService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Obtener la configuración de estacionamientos
-  Future<EstacionamientoConfigModel?> obtenerConfiguracion(String condominioId) async {
+  // Obtener configuración de estacionamientos
+  Future<Map<String, dynamic>> obtenerConfiguracion(String condominioId) async {
     try {
       final doc = await _firestore
           .collection(condominioId)
           .doc('estacionamiento')
           .get();
 
-      if (doc.exists && doc.data() != null) {
-        return EstacionamientoConfigModel.fromFirestore(doc.data()!);
+      if (doc.exists) {
+        return doc.data() ?? {};
       }
-      return null;
+      return {};
     } catch (e) {
-      print('Error al obtener configuración de estacionamientos: $e');
-      return null;
+      throw Exception('Error al obtener configuración: $e');
     }
   }
 
   // Crear o actualizar la configuración de estacionamientos
-  Future<bool> actualizarConfiguracion(
+  Future<void> actualizarConfiguracion(
     String condominioId,
-    EstacionamientoConfigModel configuracion,
+    Map<String, dynamic> configuracion,
   ) async {
     try {
       await _firestore
           .collection(condominioId)
           .doc('estacionamiento')
-          .set(configuracion.toFirestore(), SetOptions(merge: true));
-      return true;
+          .set(configuracion, SetOptions(merge: true));
     } catch (e) {
-      print('Error al actualizar configuración de estacionamientos: $e');
-      return false;
+      throw Exception('Error al actualizar configuración: $e');
     }
   }
 
@@ -156,26 +155,27 @@ class EstacionamientoService {
     }
   }
 
+
+
   // Obtener un estacionamiento específico
   Future<EstacionamientoModel?> obtenerEstacionamiento(
     String condominioId,
-    String estacionamientoId,
+    String numeroEstacionamiento,
   ) async {
     try {
       final doc = await _firestore
           .collection(condominioId)
           .doc('estacionamiento')
           .collection('estacionamientos')
-          .doc(estacionamientoId)
+          .doc(numeroEstacionamiento)
           .get();
 
-      if (doc.exists && doc.data() != null) {
+      if (doc.exists) {
         return EstacionamientoModel.fromFirestore(doc.data()!, doc.id);
       }
       return null;
     } catch (e) {
-      print('Error al obtener estacionamiento: $e');
-      return null;
+      throw Exception('Error al obtener estacionamiento: $e');
     }
   }
 
@@ -321,54 +321,368 @@ class EstacionamientoService {
   Future<bool> verificarEstacionamientosActivos(String condominioId) async {
     try {
       final configuracion = await obtenerConfiguracion(condominioId);
-      return configuracion?.activo ?? false;
+      return configuracion['activo'] ?? false;
     } catch (e) {
       print('Error al verificar estacionamientos activos: $e');
       return false;
     }
   }
 
-  // Función auxiliar para expandir rangos (similar a la de viviendas)
-  List<String> expandirRangos(String input) {
-    if (input.trim().isEmpty) return [];
-    
-    List<String> resultado = [];
-    List<String> partes = input.split(',');
-    
-    for (String parte in partes) {
-      parte = parte.trim();
-      if (parte.isEmpty) continue;
-      
-      if (parte.contains('-')) {
-        List<String> rango = parte.split('-');
-        if (rango.length == 2) {
-          String inicio = rango[0].trim();
-          String fin = rango[1].trim();
+  // Método para obtener todas las viviendas del condominio (basado en gastos comunes)
+  Future<Map<String, List<String>>> obtenerTodasLasViviendas(String condominioId) async {
+    try {
+      print('🔍 [ESTACIONAMIENTOS] Iniciando obtención de viviendas para condominio: $condominioId');
+
+      // Usar el mismo método que gastos comunes para obtener residentes
+      final querySnapshot = await _firestore
+          .collection(condominioId)
+          .doc('usuarios')
+          .collection('residentes')
+          .get();
+
+      print('📊 [ESTACIONAMIENTOS] Documentos encontrados: ${querySnapshot.docs.length}');
+
+      final Map<String, List<String>> viviendasPorTipo = {};
+      final Set<String> viviendasUnicas = {};
+
+      // Filtrar documentos igual que en gastos comunes
+      final residentes = querySnapshot.docs
+          .where((doc) => doc.id != '_placeholder') // Filtrar placeholder
+          .map((doc) {
+            try {
+              return ResidenteModel.fromFirestore(doc);
+            } catch (e) {
+              print('❌ [ESTACIONAMIENTOS] Error al procesar residente ${doc.id}: $e');
+              return null;
+            }
+          })
+          .where((residente) => residente != null)
+          .cast<ResidenteModel>()
+          .toList();
+
+      print('👥 [ESTACIONAMIENTOS] Residentes válidos procesados: ${residentes.length}');
+
+      for (final residente in residentes) {
+        print('👤 [ESTACIONAMIENTOS] Procesando residente: ${residente.nombre}');
+        print('🏠 [ESTACIONAMIENTOS] Tipo vivienda: ${residente.tipoVivienda}');
+        print('✅ [ESTACIONAMIENTOS] Estado vivienda: ${residente.viviendaSeleccionada}');
+
+        final viviendaKey = residente.descripcionVivienda;
+        print('🔑 [ESTACIONAMIENTOS] Clave de vivienda generada: "$viviendaKey"');
+
+        // Solo procesar si tiene vivienda asignada y está seleccionada
+        bool viviendaEstaSeleccionada =
+            residente.viviendaSeleccionada == 'seleccionada' ||
+            residente.viviendaSeleccionada == true;
+
+        if (viviendaKey.isNotEmpty && viviendaEstaSeleccionada) {
+          viviendasUnicas.add(viviendaKey);
           
-          // Verificar si son números
-          if (RegExp(r'^[0-9]+$').hasMatch(inicio) && RegExp(r'^[0-9]+$').hasMatch(fin)) {
-            int inicioNum = int.parse(inicio);
-            int finNum = int.parse(fin);
-            
-            for (int i = inicioNum; i <= finNum; i++) {
-              resultado.add(i.toString());
-            }
+          // Agrupar por tipo de vivienda
+          String tipoVivienda;
+          if (residente.tipoVivienda?.toLowerCase() == 'casa') {
+            tipoVivienda = 'Casas';
+          } else {
+            tipoVivienda = 'Apartamentos';
           }
-          // Verificar si son letras
-          else if (RegExp(r'^[A-Za-z]+$').hasMatch(inicio) && RegExp(r'^[A-Za-z]+$').hasMatch(fin)) {
-            int inicioCode = inicio.toUpperCase().codeUnitAt(0);
-            int finCode = fin.toUpperCase().codeUnitAt(0);
-            
-            for (int i = inicioCode; i <= finCode; i++) {
-              resultado.add(String.fromCharCode(i));
-            }
+          
+          if (!viviendasPorTipo.containsKey(tipoVivienda)) {
+            viviendasPorTipo[tipoVivienda] = [];
+          }
+          
+          if (!viviendasPorTipo[tipoVivienda]!.contains(viviendaKey)) {
+            viviendasPorTipo[tipoVivienda]!.add(viviendaKey);
+            print('✅ [ESTACIONAMIENTOS] Vivienda agregada: $tipoVivienda -> $viviendaKey');
+          }
+        } else {
+          if (viviendaKey.isEmpty) {
+            print('⚠️ [ESTACIONAMIENTOS] Residente ${residente.nombre} no tiene vivienda asignada válida');
+          } else {
+            print('⚠️ [ESTACIONAMIENTOS] Residente ${residente.nombre} tiene vivienda pero no está seleccionada');
           }
         }
-      } else {
-        resultado.add(parte);
       }
+
+      print('📈 [ESTACIONAMIENTOS] Total de viviendas únicas: ${viviendasUnicas.length}');
+      print('🏠 [ESTACIONAMIENTOS] Viviendas por tipo:');
+      viviendasPorTipo.forEach((tipo, viviendas) {
+        print('   - $tipo: ${viviendas.length} viviendas');
+        viviendas.forEach((vivienda) => print('     * $vivienda'));
+      });
+
+      return viviendasPorTipo;
+    } catch (e) {
+      print('❌ [ESTACIONAMIENTOS] Error al obtener viviendas: $e');
+      throw Exception('Error al obtener viviendas: $e');
     }
+  }
+
+  // Crear un nuevo estacionamiento
+  Future<void> crearEstacionamiento(
+    String condominioId,
+    EstacionamientoModel estacionamiento,
+  ) async {
+    try {
+      await _firestore
+          .collection(condominioId)
+          .doc('estacionamiento')
+          .collection('estacionamientos')
+          .doc(estacionamiento.nroEstacionamiento)
+          .set(estacionamiento.toFirestore());
+    } catch (e) {
+      throw Exception('Error al crear estacionamiento: $e');
+    }
+  }
+
+  // Método para asignar un estacionamiento a una vivienda
+  Future<void> asignarEstacionamientoAVivienda(String condominioId, String numeroEstacionamiento, String viviendaAsignada) async {
+    try {
+      await _firestore
+          .collection(condominioId)
+          .doc('estacionamiento')
+          .collection('estacionamientos')
+          .doc(numeroEstacionamiento)
+          .update({
+        'viviendaAsignada': viviendaAsignada,
+        'fechaAsignacion': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Error al asignar estacionamiento: $e');
+    }
+  }
+
+  // Eliminar un estacionamiento
+  Future<void> eliminarEstacionamiento(
+    String condominioId,
+    String numeroEstacionamiento,
+  ) async {
+    try {
+      await _firestore
+          .collection(condominioId)
+          .doc('estacionamiento')
+          .collection('estacionamientos')
+          .doc(numeroEstacionamiento)
+          .delete();
+    } catch (e) {
+      throw Exception('Error al eliminar estacionamiento: $e');
+    }
+  }
+
+  // Limpiar datos de uso de estacionamiento de visita
+  Future<bool> limpiarEstacionamientoVisita(
+    String condominioId,
+    String numeroEstacionamiento,
+    {String creadoPor = 'Sistema', String motivoFinalizacion = 'Finalización manual'}
+  ) async {
+    try {
+      // CORRECCIÓN: Los estacionamientos de visitas tienen ID 'visita-{numero}'
+      final documentId = 'visita-$numeroEstacionamiento';
+      print('🟡 [SERVICE] Limpiando estacionamiento de visita: $documentId');
+      
+      final docRef = _firestore
+          .collection(condominioId)
+          .doc('estacionamiento')
+          .collection('estacionamientos')
+          .doc(documentId);
+      
+      // Obtener datos actuales antes de limpiar para el historial
+      final docSnapshot = await docRef.get();
+      if (docSnapshot.exists) {
+        final datosActuales = docSnapshot.data()!;
+        
+        // Crear entrada en el historial antes de limpiar
+        await _crearHistorialEstacionamientoVisita(
+          condominioId,
+          numeroEstacionamiento,
+          datosActuales,
+          creadoPor,
+          motivoFinalizacion,
+        );
+      }
+      
+      await docRef.update({
+        'estadoSolicitud': null,
+        'fechaHoraFin': null,
+        'fechaHoraInicio': null,
+        'fechaHoraSolicitud': null,
+        'idSolicitante': null,
+        'nombreSolicitante': null,
+        'prestado': false,
+        'viviendaAsignada': null,
+        'viviendaPrestamo': null,
+        'viviendaSolicitante': null,
+        'respuestaSolicitud': null,
+      });
+      
+      print('🟢 [SERVICE] Estacionamiento de visita limpiado exitosamente: $documentId');
+      return true;
+    } catch (e) {
+      print('🔴 [SERVICE ERROR] Error al limpiar estacionamiento de visita: $e');
+      return false;
+    }
+  }
+
+  // Crear entrada en el historial de estacionamiento de visita
+  Future<void> _crearHistorialEstacionamientoVisita(
+    String condominioId,
+    String numeroEstacionamiento,
+    Map<String, dynamic> datosEstacionamiento,
+    String creadoPor,
+    String motivoFinalizacion,
+  ) async {
+    try {
+      final documentId = 'visita-$numeroEstacionamiento';
+      final ahora = DateTime.now();
+      
+      // Formato: dd-mm-aaaa,hh-mm-ss
+      final historialId = '${ahora.day.toString().padLeft(2, '0')}-${ahora.month.toString().padLeft(2, '0')}-${ahora.year},${ahora.hour.toString().padLeft(2, '0')}-${ahora.minute.toString().padLeft(2, '0')}-${ahora.second.toString().padLeft(2, '0')}';
+      
+      final historialData = {
+        ...datosEstacionamiento,
+        'fechaCreacionHistorial': ahora.toIso8601String(),
+        'creadoPor': creadoPor,
+        'motivoFinalizacion': motivoFinalizacion,
+      };
+      
+      await _firestore
+          .collection(condominioId)
+          .doc('estacionamiento')
+          .collection('estacionamientos')
+          .doc(documentId)
+          .collection('historial')
+          .doc(historialId)
+          .set(historialData);
+      
+      print('🟢 [SERVICE] Historial creado: $historialId');
+    } catch (e) {
+      print('🔴 [SERVICE ERROR] Error al crear historial: $e');
+    }
+  }
+
+  // Obtener historial de un estacionamiento de visita
+  Future<List<HistorialEstacionamientoVisitaModel>> obtenerHistorialEstacionamientoVisita(
+    String condominioId,
+    String numeroEstacionamiento,
+  ) async {
+    try {
+      final documentId = 'visita-$numeroEstacionamiento';
+      
+      final querySnapshot = await _firestore
+          .collection(condominioId)
+          .doc('estacionamiento')
+          .collection('estacionamientos')
+          .doc(documentId)
+          .collection('historial')
+          .orderBy('fechaCreacionHistorial', descending: true)
+          .get();
+      
+      return querySnapshot.docs
+          .map((doc) => HistorialEstacionamientoVisitaModel.fromMap(doc.data(), doc.id))
+          .toList();
+    } catch (e) {
+      print('🔴 [SERVICE ERROR] Error al obtener historial: $e');
+      return [];
+    }
+  }
+
+  // Contar solicitudes de estacionamientos de visitas pendientes
+  Stream<int> contarSolicitudesVisitasPendientes(String condominioId) {
+    return _firestore
+        .collection(condominioId)
+        .doc('estacionamiento')
+        .collection('estacionamientos')
+        .where('estVisita', isEqualTo: true)
+        .where('estadoSolicitud', isEqualTo: 'pendiente')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+
+  // Contar solicitudes de estacionamientos regulares pendientes
+  Stream<int> contarSolicitudesEstacionamientosPendientes(String condominioId) {
+    return _firestore
+        .collection(condominioId)
+        .doc('estacionamiento')
+        .collection('estacionamientos')
+        .where('estVisita', isEqualTo: false)
+        .where('estadoSolicitud', isEqualTo: 'pendiente')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+
+  // Crear uso de estacionamiento de visita por administrador
+  Future<bool> crearUsoEstacionamientoVisita(
+    String condominioId,
+    String numeroEstacionamiento,
+    String viviendaAsignada,
+    DateTime fechaInicio,
+    DateTime fechaFin,
+    String idUsuario,
+    String nombreUsuario,
+  ) async {
+    print('🟡 [SERVICE] Iniciando crearUsoEstacionamientoVisita');
+    print('🟡 [SERVICE] Parámetros recibidos:');
+    print('🟡 [SERVICE] - condominioId: $condominioId');
+    print('🟡 [SERVICE] - numeroEstacionamiento: $numeroEstacionamiento');
+    print('🟡 [SERVICE] - viviendaAsignada: $viviendaAsignada');
+    print('🟡 [SERVICE] - fechaInicio: $fechaInicio');
+    print('🟡 [SERVICE] - fechaFin: $fechaFin');
+    print('🟡 [SERVICE] - idUsuario: $idUsuario');
+    print('🟡 [SERVICE] - nombreUsuario: $nombreUsuario');
     
-    return resultado;
+    try {
+      // CORRECCIÓN: Los estacionamientos de visitas tienen ID 'visita-{numero}'
+      final documentId = 'visita-$numeroEstacionamiento';
+      final docPath = '$condominioId/estacionamiento/estacionamientos/$documentId';
+      print('🟡 [SERVICE] ID del documento corregido: $documentId');
+      print('🟡 [SERVICE] Ruta del documento: $docPath');
+      
+      final updateData = {
+        'estadoSolicitud': null, // null indica que es por trabajador/admin
+        'fechaHoraFin': fechaFin.toIso8601String(),
+        'fechaHoraInicio': fechaInicio.toIso8601String(),
+        'fechaHoraSolicitud': null,
+        'idSolicitante': [idUsuario],
+        'nombreSolicitante': [nombreUsuario],
+        'prestado': true,
+        'viviendaAsignada': viviendaAsignada,
+        'viviendaPrestamo': null,
+        'viviendaSolicitante': null,
+      };
+      
+      print('🟡 [SERVICE] Datos a actualizar: $updateData');
+      
+      // Verificar si el documento existe antes de actualizar
+      final docRef = _firestore
+          .collection(condominioId)
+          .doc('estacionamiento')
+          .collection('estacionamientos')
+          .doc(documentId);
+      
+      final docSnapshot = await docRef.get();
+      print('🟡 [SERVICE] Documento existe: ${docSnapshot.exists}');
+      
+      if (!docSnapshot.exists) {
+        print('🔴 [SERVICE ERROR] El documento del estacionamiento de visita no existe: $documentId');
+        return false;
+      }
+      
+      print('🟡 [SERVICE] Datos actuales del documento: ${docSnapshot.data()}');
+      
+      print('🟡 [SERVICE] Ejecutando update...');
+      await docRef.update(updateData);
+      
+      print('🟢 [SERVICE SUCCESS] Update ejecutado correctamente');
+      
+      // Verificar que los datos se guardaron correctamente
+      final updatedDoc = await docRef.get();
+      print('🟡 [SERVICE] Datos después del update: ${updatedDoc.data()}');
+      
+      return true;
+    } catch (e) {
+      print('🔴 [SERVICE ERROR] Error al crear uso de estacionamiento de visita: $e');
+      print('🔴 [SERVICE ERROR] Tipo de error: ${e.runtimeType}');
+      print('🔴 [SERVICE ERROR] Stack trace: ${StackTrace.current}');
+      return false;
+    }
   }
 }

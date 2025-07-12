@@ -8,6 +8,7 @@ class EstacionamientoConfigModel {
   final bool permitirSeleccion;
   final bool autoAsignacion;
   final bool permitirPrestamos;
+  final bool permitirReservas;
   final bool estVisitas;
   final bool reservasEstVisitas;
   final int cantidadEstVisitas;
@@ -20,6 +21,7 @@ class EstacionamientoConfigModel {
     required this.permitirSeleccion,
     required this.autoAsignacion,
     required this.permitirPrestamos,
+    required this.permitirReservas,
     required this.estVisitas,
     required this.reservasEstVisitas,
     required this.cantidadEstVisitas,
@@ -36,6 +38,7 @@ class EstacionamientoConfigModel {
       permitirSeleccion: data['permitirSeleccion'] ?? false,
       autoAsignacion: data['autoAsignacion'] ?? false,
       permitirPrestamos: data['permitirPrestamos'] ?? false,
+      permitirReservas: data['permitirReservas'] ?? false,
       estVisitas: data['estVisitas'] ?? false,
       reservasEstVisitas: data['ReservasEstVisitas'] ?? false,
       cantidadEstVisitas: data['cantidadEstVisitas'] ?? 0,
@@ -51,6 +54,7 @@ class EstacionamientoConfigModel {
       'permitirSeleccion': permitirSeleccion,
       'autoAsignacion': autoAsignacion,
       'permitirPrestamos': permitirPrestamos,
+      'permitirReservas': permitirReservas,
       'estVisitas': estVisitas,
       'ReservasEstVisitas': reservasEstVisitas,
       'cantidadEstVisitas': cantidadEstVisitas,
@@ -65,6 +69,7 @@ class EstacionamientoConfigModel {
     bool? permitirSeleccion,
     bool? autoAsignacion,
     bool? permitirPrestamos,
+    bool? permitirReservas,
     bool? estVisitas,
     bool? reservasEstVisitas,
     int? cantidadEstVisitas,
@@ -77,6 +82,7 @@ class EstacionamientoConfigModel {
       permitirSeleccion: permitirSeleccion ?? this.permitirSeleccion,
       autoAsignacion: autoAsignacion ?? this.autoAsignacion,
       permitirPrestamos: permitirPrestamos ?? this.permitirPrestamos,
+      permitirReservas: permitirReservas ?? this.permitirReservas,
       estVisitas: estVisitas ?? this.estVisitas,
       reservasEstVisitas: reservasEstVisitas ?? this.reservasEstVisitas,
       cantidadEstVisitas: cantidadEstVisitas ?? this.cantidadEstVisitas,

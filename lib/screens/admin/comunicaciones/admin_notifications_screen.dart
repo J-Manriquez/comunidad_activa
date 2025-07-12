@@ -1,6 +1,8 @@
 import 'package:comunidad_activa/models/user_model.dart';
 import 'package:comunidad_activa/screens/admin/comunicaciones/admin_reclamos_screen.dart';
 import 'package:comunidad_activa/screens/admin/comunicaciones/mensajes_admin_screen.dart';
+import 'package:comunidad_activa/screens/admin/estacionamientos/solicitudes_estacionamiento_admin_screen.dart';
+import 'package:comunidad_activa/screens/admin/estacionamientos/estacionamientos_visitas_screen.dart';
 import 'package:comunidad_activa/screens/chat_screen.dart';
 import 'package:comunidad_activa/services/auth_service.dart';
 import 'package:comunidad_activa/services/firestore_service.dart';
@@ -8,6 +10,7 @@ import 'package:comunidad_activa/services/mensaje_service.dart';
 import 'package:comunidad_activa/services/notification_service.dart';
 import 'package:comunidad_activa/models/notification_model.dart';
 import 'package:comunidad_activa/services/bloqueo_service.dart';
+import 'package:comunidad_activa/services/estacionamiento_service.dart';
 import 'package:flutter/material.dart';
 
 class AdminNotificationsScreen extends StatefulWidget {
@@ -101,7 +104,9 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
                 (n) =>
                     n.notificationType == 'solicitud_vivienda' ||
                     n.notificationType == 'nuevo_reclamo' ||
-                    n.notificationType == 'mensaje',
+                    n.notificationType == 'mensaje' ||
+                    n.notificationType == 'solicitud_estacionamiento' ||
+                    n.notificationType == 'solicitud_estacionamiento_visita',
               )
               .toList();
 
@@ -160,6 +165,14 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
         break;
       case 'solicitud_vivienda':
         _handleHousingRequestNotification(notification);
+        break;
+      case 'solicitud_estacionamiento':
+        // Navegar a la pantalla dedicada de solicitudes de estacionamiento
+        _handleParkingRequestNotification(notification);
+        break;
+      case 'solicitud_estacionamiento_visita':
+        // Navegar a la pantalla de estacionamientos de visitas
+        _handleParkingVisitRequestNotification(notification);
         break;
       default:
         _showGenericNotificationDetails(notification);
@@ -269,6 +282,45 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
     _showHousingRequestDetails(notification);
   }
 
+  // Función para manejar notificaciones de solicitud de estacionamiento
+  void _handleParkingRequestNotification(NotificationModel notification) async {
+    try {
+      // Navegar directamente a la pantalla de solicitudes de estacionamiento
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SolicitudesEstacionamientoAdminScreen(
+            condominioId: widget.condominioId,
+          ),
+        ),
+      );
+    } catch (e) {
+      print('❌ Error al navegar a solicitudes de estacionamiento: $e');
+      _showErrorSnackBar('Error al abrir solicitudes de estacionamiento: $e');
+    }
+  }
+
+  // Función para manejar notificaciones de solicitud de estacionamiento de visitas
+  void _handleParkingVisitRequestNotification(NotificationModel notification) async {
+    try {
+      // Navegar directamente a la pantalla de estacionamientos de visitas
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => EstacionamientosVisitasScreen(
+            condominioId: widget.condominioId,
+            modoResidente: false, // Modo administrador
+          ),
+        ),
+      );
+    } catch (e) {
+      print('❌ Error al navegar a estacionamientos de visitas: $e');
+      _showErrorSnackBar('Error al abrir estacionamientos de visitas: $e');
+    }
+  }
+
+
+
   // Función auxiliar para marcar notificación como leída
   Future<void> _markNotificationAsRead(NotificationModel notification) async {
     if (notification.isRead == null) {
@@ -338,6 +390,18 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
             ? 'Pendiente'
             : (notification.status == 'aprobada' ? 'Aprobada' : 'Rechazada');
         title = 'Solicitud de Vivienda';
+        break;
+      case 'solicitud_estacionamiento':
+        statusColor = Colors.purple;
+        statusIcon = Icons.local_parking;
+        statusText = 'Ver en Solicitudes de Estacionamiento';
+        title = 'Solicitud de Estacionamiento';
+        break;
+      case 'solicitud_estacionamiento_visita':
+        statusColor = Colors.deepPurple;
+        statusIcon = Icons.person_add;
+        statusText = 'Ver en Estacionamientos de Visitas';
+        title = 'Solicitud de Estacionamiento de Visitas';
         break;
       default:
         statusColor = Colors.grey;
@@ -606,6 +670,8 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
     );
   }
 
+
+
   void _showGenericNotificationDetails(NotificationModel notification) {
     showDialog(
       context: context,
@@ -846,6 +912,8 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
       ),
     );
   }
+
+
 
   Widget _buildDetailRow(String label, String value) {
     return Padding(
