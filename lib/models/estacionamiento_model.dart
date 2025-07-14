@@ -135,8 +135,8 @@ class EstacionamientoModel {
       id: documentId,
       estVisita: data['estVisita'] ?? false,
       nroEstacionamiento: data['nroEstacionamiento'] ?? '',
-      viviendaAsignada: data['viviendaAsignada'],
-      fechaHoraSolicitud: data['fechaHoraSolicitud'],
+      viviendaAsignada: _extractStringValue(data['viviendaAsignada']),
+      fechaHoraSolicitud: _extractStringValue(data['fechaHoraSolicitud']),
       idSolicitante: data['idSolicitante'] != null
           ? List<String>.from(data['idSolicitante'])
           : null,
@@ -146,14 +146,24 @@ class EstacionamientoModel {
       viviendaSolicitante: data['viviendaSolicitante'] != null
           ? List<String>.from(data['viviendaSolicitante'])
           : null,
-      estadoSolicitud: data['estadoSolicitud'],
-      respuestaSolicitud: data['respuestaSolicitud'],
-      nombreEspacioComun: data['nombreEspacioComun'],
+      estadoSolicitud: _extractStringValue(data['estadoSolicitud']),
+      respuestaSolicitud: _extractStringValue(data['respuestaSolicitud']),
+      nombreEspacioComun: _extractStringValue(data['nombreEspacioComun']),
       prestado: data['prestado'],
-      fechaHoraInicio: data['fechaHoraInicio'],
-      fechaHoraFin: data['fechaHoraFin'],
-      viviendaPrestamo: data['viviendaPrestamo'],
+      fechaHoraInicio: _extractStringValue(data['fechaHoraInicio']),
+      fechaHoraFin: _extractStringValue(data['fechaHoraFin']),
+      viviendaPrestamo: _extractStringValue(data['viviendaPrestamo']),
     );
+  }
+
+  // Método auxiliar para extraer valores String de campos que pueden ser String o List
+  static String? _extractStringValue(dynamic value) {
+    if (value == null) return null;
+    if (value is String) return value;
+    if (value is List && value.isNotEmpty) {
+      return value.first?.toString();
+    }
+    return value.toString();
   }
 
   Map<String, dynamic> toFirestore() {
@@ -206,13 +216,13 @@ class ReservaEstacionamientoVisitaModel {
   ) {
     return ReservaEstacionamientoVisitaModel(
       id: documentId,
-      visitaVivienda: data['visitaVivienda'] ?? '',
-      fechaHoraSolicitud: data['fechaHoraSolicitud'] ?? '',
-      idSolicitante: data['idSolicitante'] ?? '',
-      nombreSolicitante: data['nombreSolicitante'] ?? '',
-      viviendaSolicitante: data['viviendaSolicitante'] ?? '',
-      estadoSolicitud: data['estadoSolicitud'] ?? 'pendiente',
-      respuestaSolicitud: data['respuestaSolicitud'],
+      visitaVivienda: EstacionamientoModel._extractStringValue(data['visitaVivienda']) ?? '',
+      fechaHoraSolicitud: EstacionamientoModel._extractStringValue(data['fechaHoraSolicitud']) ?? '',
+      idSolicitante: EstacionamientoModel._extractStringValue(data['idSolicitante']) ?? '',
+      nombreSolicitante: EstacionamientoModel._extractStringValue(data['nombreSolicitante']) ?? '',
+      viviendaSolicitante: EstacionamientoModel._extractStringValue(data['viviendaSolicitante']) ?? '',
+      estadoSolicitud: EstacionamientoModel._extractStringValue(data['estadoSolicitud']) ?? 'pendiente',
+      respuestaSolicitud: EstacionamientoModel._extractStringValue(data['respuestaSolicitud']),
       nroEstSolicitado: data['nroEstSolicitado'] ?? 0,
     );
   }

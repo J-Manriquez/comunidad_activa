@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../services/estacionamiento_service.dart';
 import '../../../models/estacionamiento_model.dart';
+import '../../../widgets/pagination_widget.dart';
 
 class ListaEstacionamientosScreen extends StatefulWidget {
   final String condominioId;
@@ -15,6 +16,17 @@ class _ListaEstacionamientosScreenState extends State<ListaEstacionamientosScree
   final EstacionamientoService _estacionamientoService = EstacionamientoService();
   List<EstacionamientoModel> _estacionamientos = [];
   bool _isLoading = true;
+  int _paginaActual = 0;
+  final int _elementosPorPagina = 10;
+  bool _mostrarResumen = true;
+  
+  int get _totalPaginas => (_estacionamientos.length / _elementosPorPagina).ceil();
+  
+  List<EstacionamientoModel> get _estacionamientosPaginaActual {
+    final inicio = _paginaActual * _elementosPorPagina;
+    final fin = (inicio + _elementosPorPagina).clamp(0, _estacionamientos.length);
+    return _estacionamientos.sublist(inicio, fin);
+  }
 
   @override
   void initState() {
@@ -43,6 +55,11 @@ class _ListaEstacionamientosScreenState extends State<ListaEstacionamientosScree
       setState(() {
         _estacionamientos = estacionamientos;
         _isLoading = false;
+        // Resetear página actual si está fuera de rango
+        final maxPagina = (_estacionamientos.length / _elementosPorPagina).ceil() - 1;
+        if (_paginaActual > maxPagina) {
+          _paginaActual = maxPagina.clamp(0, maxPagina);
+        }
       });
     } catch (e) {
       setState(() {
@@ -79,123 +96,189 @@ class _ListaEstacionamientosScreenState extends State<ListaEstacionamientosScree
         return Colors.grey;
     }
   }
+  
+  Color _obtenerColorFondo(String estado) {
+    switch (estado) {
+      case 'Prestado':
+        return Colors.orange.shade50;
+      case 'Asignado':
+        return Colors.blue.shade50;
+      case 'Disponible':
+        return Colors.green.shade50;
+      default:
+        return Colors.grey.shade50;
+    }
+  }
+  
+  Color _obtenerColorBorde(String estado) {
+    switch (estado) {
+      case 'Prestado':
+        return Colors.orange.shade200;
+      case 'Asignado':
+        return Colors.blue.shade200;
+      case 'Disponible':
+        return Colors.green.shade200;
+      default:
+        return Colors.grey.shade200;
+    }
+  }
 
   Widget _construirCardEstacionamiento(EstacionamientoModel estacionamiento) {
     final estado = _obtenerEstadoEstacionamiento(estacionamiento);
     final colorEstado = _obtenerColorEstado(estado);
+    final colorFondo = _obtenerColorFondo(estado);
+    final colorBorde = _obtenerColorBorde(estado);
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Encabezado con número y estado
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Estacionamiento ${estacionamiento.nroEstacionamiento}',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: colorEstado,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    estado,
+      margin: const EdgeInsets.all(8),
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: colorBorde, width: 2),
+      ),
+      color: colorFondo,
+      child: IntrinsicHeight(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Encabezado con número y estado
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Estacionamiento ${estacionamiento.nroEstacionamiento}',
                     style: const TextStyle(
-                      color: Colors.white,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                    ),
+                    overflow: TextOverflow.visible,
+                    softWrap: true,
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: colorEstado,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      estado,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      overflow: TextOverflow.visible,
+                      softWrap: true,
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
+                ],
+              ),
+              const SizedBox(height: 12),
             
             // Información de asignación
             if (estacionamiento.viviendaAsignada != null && estacionamiento.viviendaAsignada!.isNotEmpty) ...[
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Icon(Icons.home, size: 16, color: Colors.blue),
                   const SizedBox(width: 8),
-                  Text(
-                    'Asignado a: ${estacionamiento.viviendaAsignada}',
-                    style: const TextStyle(fontSize: 14),
+                  Expanded(
+                    child: Text(
+                      'Asignado a: ${estacionamiento.viviendaAsignada}',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                      overflow: TextOverflow.visible,
+                      softWrap: true,
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
             ],
             
-            // Información de préstamo
-            if (estacionamiento.prestado == true) ...[
-              if (estacionamiento.viviendaPrestamo != null && estacionamiento.viviendaPrestamo!.isNotEmpty) ...[
-                Row(
-                  children: [
-                    const Icon(Icons.swap_horiz, size: 16, color: Colors.orange),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Prestado a: ${estacionamiento.viviendaPrestamo}',
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-              ],
+              // Información de préstamo
+              if (estacionamiento.prestado == true) ...[
+                if (estacionamiento.viviendaPrestamo != null && estacionamiento.viviendaPrestamo!.isNotEmpty) ...[
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.swap_horiz, size: 16, color: Colors.orange),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Prestado a: ${estacionamiento.viviendaPrestamo}',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                          overflow: TextOverflow.visible,
+                          softWrap: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
               
-              // Fechas de préstamo
-              if (estacionamiento.fechaHoraInicio != null) ...[
-                Row(
-                  children: [
-                    const Icon(Icons.schedule, size: 16, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Inicio: ${_formatearFecha(estacionamiento.fechaHoraInicio!)}',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-              ],
-              
-              if (estacionamiento.fechaHoraFin != null) ...[
-                Row(
-                  children: [
-                    const Icon(Icons.schedule, size: 16, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Fin: ${_formatearFecha(estacionamiento.fechaHoraFin!)}',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ],
-            ],
-            
-            // Si está disponible
-            if (estado == 'Disponible') ...[
-              const Row(
-                children: [
-                  Icon(Icons.check_circle, size: 16, color: Colors.green),
-                  SizedBox(width: 8),
-                  Text(
-                    'Disponible para asignación',
-                    style: TextStyle(fontSize: 14, color: Colors.green),
+                // Fechas de préstamo
+                if (estacionamiento.fechaHoraInicio != null) ...[
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.schedule, size: 16, color: Colors.grey),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Inicio: ${_formatearFecha(estacionamiento.fechaHoraInicio!)}',
+                          style: const TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w500),
+                          overflow: TextOverflow.visible,
+                          softWrap: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                ],
+                
+                if (estacionamiento.fechaHoraFin != null) ...[
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.schedule, size: 16, color: Colors.grey),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Fin: ${_formatearFecha(estacionamiento.fechaHoraFin!)}',
+                          style: const TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w500),
+                          overflow: TextOverflow.visible,
+                          softWrap: true,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
-              ),
+              ],
+            
+              // Si está disponible
+              if (estado == 'Disponible') ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.check_circle, size: 16, color: Colors.green),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Disponible para asignación',
+                        style: const TextStyle(fontSize: 14, color: Colors.green),
+                        overflow: TextOverflow.visible,
+                        softWrap: true,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -208,6 +291,46 @@ class _ListaEstacionamientosScreenState extends State<ListaEstacionamientosScree
     } catch (e) {
       return fechaString;
     }
+  }
+  
+  Widget _construirNavegacionPaginas() {
+    if (_totalPaginas <= 1) {
+      return const SizedBox.shrink();
+    }
+    
+    return PaginationWidget(
+      currentPage: (_paginaActual + 1).clamp(1, _totalPaginas),
+      totalPages: _totalPaginas,
+      itemsPerPage: _elementosPorPagina,
+      totalItems: _estacionamientos.length,
+      onPageChanged: (int page) {
+        final nuevaPagina = (page - 1).clamp(0, _totalPaginas - 1);
+        if (nuevaPagina != _paginaActual) {
+          setState(() {
+            _paginaActual = nuevaPagina;
+          });
+        }
+      },
+      groupLabel: '',
+    );
+  }
+  
+  Widget _construirGridEstacionamientos() {
+    final estacionamientosPagina = _estacionamientosPaginaActual;
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: estacionamientosPagina.map((estacionamiento) {
+          return SizedBox(
+            width: (MediaQuery.of(context).size.width - 32) / 2,
+            child: _construirCardEstacionamiento(estacionamiento),
+          );
+        }).toList(),
+      ),
+    );
   }
 
   @override
@@ -248,69 +371,93 @@ class _ListaEstacionamientosScreenState extends State<ListaEstacionamientosScree
                     ],
                   ),
                 )
-              : Column(
-                  children: [
-                    // Resumen
-                    Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.all(16),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue.shade200),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Resumen de Estacionamientos',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue.shade700,
+              : SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      // Resumen
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue.shade200),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Resumen de Estacionamientos',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue.shade700,
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _mostrarResumen = !_mostrarResumen;
+                                    });
+                                  },
+                                  icon: Icon(
+                                    _mostrarResumen ? Icons.visibility : Icons.visibility_off,
+                                    color: Colors.blue.shade700,
+                                  ),
+                                  tooltip: _mostrarResumen ? 'Ocultar resumen' : 'Mostrar resumen',
+                                ),
+                              ],
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              _construirEstadistica(
-                                'Total',
-                                _estacionamientos.length.toString(),
-                                Colors.blue,
+                            if (_mostrarResumen) ...[
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                children: [
+                                  _construirEstadistica(
+                                    'Total',
+                                    _estacionamientos.length.toString(),
+                                    Colors.blue,
+                                  ),
+                                  _construirEstadistica(
+                                    'Disponibles',
+                                    _estacionamientos.where((e) => _obtenerEstadoEstacionamiento(e) == 'Disponible').length.toString(),
+                                    Colors.green,
+                                  ),
+                                  _construirEstadistica(
+                                    'Asignados',
+                                    _estacionamientos.where((e) => _obtenerEstadoEstacionamiento(e) == 'Asignado').length.toString(),
+                                    Colors.blue,
+                                  ),
+                                  _construirEstadistica(
+                                    'Prestados',
+                                    _estacionamientos.where((e) => _obtenerEstadoEstacionamiento(e) == 'Prestado').length.toString(),
+                                    Colors.orange,
+                                  ),
+                                ],
                               ),
-                              _construirEstadistica(
-                                'Disponibles',
-                                _estacionamientos.where((e) => _obtenerEstadoEstacionamiento(e) == 'Disponible').length.toString(),
-                                Colors.green,
-                              ),
-                              _construirEstadistica(
-                                'Asignados',
-                                _estacionamientos.where((e) => _obtenerEstadoEstacionamiento(e) == 'Asignado').length.toString(),
-                                Colors.blue,
-                              ),
-                              _construirEstadistica(
-                                'Prestados',
-                                _estacionamientos.where((e) => _obtenerEstadoEstacionamiento(e) == 'Prestado').length.toString(),
-                                Colors.orange,
-                              ),
+                              const SizedBox(height: 8),
+                              
                             ],
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    
-                    // Lista de estacionamientos
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: _estacionamientos.length,
-                        itemBuilder: (context, index) {
-                          return _construirCardEstacionamiento(_estacionamientos[index]);
-                        },
+                      
+                      // Navegación de páginas
+                      Container(
+                        margin: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                        child: _construirNavegacionPaginas(),
                       ),
-                    ),
-                  ],
+                      
+                      // Grid de estacionamientos
+                      _construirGridEstacionamientos(),
+                      
+                      const SizedBox(height: 16),
+                    ],
+                  ),
                 ),
     );
   }

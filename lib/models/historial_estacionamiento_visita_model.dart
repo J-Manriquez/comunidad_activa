@@ -40,26 +40,36 @@ class HistorialEstacionamientoVisitaModel {
       id: documentId,
       nroEstacionamiento: map['nroEstacionamiento'] ?? '',
       prestado: map['prestado'] ?? false,
-      viviendaAsignada: map['viviendaAsignada'],
-      viviendaPrestamo: map['viviendaPrestamo'],
-      viviendaSolicitante: map['viviendaSolicitante'],
-      estadoSolicitud: map['estadoSolicitud'],
-      fechaHoraSolicitud: map['fechaHoraSolicitud'],
-      fechaHoraInicio: map['fechaHoraInicio'],
-      fechaHoraFin: map['fechaHoraFin'],
+      viviendaAsignada: _extractStringValue(map['viviendaAsignada']),
+      viviendaPrestamo: _extractStringValue(map['viviendaPrestamo']),
+      viviendaSolicitante: _extractStringValue(map['viviendaSolicitante']),
+      estadoSolicitud: _extractStringValue(map['estadoSolicitud']),
+      fechaHoraSolicitud: _extractStringValue(map['fechaHoraSolicitud']),
+      fechaHoraInicio: _extractStringValue(map['fechaHoraInicio']),
+      fechaHoraFin: _extractStringValue(map['fechaHoraFin']),
       idSolicitante: map['idSolicitante'] != null 
           ? List<String>.from(map['idSolicitante']) 
           : null,
       nombreSolicitante: map['nombreSolicitante'] != null 
           ? List<String>.from(map['nombreSolicitante']) 
           : null,
-      respuestaSolicitud: map['respuestaSolicitud'],
+      respuestaSolicitud: _extractStringValue(map['respuestaSolicitud']),
       fechaCreacionHistorial: map['fechaCreacionHistorial'] != null
           ? DateTime.parse(map['fechaCreacionHistorial'])
           : DateTime.now(),
       creadoPor: map['creadoPor'] ?? '',
       motivoFinalizacion: map['motivoFinalizacion'] ?? 'Finalización manual',
     );
+  }
+
+  // Método auxiliar para extraer valores String de campos que pueden ser String o List
+  static String? _extractStringValue(dynamic value) {
+    if (value == null) return null;
+    if (value is String) return value;
+    if (value is List && value.isNotEmpty) {
+      return value.first?.toString();
+    }
+    return value.toString();
   }
 
   Map<String, dynamic> toMap() {

@@ -73,20 +73,55 @@ class EstacionamientoService {
     }
   }
 
-  // Crear estacionamientos individuales
+  // Crear/actualizar estacionamientos preservando datos existentes
   Future<bool> crearEstacionamientos(
     String condominioId,
     List<String> numeracion,
     {bool esVisita = false}
   ) async {
     try {
-      final batch = _firestore.batch();
+      print('🟡 [ESTACIONAMIENTO_SERVICE] Iniciando configuración de estacionamientos');
+      print('   - Tipo: ${esVisita ? "Visitas" : "Normales"}');
+      print('   - Nueva numeración: $numeracion');
+      
       final estacionamientosRef = _firestore
           .collection(condominioId)
           .doc('estacionamiento')
           .collection('estacionamientos');
 
-      for (String numero in numeracion) {
+      // 1. Obtener estacionamientos existentes del tipo correspondiente
+      final existingQuery = await estacionamientosRef
+          .where('estVisita', isEqualTo: esVisita)
+          .get();
+      
+      final existingEstacionamientos = <String, EstacionamientoModel>{};
+      for (final doc in existingQuery.docs) {
+        final estacionamiento = EstacionamientoModel.fromFirestore(
+          doc.data(),
+          doc.id,
+        );
+        existingEstacionamientos[estacionamiento.nroEstacionamiento] = estacionamiento;
+      }
+      
+      print('🟡 [ESTACIONAMIENTO_SERVICE] Estacionamientos existentes: ${existingEstacionamientos.keys.toList()}');
+      
+      // 2. Determinar qué estacionamientos crear, mantener y eliminar
+      final nuevosNumeros = Set<String>.from(numeracion);
+      final existentesNumeros = Set<String>.from(existingEstacionamientos.keys);
+      
+      final paraCrear = nuevosNumeros.difference(existentesNumeros);
+      final paraEliminar = existentesNumeros.difference(nuevosNumeros);
+      final paraConservar = nuevosNumeros.intersection(existentesNumeros);
+      
+      print('🟡 [ESTACIONAMIENTO_SERVICE] Análisis de cambios:');
+      print('   - Para crear: $paraCrear');
+      print('   - Para eliminar: $paraEliminar');
+      print('   - Para conservar: $paraConservar');
+      
+      final batch = _firestore.batch();
+      
+      // 3. Crear nuevos estacionamientos
+      for (String numero in paraCrear) {
         final docId = esVisita ? 'visita-$numero' : numero;
         final docRef = estacionamientosRef.doc(docId);
         
@@ -97,11 +132,25 @@ class EstacionamientoService {
         );
 
         batch.set(docRef, estacionamiento.toFirestore());
+        print('🟢 [ESTACIONAMIENTO_SERVICE] Creando nuevo estacionamiento: $numero');
+      }
+      
+      // 4. Eliminar estacionamientos que ya no están en la configuración
+      for (String numero in paraEliminar) {
+        final docId = esVisita ? 'visita-$numero' : numero;
+        final docRef = estacionamientosRef.doc(docId);
+        batch.delete(docRef);
+        print('🔴 [ESTACIONAMIENTO_SERVICE] Eliminando estacionamiento: $numero');
+      }
+      
+      // 5. Los estacionamientos en paraConservar se mantienen sin cambios
+      for (String numero in paraConservar) {
+        print('🔵 [ESTACIONAMIENTO_SERVICE] Conservando estacionamiento existente: $numero');
       }
 
       await batch.commit();
       
-      // Actualizar la configuración con la nueva numeración
+      // 6. Actualizar la configuración con la nueva numeración
       if (esVisita) {
         await _firestore
             .collection(condominioId)
@@ -120,9 +169,14 @@ class EstacionamientoService {
         }, SetOptions(merge: true));
       }
       
+      print('🟢 [ESTACIONAMIENTO_SERVICE] Configuración completada exitosamente');
+      print('   - Creados: ${paraCrear.length}');
+      print('   - Eliminados: ${paraEliminar.length}');
+      print('   - Conservados: ${paraConservar.length}');
+      
       return true;
     } catch (e) {
-      print('Error al crear estacionamientos: $e');
+      print('🔴 [ESTACIONAMIENTO_SERVICE] Error al configurar estacionamientos: $e');
       return false;
     }
   }
@@ -186,15 +240,32 @@ class EstacionamientoService {
     Map<String, dynamic> datos,
   ) async {
     try {
-      await _firestore
+      print('🔧 [SERVICIO] Actualizando estacionamiento:');
+      print('  - Condominio ID: $condominioId');
+      print('  - Estacionamiento ID: $estacionamientoId');
+      print('  - Datos: $datos');
+      
+      final docRef = _firestore
           .collection(condominioId)
           .doc('estacionamiento')
           .collection('estacionamientos')
-          .doc(estacionamientoId)
-          .update(datos);
+          .doc(estacionamientoId);
+      
+      print('  - Ruta del documento: ${docRef.path}');
+      
+      await docRef.update(datos);
+      
+      print('  - ✅ Actualización completada exitosamente');
+      
+      // Verificar que se guardó correctamente
+      final docActualizado = await docRef.get();
+      if (docActualizado.exists) {
+        print('  - 📋 Datos actualizados en Firestore: ${docActualizado.data()}');
+      }
+      
       return true;
     } catch (e) {
-      print('Error al actualizar estacionamiento: $e');
+      print('❌ Error al actualizar estacionamiento: $e');
       return false;
     }
   }

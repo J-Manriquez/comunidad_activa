@@ -602,6 +602,51 @@ class FirestoreService {
     }
   }
 
+  // Obtener residentes con vivienda seleccionada
+  Future<List<Map<String, dynamic>>> obtenerResidentesConVivienda(
+    String condominioId,
+  ) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection(condominioId)
+          .doc('usuarios')
+          .collection('residentes')
+          .get();
+
+      final residentes = querySnapshot.docs
+          .where((doc) => doc.id != '_placeholder') // Filtrar placeholder
+          .map((doc) {
+            try {
+              final data = doc.data();
+              final residente = ResidenteModel.fromFirestore(doc);
+              
+              // Solo incluir residentes que tengan vivienda seleccionada
+              if (residente.descripcionVivienda != null && 
+                  residente.descripcionVivienda!.isNotEmpty) {
+                return {
+                  'uid': residente.uid,
+                  'nombre': residente.nombre,
+                  'email': residente.email,
+                  'vivienda': residente.descripcionVivienda,
+                };
+              }
+              return null;
+            } catch (e) {
+              print('❌ Error al procesar residente ${doc.id}: $e');
+              return null;
+            }
+          })
+          .where((residente) => residente != null)
+          .cast<Map<String, dynamic>>()
+          .toList();
+
+      return residentes;
+    } catch (e) {
+      debugPrint('Error al obtener residentes con vivienda: $e');
+      throw Exception('Error al obtener residentes con vivienda: $e');
+    }
+  }
+
   //updateCobrarMultasConGastos
    Future<bool> updateCampoCondominio(
     String condominioId,

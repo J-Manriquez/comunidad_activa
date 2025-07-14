@@ -4,8 +4,10 @@ import '../../services/auth_service.dart';
 import '../../services/estacionamiento_service.dart';
 import '../../models/estacionamiento_model.dart';
 import '../../models/user_model.dart';
+import '../../models/residente_model.dart';
 import '../admin/estacionamientos/estacionamientos_visitas_screen.dart';
 import 'seleccion_estacionamiento_residente_screen.dart';
+import 'prestamos_estacionamiento_screen.dart';
 
 class EstacionamientosResidenteScreen extends StatefulWidget {
   const EstacionamientosResidenteScreen({Key? key}) : super(key: key);
@@ -18,7 +20,7 @@ class _EstacionamientosResidenteScreenState extends State<EstacionamientosReside
   final AuthService _authService = AuthService();
   final EstacionamientoService _estacionamientoService = EstacionamientoService();
   
-  dynamic _currentUser; // Puede ser ResidenteModel o UserModel
+  ResidenteModel? _currentUser;
   EstacionamientoConfigModel? _configuracion;
   EstacionamientoModel? _estacionamientoAsignado;
   List<EstacionamientoModel> _estacionamientosAsignados = [];
@@ -41,11 +43,19 @@ class _EstacionamientosResidenteScreenState extends State<EstacionamientosReside
       });
 
       // Obtener datos del usuario actual
-      _currentUser = await _authService.getCurrentResidenteData();
-      if (_currentUser == null) {
+      final userData = await _authService.getCurrentResidenteData();
+      if (userData == null) {
         print('🔴 [ESTACIONAMIENTOS_RESIDENTE] Usuario no encontrado');
         throw Exception('Usuario no encontrado');
       }
+      
+      // Verificar que sea un ResidenteModel
+      if (userData is! ResidenteModel) {
+        print('🔴 [ESTACIONAMIENTOS_RESIDENTE] Usuario no es residente');
+        throw Exception('Solo los residentes pueden acceder a esta pantalla');
+      }
+      
+      _currentUser = userData as ResidenteModel;
       print('🟢 [ESTACIONAMIENTOS_RESIDENTE] Usuario cargado: ${_currentUser!.nombre} - ${_currentUser!.descripcionVivienda}');
       print('🟡 [ESTACIONAMIENTOS_RESIDENTE] Condominio: ${_currentUser?.condominioId}');
       
@@ -157,8 +167,201 @@ class _EstacionamientosResidenteScreenState extends State<EstacionamientosReside
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  void _mostrarModalEstacionamientosPrestados(List<EstacionamientoModel> estacionamientosPrestados) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(
+                Icons.swap_horiz,
+                color: Colors.orange[700],
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              const Text('Estacionamientos Prestados'),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: estacionamientosPrestados.length,
+              itemBuilder: (context, index) {
+                final estacionamiento = estacionamientosPrestados[index];
+                 return Card(
+                   margin: const EdgeInsets.only(bottom: 8),
+                   child: Padding(
+                     padding: const EdgeInsets.all(12),
+                     child: Column(
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                       children: [
+                         Row(
+                           children: [
+                             Container(
+                               padding: const EdgeInsets.all(8),
+                               decoration: BoxDecoration(
+                                 color: Colors.orange[100],
+                                 borderRadius: BorderRadius.circular(6),
+                               ),
+                               child: Icon(
+                                 Icons.local_parking,
+                                 color: Colors.orange[700],
+                                 size: 20,
+                               ),
+                             ),
+                             const SizedBox(width: 12),
+                             Expanded(
+                               child: Column(
+                                 crossAxisAlignment: CrossAxisAlignment.start,
+                                 children: [
+                                   Text(
+                                     'Estacionamiento N° ${estacionamiento.nroEstacionamiento}',
+                                     style: const TextStyle(
+                                       fontWeight: FontWeight.bold,
+                                       fontSize: 16,
+                                     ),
+                                   ),
+                                   const SizedBox(height: 4),
+                                   if (estacionamiento.viviendaPrestamo != null && estacionamiento.viviendaPrestamo!.isNotEmpty)
+                                      Text(
+                                        'Prestado a: ${estacionamiento.viviendaPrestamo}',
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: 14,
+                                        ),
+                                      )
+                                    else
+                                      Text(
+                                        'Prestado (sin vivienda especificada)',
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                 ],
+                               ),
+                             ),
+                             IconButton(
+                               onPressed: () => _confirmarEliminarPrestamo(estacionamiento),
+                               icon: Icon(
+                                 Icons.cancel,
+                                 color: Colors.red[600],
+                                 size: 24,
+                               ),
+                               tooltip: 'Cancelar préstamo',
+                             ),
+                           ],
+                         ),
+                       ],
+                     ),
+                   ),
+                 );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _confirmarEliminarPrestamo(EstacionamientoModel estacionamiento) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(
+                Icons.warning,
+                color: Colors.orange[700],
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              const Text('Confirmar Cancelación'),
+            ],
+          ),
+          content: Text(
+            '¿Estás seguro de que deseas cancelar el préstamo del estacionamiento N° ${estacionamiento.nroEstacionamiento}?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _eliminarPrestamo(estacionamiento);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Confirmar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _eliminarPrestamo(EstacionamientoModel estacionamiento) async {
+    try {
+      print('🟡 [ESTACIONAMIENTOS_RESIDENTE] Eliminando préstamo del estacionamiento N° ${estacionamiento.nroEstacionamiento}');
+      
+      // Actualizar el estacionamiento para quitar el préstamo
+      await _estacionamientoService.actualizarEstacionamiento(
+        _currentUser!.condominioId!,
+        estacionamiento.nroEstacionamiento,
+        {
+          'prestado': false,
+          'viviendaPrestamo': null,
+          'fechaHoraInicio': null,
+          'fechaHoraFin': null,
+        },
+      );
+      
+      print('🟢 [ESTACIONAMIENTOS_RESIDENTE] Préstamo eliminado exitosamente');
+      
+      // Mostrar mensaje de éxito
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Préstamo del estacionamiento N° ${estacionamiento.nroEstacionamiento} cancelado exitosamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        // Cerrar el modal actual
+        Navigator.of(context).pop();
+        
+        // Recargar los datos
+        await _cargarDatos();
+      }
+    } catch (e) {
+      print('🔴 [ESTACIONAMIENTOS_RESIDENTE] Error al eliminar préstamo: $e');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cancelar el préstamo: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+ 
+    @override
+    Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mis Estacionamientos'),
@@ -316,6 +519,10 @@ class _EstacionamientosResidenteScreenState extends State<EstacionamientosReside
   }
 
   List<Widget> _buildEstacionamientoUnificado() {
+    // Separar estacionamientos prestados y no prestados
+    final estacionamientosDisponibles = _estacionamientosAsignados.where((e) => e.prestado != true).toList();
+    final estacionamientosPrestados = _estacionamientosAsignados.where((e) => e.prestado == true).toList();
+    
     return [
       Text(
         'Mi Estacionamiento',
@@ -325,7 +532,7 @@ class _EstacionamientosResidenteScreenState extends State<EstacionamientosReside
       ),
       const SizedBox(height: 16),
       
-      // Card unificada para mostrar estacionamiento actual
+      // Card para estacionamientos disponibles
       Card(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -337,16 +544,16 @@ class _EstacionamientosResidenteScreenState extends State<EstacionamientosReside
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: _estacionamientosAsignados.isEmpty
+                      color: estacionamientosDisponibles.isEmpty
                         ? Colors.grey[100]
                         : Colors.blue[100],
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
-                      _estacionamientosAsignados.isEmpty
+                      estacionamientosDisponibles.isEmpty
                         ? Icons.block
                         : Icons.local_parking,
-                      color: _estacionamientosAsignados.isEmpty
+                      color: estacionamientosDisponibles.isEmpty
                         ? Colors.grey[600]
                         : Colors.blue[700],
                       size: 24,
@@ -365,36 +572,18 @@ class _EstacionamientosResidenteScreenState extends State<EstacionamientosReside
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          _estacionamientosAsignados.isEmpty
-                            ? 'No tienes estacionamientos asignados'
-                            : _estacionamientosAsignados.length == 1
-                              ? 'Estacionamiento N° ${_estacionamientosAsignados.first.nroEstacionamiento}'
-                              : 'Estacionamientos: ${_estacionamientosAsignados.map((e) => e.nroEstacionamiento).join(", ")}',
+                          estacionamientosDisponibles.isEmpty
+                            ? 'No tienes estacionamientos disponibles'
+                            : estacionamientosDisponibles.length == 1
+                              ? 'Estacionamiento N° ${estacionamientosDisponibles.first.nroEstacionamiento}'
+                              : 'Estacionamientos: ${estacionamientosDisponibles.map((e) => e.nroEstacionamiento).join(", ")}',
                           style: TextStyle(
-                            color: _estacionamientosAsignados.isEmpty
+                            color: estacionamientosDisponibles.isEmpty
                               ? Colors.grey[600]
                               : Colors.blue[700],
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        if (_estacionamientosAsignados.any((e) => e.prestado == true)) ...[
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.orange[100],
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              'En uso',
-                              style: TextStyle(
-                                color: Colors.orange[700],
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                   ),
@@ -404,6 +593,85 @@ class _EstacionamientosResidenteScreenState extends State<EstacionamientosReside
           ),
         ),
       ),
+      
+      // Card para estacionamientos prestados (solo si hay alguno)
+       if (estacionamientosPrestados.isNotEmpty) ...[
+         const SizedBox(height: 12),
+         Card(
+           child: InkWell(
+             onTap: () => _mostrarModalEstacionamientosPrestados(estacionamientosPrestados),
+             child: Padding(
+               padding: const EdgeInsets.all(16),
+               child: Column(
+                 crossAxisAlignment: CrossAxisAlignment.start,
+                 children: [
+                   Row(
+                     children: [
+                       Container(
+                         padding: const EdgeInsets.all(12),
+                         decoration: BoxDecoration(
+                           color: Colors.orange[100],
+                           borderRadius: BorderRadius.circular(8),
+                         ),
+                         child: Icon(
+                           Icons.swap_horiz,
+                           color: Colors.orange[700],
+                           size: 24,
+                         ),
+                       ),
+                       const SizedBox(width: 16),
+                       Expanded(
+                         child: Column(
+                           crossAxisAlignment: CrossAxisAlignment.start,
+                           children: [
+                             Text(
+                               'Estacionamientos Prestados',
+                               style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                 fontWeight: FontWeight.bold,
+                               ),
+                             ),
+                             const SizedBox(height: 4),
+                             Text(
+                               estacionamientosPrestados.length == 1
+                                 ? 'Estacionamiento N° ${estacionamientosPrestados.first.nroEstacionamiento}'
+                                 : 'Estacionamientos: ${estacionamientosPrestados.map((e) => e.nroEstacionamiento).join(", ")}',
+                               style: TextStyle(
+                                 color: Colors.orange[700],
+                                 fontWeight: FontWeight.w500,
+                               ),
+                             ),
+                             const SizedBox(height: 8),
+                            //  Container(
+                            //    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            //    decoration: BoxDecoration(
+                            //      color: Colors.orange[100],
+                            //      borderRadius: BorderRadius.circular(4),
+                            //    ),
+                              //  child: Text(
+                              //    'Prestados',
+                              //    style: TextStyle(
+                              //      color: Colors.orange[700],
+                              //      fontSize: 12,
+                              //      fontWeight: FontWeight.w500,
+                              //    ),
+                              //  ),
+                            //  ),
+                           ],
+                         ),
+                       ),
+                       Icon(
+                         Icons.arrow_forward_ios,
+                         color: Colors.grey[400],
+                         size: 16,
+                       ),
+                     ],
+                   ),
+                 ],
+               ),
+             ),
+           ),
+         ),
+       ],
       
       const SizedBox(height: 12),
       
@@ -473,12 +741,83 @@ class _EstacionamientosResidenteScreenState extends State<EstacionamientosReside
       
       const SizedBox(height: 12),
       
+      // Card para préstamos de estacionamientos
+      if (_configuracion!.permitirPrestamos) _buildCardPrestamos(),
+      
+      const SizedBox(height: 12),
+      
       // Card para solicitar estacionamiento de visitas
       if (_configuracion!.estVisitas) _buildCardSolicitarVisitas(),
     ];
   }
 
 
+
+  Widget _buildCardPrestamos() {
+    return Card(
+      child: InkWell(
+        onTap: () {
+          print('🟡 [ESTACIONAMIENTOS_RESIDENTE] Usuario tocó card de préstamos de estacionamientos');
+          print('🟡 [ESTACIONAMIENTOS_RESIDENTE] Navegando a PrestamosEstacionamientoScreen');
+          
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PrestamosEstacionamientoScreen(
+                currentUser: _currentUser!,
+              ),
+            ),
+          ).then((_) {
+            print('🟡 [ESTACIONAMIENTOS_RESIDENTE] Regresando de préstamos, recargando datos');
+            _cargarDatos(); // Recargar al volver
+          });
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.swap_horiz,
+                  color: Colors.orange[700],
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Prestar Estacionamiento',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Prestar tu estacionamiento a otro residente',
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios,
+                color: Colors.grey[400],
+                size: 16,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildCardSolicitarVisitas() {
     return Card(

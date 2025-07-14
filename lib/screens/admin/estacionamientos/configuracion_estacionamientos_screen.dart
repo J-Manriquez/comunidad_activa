@@ -25,6 +25,7 @@ class _ConfiguracionEstacionamientosScreenState
   bool _permitirSeleccion = false;
   bool _autoAsignacion = false;
   bool _estVisitas = false;
+  bool _permitirPrestamos = true;
 
   EstacionamientoConfigModel? _configuracion;
   List<String> _numeracionActual = [];
@@ -48,6 +49,7 @@ class _ConfiguracionEstacionamientosScreenState
         _permitirSeleccion = configuracion?['permitirSeleccion'] ?? false;
         _autoAsignacion = configuracion?['autoAsignacion'] ?? false;
         _estVisitas = configuracion?['estVisitas'] ?? false;
+        _permitirPrestamos = configuracion?['permitirPrestamos'] ?? true;
         _numeracionActual = List<String>.from(configuracion?['numeracion'] ?? []);
         _numeracionVisitasActual = List<String>.from(configuracion?['numeracionestVisitas'] ?? []);
           _isLoading = false;
@@ -180,6 +182,41 @@ class _ConfiguracionEstacionamientosScreenState
     }
   }
 
+  Future<void> _actualizarPermitirPrestamos(bool value) async {
+    try {
+      final configuracionMap = {
+        'permitirPrestamos': value,
+      };
+
+      await _estacionamientoService.actualizarConfiguracion(
+        widget.condominioId,
+        configuracionMap,
+      );
+
+      setState(() {
+        _permitirPrestamos = value;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            value
+                ? 'Préstamos de estacionamientos activados'
+                : 'Préstamos de estacionamientos desactivados',
+          ),
+          backgroundColor: value ? Colors.green : Colors.orange,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al actualizar configuración: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   void _mostrarModalConfiguracion({bool esVisita = false}) {
     showDialog(
       context: context,
@@ -203,7 +240,7 @@ class _ConfiguracionEstacionamientosScreenState
       'numeracion': _numeracionActual,
       'permitirSeleccion': _permitirSeleccion,
       'autoAsignacion': _autoAsignacion,
-      'permitirPrestamos': false,
+      'permitirPrestamos': _permitirPrestamos,
       'estVisitas': _estVisitas,
       'ReservasEstVisitas': false,
       'cantidadEstVisitas': _numeracionVisitasActual.length,
@@ -278,6 +315,11 @@ class _ConfiguracionEstacionamientosScreenState
 
               // Card de configuración de estacionamientos
               _buildEstacionamientosCard(),
+
+              const SizedBox(height: 16),
+
+              // Card de préstamos de estacionamientos
+              _buildPrestamosCard(),
 
               const SizedBox(height: 16),
 
@@ -509,6 +551,67 @@ class _ConfiguracionEstacionamientosScreenState
               ],
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPrestamosCard() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            colors: [
+              Colors.orange.withOpacity(0.1),
+              Colors.orange.withOpacity(0.05),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.swap_horiz,
+                    color: Colors.orange,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Préstamos de Estacionamientos',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                Switch(
+                  value: _permitirPrestamos,
+                  onChanged: _actualizarPermitirPrestamos,
+                  activeColor: Colors.orange,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _permitirPrestamos
+                  ? 'Los residentes pueden prestar sus estacionamientos a otros residentes'
+                  : 'Los préstamos de estacionamientos están desactivados',
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            ),
+          ],
         ),
       ),
     );

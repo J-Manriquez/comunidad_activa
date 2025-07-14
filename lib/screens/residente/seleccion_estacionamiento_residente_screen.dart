@@ -5,6 +5,7 @@ import '../../services/estacionamiento_service.dart';
 import '../../services/notification_service.dart';
 import '../../models/estacionamiento_model.dart';
 import '../../models/user_model.dart';
+import '../../widgets/pagination_widget.dart';
 
 class SeleccionEstacionamientoResidenteScreen extends StatefulWidget {
   const SeleccionEstacionamientoResidenteScreen({Key? key}) : super(key: key);
@@ -113,6 +114,10 @@ class _SeleccionEstacionamientoResidenteScreenState extends State<SeleccionEstac
 
       setState(() {
         _isLoading = false;
+        // Resetear la página actual si está fuera del rango válido usando grupos lógicos
+        final grupos = _calcularGruposLogicos();
+        final maxGroup = grupos.isNotEmpty ? grupos.length - 1 : 0;
+        _currentGroup = _currentGroup.clamp(0, maxGroup);
       });
       print('🟢 [SELECCION_ESTACIONAMIENTO] Datos cargados exitosamente');
     } catch (e) {
@@ -411,23 +416,68 @@ class _SeleccionEstacionamientoResidenteScreenState extends State<SeleccionEstac
     );
   }
 
-  Widget _buildEstacionamientosDisponibles() {
-    final totalGroups = (_estacionamientosDisponibles.length / _itemsPerGroup).ceil();
-    final startIndex = _currentGroup * _itemsPerGroup;
-    final endIndex = (startIndex + _itemsPerGroup).clamp(0, _estacionamientosDisponibles.length);
-    final currentGroupItems = _estacionamientosDisponibles.sublist(startIndex, endIndex);
+  // Método para calcular grupos basados en rangos de números
+  List<Map<String, dynamic>> _calcularGruposLogicos() {
+    if (_estacionamientosDisponibles.isEmpty) return [];
+    
+    // Obtener todos los números de estacionamientos disponibles
+    final numeros = _estacionamientosDisponibles
+        .map((e) => int.tryParse(e.nroEstacionamiento) ?? 0)
+        .where((n) => n > 0)
+        .toList();
+    
+    if (numeros.isEmpty) return [];
+    
+    numeros.sort();
+    final maxNumero = numeros.last;
+    
+    // Crear grupos basados en rangos de 10 (1-10, 11-20, etc.)
+    final grupos = <Map<String, dynamic>>[];
+    for (int i = 1; i <= maxNumero; i += _itemsPerGroup) {
+      final rangoInicio = i;
+      final rangoFin = (i + _itemsPerGroup - 1).clamp(i, maxNumero);
+      
+      // Filtrar estacionamientos que están en este rango
+      final estacionamientosEnRango = _estacionamientosDisponibles
+          .where((est) {
+            final num = int.tryParse(est.nroEstacionamiento) ?? 0;
+            return num >= rangoInicio && num <= rangoFin;
+          })
+          .toList();
+      
+      // Ordenar estacionamientos por número dentro del grupo
+      estacionamientosEnRango.sort((a, b) {
+        final numA = int.tryParse(a.nroEstacionamiento) ?? 0;
+        final numB = int.tryParse(b.nroEstacionamiento) ?? 0;
+        return numA.compareTo(numB);
+      });
+      
+      // Solo agregar el grupo si tiene al menos un estacionamiento
+      if (estacionamientosEnRango.isNotEmpty) {
+        grupos.add({
+          'inicio': rangoInicio,
+          'fin': rangoFin,
+          'estacionamientos': estacionamientosEnRango,
+          'label': '$rangoInicio-$rangoFin',
+        });
+      }
+    }
+    
+    return grupos;
+  }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Estacionamientos Disponibles (${_estacionamientosDisponibles.length})',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
+  Widget _buildEstacionamientosDisponibles() {
+    if (_estacionamientosDisponibles.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Estacionamientos Disponibles (0)',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        if (_estacionamientosDisponibles.isEmpty)
+          const SizedBox(height: 12),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -444,39 +494,61 @@ class _SeleccionEstacionamientoResidenteScreenState extends State<SeleccionEstac
                 ],
               ),
             ),
-          )
-        else ...[
-          // Barra de grupos
-          if (totalGroups > 1) ...[
+          ),
+        ],
+      );
+    }
+
+    final grupos = _calcularGruposLogicos();
+    final totalGroups = grupos.length;
+    final validCurrentGroup = _currentGroup.clamp(0, totalGroups - 1);
+    final currentGroupItems = grupos.isNotEmpty ? grupos[validCurrentGroup]['estacionamientos'] as List<EstacionamientoModel> : <EstacionamientoModel>[];
+    final currentGroupLabel = grupos.isNotEmpty ? grupos[validCurrentGroup]['label'] as String : '';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Estacionamientos Disponibles (${_estacionamientosDisponibles.length})',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12),
+          // Barra de grupos con rangos lógicos
+          if (totalGroups > 1)
             Container(
               height: 40,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 itemCount: totalGroups,
                 itemBuilder: (context, index) {
-                  final isSelected = index == _currentGroup;
-                  final groupStart = index * _itemsPerGroup + 1;
-                  final groupEnd = ((index + 1) * _itemsPerGroup).clamp(0, _estacionamientosDisponibles.length);
+                  final grupo = grupos[index];
+                  final isSelected = index == validCurrentGroup;
+                  final label = grupo['label'] as String;
+                  final cantidadEnGrupo = (grupo['estacionamientos'] as List).length;
                   
                   return Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: GestureDetector(
                       onTap: () {
-                        setState(() {
-                          _currentGroup = index;
-                        });
+                        if (index != _currentGroup) {
+                          setState(() {
+                            _currentGroup = index;
+                          });
+                        }
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
-                          color: isSelected ? Colors.blue[700] : Colors.grey[200],
+                          color: isSelected ? Colors.blue[700] : Colors.white,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: isSelected ? Colors.blue[900]! : Colors.grey[400]!,
+                            color: isSelected ? Colors.blue[900]! : Colors.grey[300]!,
                           ),
                         ),
                         child: Text(
-                          'Grupo ${index + 1} ($groupStart-$groupEnd)',
+                          '$label ($cantidadEnGrupo)',
                           style: TextStyle(
                             color: isSelected ? Colors.white : Colors.black87,
                             fontWeight: FontWeight.bold,
@@ -488,8 +560,8 @@ class _SeleccionEstacionamientoResidenteScreenState extends State<SeleccionEstac
                 },
               ),
             ),
+
             const SizedBox(height: 12),
-          ],
           // Estacionamientos del grupo actual
           Wrap(
             spacing: 8,
@@ -529,10 +601,8 @@ class _SeleccionEstacionamientoResidenteScreenState extends State<SeleccionEstac
                     ),
                   ),
                 ),
-              );
-            }).toList(),
+              );            }).toList(),
           ),
-        ],
       ],
     );
   }
