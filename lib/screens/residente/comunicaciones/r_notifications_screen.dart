@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:comunidad_activa/models/residente_model.dart';
 import 'package:comunidad_activa/models/user_model.dart';
 import 'package:comunidad_activa/screens/chat_screen.dart';
@@ -6,6 +7,7 @@ import 'package:comunidad_activa/screens/residente/comunicaciones/r_reclamos_scr
 import 'package:comunidad_activa/screens/residente/r_seleccion_vivienda_screen.dart';
 import 'package:comunidad_activa/services/mensaje_service.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../models/notification_model.dart';
 import '../../../services/notification_service.dart';
 import '../../../services/firestore_service.dart';
@@ -264,6 +266,12 @@ class _ResidenteNotificationsScreenState
         typeColor = Colors.green;
         typeIcon = Icons.check_circle;
         typeText = 'Reclamo Resuelto';
+        break;
+      case 'confirmacion_entrega':
+        typeColor = Colors.orange;
+        typeIcon = Icons.local_shipping;
+        typeText = 'Confirmación de Entrega';
+        break;
       default:
         typeColor = Colors.blue;
         typeIcon = Icons.notifications;
@@ -776,8 +784,202 @@ String _getNotificationTypeText(String type) {
       return 'Multa Pagada';
     case 'reclamo_resuelto':
       return 'Reclamo Resuelto';
+    case 'confirmacion_entrega':
+      return 'Confirmación de Entrega';
     default:
       return 'Notificación General';
+  }
+}
+
+// Diálogo para notificaciones de confirmación de entrega
+void _showConfirmacionEntregaDialog(NotificationModel notification, String userId) {
+  final estado = notification.additionalData?['estado'] ?? 'pendiente';
+  final tipoCorrespondencia = notification.additionalData?['tipoCorrespondencia'] ?? 'correspondencia';
+  final correspondenciaId = notification.additionalData?['correspondenciaId'];
+  
+  showDialog(
+    context: context,
+    barrierDismissible: estado != 'pendiente', // No permitir cerrar si está pendiente
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              Icons.local_shipping,
+              color: Colors.orange.shade600,
+            ),
+            const SizedBox(width: 8),
+            const Text('Confirmación de Entrega'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildDetailRow('Tipo de Correspondencia', tipoCorrespondencia),
+              _buildDetailRow('Fecha', '${notification.date} - ${notification.time}'),
+              const SizedBox(height: 16),
+              Text(
+                notification.content,
+                style: const TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              if (estado == 'pendiente') ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: const Text(
+                    '¿Confirma que ha recibido esta correspondencia?',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ] else if (estado == 'aceptada') ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.green.shade600),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Entrega confirmada',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else if (estado == 'rechazada') ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.cancel, color: Colors.red.shade600),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Entrega rechazada',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          if (estado == 'pendiente') ...[
+            TextButton(
+              onPressed: () => _responderConfirmacionEntrega(
+                notification.id,
+                userId,
+                correspondenciaId,
+                false,
+              ),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red.shade600,
+              ),
+              child: const Text('Rechazar'),
+            ),
+            ElevatedButton(
+              onPressed: () => _responderConfirmacionEntrega(
+                notification.id,
+                userId,
+                correspondenciaId,
+                true,
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green.shade600,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Aceptar'),
+            ),
+          ] else ...[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        ],
+      );
+    },
+  );
+}
+
+// Método para responder a la confirmación de entrega
+Future<void> _responderConfirmacionEntrega(
+  String notificationId,
+  String userId,
+  String? correspondenciaId,
+  bool aceptada,
+) async {
+  try {
+    // Actualizar el estado en la notificación
+    await _notificationService.updateNotificationStatus(
+      condominioId: widget.condominioId,
+      notificationId: notificationId,
+      newStatus: aceptada ? 'aceptada' : 'rechazada',
+      userId: userId,
+      userType: 'residentes',
+    );
+
+    // También actualizar el additionalData para reflejar el nuevo estado
+    await FirebaseFirestore.instance
+        .collection(widget.condominioId)
+        .doc('usuarios')
+        .collection('residentes')
+        .doc(userId)
+        .collection('notificaciones')
+        .doc(notificationId)
+        .update({
+      'additionalData.estado': aceptada ? 'aceptada' : 'rechazada',
+      'additionalData.fechaRespuesta': DateTime.now().toIso8601String(),
+    });
+    
+    if (mounted) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            aceptada 
+                ? 'Entrega confirmada exitosamente'
+                : 'Entrega rechazada',
+          ),
+          backgroundColor: aceptada ? Colors.green.shade600 : Colors.red.shade600,
+        ),
+      );
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al responder: $e'),
+          backgroundColor: Colors.red.shade600,
+        ),
+      );
+    }
   }
 }
 
@@ -823,9 +1025,18 @@ String _getNotificationTypeText(String type) {
     case 'estacionamiento_visita_rechazado':
       _showEstacionamientoNotificationDialog(notification);
       break;
-    default:
-      _showGeneralNotificationDialog(notification);
+    case 'confirmacion_entrega':
+      _showConfirmacionEntregaDialog(notification, userId);
       break;
+    case 'correspondencia_recibida':
+          _showCorrespondenciaNotificationDialog(notification);
+          break;
+        case 'mensaje_adicional_correspondencia':
+          _showMensajeAdicionalNotificationDialog(notification);
+          break;
+        default:
+          _showGeneralNotificationDialog(notification);
+          break;
   }
 
     // showDialog(
@@ -1072,6 +1283,339 @@ String _getNotificationTypeText(String type) {
         );
       },
     );
+  }
+
+  void _showCorrespondenciaNotificationDialog(NotificationModel notification) {
+    final additionalData = notification.additionalData ?? {};
+    final tipoCorrespondencia = additionalData['tipoCorrespondencia'] ?? 'N/A';
+    final fechaRecepcion = additionalData['fechaHoraRecepcion'] ?? '';
+    final viviendaRecepcion = additionalData['viviendaRecepcion'] ?? '';
+    final datosEntrega = additionalData['datosEntrega'] ?? '';
+    final tipoEntrega = additionalData['tipoEntrega'] ?? '';
+    final tieneAdjuntos = additionalData['tieneAdjuntos'] ?? false;
+    final adjuntos = additionalData['adjuntos'] as Map<String, dynamic>? ?? {};
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.9,
+            height: MediaQuery.of(context).size.height * 0.8,
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.local_shipping,
+                          color: Colors.orange.shade600,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Correspondencia Recibida',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+                const Divider(),
+                
+                // Content
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildDetailRow('Tipo', tipoCorrespondencia),
+                        _buildDetailRow('Tipo de entrega', tipoEntrega),
+                        _buildDetailRow('Datos de entrega', datosEntrega),
+                        if (viviendaRecepcion.isNotEmpty)
+                          _buildDetailRow('Vivienda de recepción', viviendaRecepcion),
+                        _buildDetailRow('Fecha de recepción', _formatearFechaNotificacion(fechaRecepcion)),
+                        _buildDetailRow('Fecha', '${notification.date} - ${notification.time}'),
+                        
+                        const SizedBox(height: 16),
+                        Text(
+                          notification.content,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        
+                        // Mostrar imágenes si existen
+                        if (tieneAdjuntos && adjuntos.isNotEmpty) ...[
+                          const SizedBox(height: 20),
+                          const Divider(),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Imágenes adjuntas:',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _buildImagenesAdjuntas(adjuntos),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                
+                // Actions
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cerrar'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildImagenesAdjuntas(Map<String, dynamic> adjuntos) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: adjuntos.entries.map((entry) {
+        return GestureDetector(
+          onTap: () => _mostrarImagenCompleta(entry.value),
+          child: Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.memory(
+                base64Decode(entry.value),
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: Colors.grey.shade200,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.error, color: Colors.grey.shade600),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Error al cargar imagen',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey.shade600,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  void _mostrarImagenCompleta(String base64Image) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.95,
+            maxHeight: MediaQuery.of(context).size.height * 0.95,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppBar(
+                title: const Text('Imagen de correspondencia'),
+                automaticallyImplyLeading: false,
+                actions: [
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              Expanded(
+                child: InteractiveViewer(
+                  child: Image.memory(
+                    base64Decode(base64Image),
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 64,
+                              color: Colors.grey.shade600,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Error al cargar la imagen',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showMensajeAdicionalNotificationDialog(NotificationModel notification) {
+    final additionalData = notification.additionalData ?? {};
+    final tipoCorrespondencia = additionalData['tipoCorrespondencia'] ?? 'N/A';
+    final mensaje = additionalData['mensaje'] ?? '';
+    final fechaRecepcion = additionalData['fechaHoraRecepcion'] ?? '';
+    final viviendaRecepcion = additionalData['viviendaRecepcion'] ?? '';
+    final datosEntrega = additionalData['datosEntrega'] ?? '';
+    final tipoEntrega = additionalData['tipoEntrega'] ?? '';
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.9,
+            height: MediaQuery.of(context).size.height * 0.7,
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.message,
+                          color: Colors.blue.shade600,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Mensaje Adicional',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+                const Divider(),
+                
+                // Content
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildDetailRow('Tipo de correspondencia', tipoCorrespondencia),
+                        _buildDetailRow('Tipo de entrega', tipoEntrega),
+                        _buildDetailRow('Datos de entrega', datosEntrega),
+                        if (viviendaRecepcion.isNotEmpty)
+                          _buildDetailRow('Vivienda de recepción', viviendaRecepcion),
+                        _buildDetailRow('Fecha de recepción', _formatearFechaNotificacion(fechaRecepcion)),
+                        _buildDetailRow('Fecha de notificación', '${notification.date} - ${notification.time}'),
+                        
+                        const SizedBox(height: 20),
+                        const Divider(),
+                        const SizedBox(height: 16),
+                        
+                        Text(
+                          'Nuevo mensaje:',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: Text(
+                            mensaje,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                // Actions
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cerrar'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _formatearFechaNotificacion(String fechaHora) {
+    try {
+      final fecha = DateTime.parse(fechaHora);
+      return '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year} ${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return fechaHora;
+    }
   }
 
   Widget _buildDetailRow(String label, String value) {

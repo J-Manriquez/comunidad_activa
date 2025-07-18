@@ -346,4 +346,174 @@ class NotificationService {
       additionalData: additionalData,
     );
   }
+
+  // MÉTODOS ESPECÍFICOS PARA CONFIRMACIÓN DE ENTREGA DE CORRESPONDENCIA
+  
+  /// Envía una notificación de confirmación de entrega al residente
+  Future<void> enviarNotificacionConfirmacionEntrega(
+    String condominioId,
+    String residenteId,
+    String correspondenciaId,
+    String tipoCorrespondencia,
+  ) async {
+    try {
+      // Usar la estructura estándar de notificaciones
+      await createUserNotification(
+        condominioId: condominioId,
+        userId: residenteId,
+        userType: 'residentes',
+        tipoNotificacion: 'confirmacion_entrega',
+        contenido: 'Se requiere confirmar la entrega de $tipoCorrespondencia',
+        additionalData: {
+          'correspondenciaId': correspondenciaId,
+          'tipoCorrespondencia': tipoCorrespondencia,
+          'estado': 'pendiente', // pendiente, aceptada, rechazada
+          'mostrarHasta': DateTime.now().add(const Duration(hours: 24)).toIso8601String(),
+          'prioridad': 'alta',
+        },
+      );
+
+      print('Notificación de confirmación enviada exitosamente al residente $residenteId');
+    } catch (e) {
+      print('Error al enviar notificación de confirmación: $e');
+      rethrow;
+    }
+  }
+
+  /// Obtiene las notificaciones de un residente
+  Stream<QuerySnapshot> getNotificacionesResidente(
+    String condominioId,
+    String residenteId,
+  ) {
+    return _firestore
+        .collection(condominioId)
+        .doc('notificaciones')
+        .collection('residentes')
+        .doc(residenteId)
+        .collection('notificaciones')
+        .orderBy('fechaCreacion', descending: true)
+        .snapshots();
+  }
+
+  /// Marca una notificación como leída
+  Future<void> marcarComoLeida(
+    String condominioId,
+    String residenteId,
+    String notificacionId,
+  ) async {
+    try {
+      await _firestore
+          .collection(condominioId)
+          .doc('notificaciones')
+          .collection('residentes')
+          .doc(residenteId)
+          .collection('notificaciones')
+          .doc(notificacionId)
+          .update({'leida': true});
+    } catch (e) {
+      print('Error al marcar notificación como leída: $e');
+      rethrow;
+    }
+  }
+
+  /// Responde a una notificación de confirmación de entrega
+  Future<void> responderConfirmacionEntrega(
+    String condominioId,
+    String residenteId,
+    String notificacionId,
+    bool aceptada,
+  ) async {
+    try {
+      final estado = aceptada ? 'aceptada' : 'rechazada';
+      
+      await _firestore
+          .collection(condominioId)
+          .doc('notificaciones')
+          .collection('residentes')
+          .doc(residenteId)
+          .collection('notificaciones')
+          .doc(notificacionId)
+          .update({
+        'estado': estado,
+        'fechaRespuesta': DateTime.now().toIso8601String(),
+        'leida': true,
+      });
+
+      print('Respuesta de confirmación guardada: $estado');
+    } catch (e) {
+      print('Error al responder confirmación: $e');
+      rethrow;
+    }
+  }
+
+  /// Elimina notificaciones expiradas
+  Future<void> limpiarNotificacionesExpiradas(
+    String condominioId,
+    String residenteId,
+  ) async {
+    try {
+      final now = DateTime.now().toIso8601String();
+      
+      final querySnapshot = await _firestore
+          .collection(condominioId)
+          .doc('notificaciones')
+          .collection('residentes')
+          .doc(residenteId)
+          .collection('notificaciones')
+          .where('mostrarHasta', isLessThan: now)
+          .get();
+
+      final batch = _firestore.batch();
+      for (final doc in querySnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      
+      await batch.commit();
+      print('Notificaciones expiradas eliminadas: ${querySnapshot.docs.length}');
+    } catch (e) {
+      print('Error al limpiar notificaciones expiradas: $e');
+    }
+  }
+
+  /// Obtiene el estado de una notificación específica
+  Future<Map<String, dynamic>?> getEstadoNotificacion(
+    String condominioId,
+    String residenteId,
+    String notificacionId,
+  ) async {
+    try {
+      final doc = await _firestore
+          .collection(condominioId)
+          .doc('notificaciones')
+          .collection('residentes')
+          .doc(residenteId)
+          .collection('notificaciones')
+          .doc(notificacionId)
+          .get();
+
+      if (doc.exists) {
+        return doc.data();
+      }
+      return null;
+    } catch (e) {
+      print('Error al obtener estado de notificación: $e');
+      return null;
+    }
+  }
+
+  /// Stream para escuchar cambios en una notificación específica
+  Stream<DocumentSnapshot> escucharNotificacion(
+    String condominioId,
+    String residenteId,
+    String notificacionId,
+  ) {
+    return _firestore
+        .collection(condominioId)
+        .doc('notificaciones')
+        .collection('residentes')
+        .doc(residenteId)
+        .collection('notificaciones')
+        .doc(notificacionId)
+        .snapshots();
+  }
 }

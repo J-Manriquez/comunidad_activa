@@ -647,6 +647,48 @@ class FirestoreService {
     }
   }
 
+  // Obtener residentes por vivienda específica
+  Future<List<ResidenteModel>> getResidentesPorVivienda(
+    String condominioId,
+    String tipoVivienda,
+    String numeroVivienda,
+  ) async {
+    try {
+      // Normalizar tipoVivienda para la búsqueda
+      String tipoViviendaNormalizado = tipoVivienda.toLowerCase();
+      
+      Query query = _firestore
+          .collection(condominioId)
+          .doc('usuarios')
+          .collection('residentes')
+          .where('viviendaSeleccionada', isEqualTo: 'seleccionada');
+
+      if (tipoViviendaNormalizado.contains('casa')) {
+        query = query
+            .where('tipoVivienda', isEqualTo: 'casa')
+            .where('numeroVivienda', isEqualTo: numeroVivienda);
+      } else if (tipoViviendaNormalizado.contains('depto') || tipoViviendaNormalizado.contains('edificio')) {
+        // Extraer etiqueta del edificio del tipo (ej: "Depto A" -> "A")
+        String etiquetaEdificio = tipoVivienda.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').replaceAll('Depto', '').replaceAll('Edificio', '').trim();
+        
+        query = query
+            .where('tipoVivienda', isEqualTo: 'departamento')
+            .where('etiquetaEdificio', isEqualTo: etiquetaEdificio)
+            .where('numeroDepartamento', isEqualTo: numeroVivienda);
+      }
+
+      QuerySnapshot snapshot = await query.get();
+      
+      return snapshot.docs
+          .where((doc) => doc.id != '_placeholder')
+          .map((doc) => ResidenteModel.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      debugPrint('Error al obtener residentes por vivienda: $e');
+      return [];
+    }
+  }
+
   //updateCobrarMultasConGastos
    Future<bool> updateCampoCondominio(
     String condominioId,

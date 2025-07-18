@@ -1,4 +1,5 @@
 import 'package:comunidad_activa/screens/admin/comunicaciones/admin_reclamos_screen.dart';
+import 'package:comunidad_activa/screens/admin/correspondencia/correspondencias_screen.dart';
 import 'package:comunidad_activa/screens/admin/settings_screen.dart';
 import 'package:comunidad_activa/screens/residente/comunicaciones/r_reclamos_screen.dart';
 import 'package:comunidad_activa/screens/residente/gastos_comunes_residente_screen.dart';
@@ -462,6 +463,21 @@ class _HomeScreenState extends State<HomeScreen> {
                   MaterialPageRoute(
                     builder: (context) =>
                         EspaciosComunesScreen(currentUser: user),
+                  ),
+                );
+              },
+            ),
+            // Nueva opción para administradores - Correspondencias
+            ListTile(
+              leading: const Icon(Icons.mail),
+              title: const Text('Correspondencias'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        CorrespondenciasScreen(currentUser: user),
                   ),
                 );
               },

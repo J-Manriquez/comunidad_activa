@@ -4,6 +4,26 @@ ESTRUCTURA DE DATOS DE FIREBASE - COMUNIDAD ACTIVA
 cada vez que un adimistrador se registra crea una nueva colección principal: 
 
 {condominioId} (Collection - formato: nombre_condominio_XXX) (ya creado)
+    ├──── correspondencia (Document)
+    │       ├── tiempoMaximoRetencion: String - cantidad de dias o indefinido
+    │       ├── fotoObligatoria: Boolean - no guardar una correspondencia sin una foto de ella
+    │       ├── aceptacionResidente: Boolean - residente debe confirmar recepcion desde su app al momento de recibir o entregar una correspondencia
+    │       ├── tipoFirma: String - foto, firmar en la app, no solicitar firma
+    │       └── correspondencias (Subcollection)
+    │           ├── {dd-mm-aaaa-hh-mm-ss} (Document)
+    │           │   ├── id: String - id documento
+    │           │   ├── tipoEntrega: String - A un residente, Entre residentes, Residete a un tercero
+    │           │   ├── tipoCorrespondencia: String - paquete, carta, boleta, otro
+    │           │   ├── fechaHoraRecepcion: String (ISO 8601) - dd-MM-yyyy HH:mm:ss en el que se crea el documento
+    │           │   ├── fechaHoraEntrega: String (ISO 8601) (nullable)  - dd-MM-yyyy HH:mm:ss cuando se entrega la correspondencia al residente o tercero
+    │           │   ├── viviendaRecepcion: String (nullable) - vivienda que deja una correspondencia para otro residente o un tercero
+    │           │   ├── residenteIdRecepcion: String (nullable)- id del residente que recibe una correspondencia
+    │           │   ├── datosEntrega: String - vivienda o datos de tercero a quien entregar, segun el caso
+    │           │   ├── residenteIdEntrega: String (nullable) - id del residente al que se le debe entregar la correspondencia, en caso de ser  A un residente o Entre residentes
+    │           │   ├── firma: String (nullable) - imageneBase64 o firma guardarda por la app
+    │           │   ├── adjuntos:  Map<String, dynamic> imagenesBase64
+    │           └── ...
+    │    
     ├──── estacionamiento (Document)
     │        ├── activo: Boolean 
     │        ├── cantidadDisponible: Integer
