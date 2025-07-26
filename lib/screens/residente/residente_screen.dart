@@ -448,14 +448,11 @@ class _ResidenteScreenState extends State<ResidenteScreen> {
       );
     }
     
-    return FutureBuilder(
-      future: Future.wait([
-        _notificationService.getNotificationsForUser(
-          user.uid,
-          widget.condominioId,
-        ),
-        _checkCorrespondenciasConNotificacionesPendientes(),
-      ]),
+    return StreamBuilder(
+      stream: _notificationService.getEntregaNotificationsStream(
+        condominioId: widget.condominioId,
+        userId: user.uid,
+      ),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return _buildActionTile(
@@ -466,92 +463,101 @@ class _ResidenteScreenState extends State<ResidenteScreen> {
           );
         }
         
-        final notifications = snapshot.data![0] as List;
-        final hasCorrespondenciasConNotificaciones = snapshot.data![1] as bool;
+        final notifications = snapshot.data!;
         
+        // Verificar notificaciones de entrega pendientes
         final hasEntregaNotifications = notifications.any((notification) {
           return notification.notificationType == 'confirmacion_entrega' &&
                  notification.isRead == null &&
                  (notification.additionalData?['estado'] == null || 
                   notification.additionalData?['estado'] == 'pendiente');
-        }) || hasCorrespondenciasConNotificaciones;
+        });
         
-        return Container(
-          decoration: hasEntregaNotifications
-              ? BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red.shade400, width: 2),
-                  color: Colors.red.shade50,
-                )
-              : null,
-          child: ListTile(
-            leading: Stack(
-              children: [
-                Icon(
-                  Icons.mail,
-                  color: hasEntregaNotifications
-                      ? Colors.red.shade600
-                      : Colors.green.shade600,
-                ),
-                if (hasEntregaNotifications)
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 1),
-                      ),
-                      child: const Icon(
-                        Icons.priority_high,
-                        color: Colors.white,
-                        size: 8,
-                      ),
+        // También verificar correspondencias con notificaciones pendientes usando FutureBuilder interno
+        return FutureBuilder<bool>(
+          future: _checkCorrespondenciasConNotificacionesPendientes(),
+          builder: (context, futureSnapshot) {
+            final hasCorrespondenciasConNotificaciones = futureSnapshot.data ?? false;
+            final hasAnyNotifications = hasEntregaNotifications || hasCorrespondenciasConNotificaciones;
+        
+            return Container(
+              decoration: hasAnyNotifications
+                  ? BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.shade400, width: 2),
+                      color: Colors.red.shade50,
+                    )
+                  : null,
+              child: ListTile(
+                leading: Stack(
+                  children: [
+                    Icon(
+                      Icons.mail,
+                      color: hasAnyNotifications
+                          ? Colors.red.shade600
+                          : Colors.green.shade600,
                     ),
+                    if (hasAnyNotifications)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1),
+                          ),
+                          child: const Icon(
+                            Icons.priority_high,
+                            color: Colors.white,
+                            size: 8,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                title: Text(
+                  'Correspondencias',
+                  style: TextStyle(
+                    fontWeight: hasAnyNotifications
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                    color: hasAnyNotifications
+                        ? Colors.red.shade700
+                        : null,
                   ),
-              ],
-            ),
-            title: Text(
-              'Correspondencias',
-              style: TextStyle(
-                fontWeight: hasEntregaNotifications
-                    ? FontWeight.bold
-                    : FontWeight.normal,
-                color: hasEntregaNotifications
-                    ? Colors.red.shade700
-                    : null,
-              ),
-            ),
-            subtitle: Text(
-              hasEntregaNotifications
-                  ? 'Tienes entregas pendientes de confirmar'
-                  : 'Ver y gestionar correspondencias',
-              style: TextStyle(
-                color: hasEntregaNotifications
-                    ? Colors.red.shade600
-                    : null,
-              ),
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (hasEntregaNotifications)
-                  Icon(
-                    Icons.notification_important,
-                    color: Colors.red.shade600,
-                    size: 20,
+                ),
+                subtitle: Text(
+                  hasAnyNotifications
+                      ? 'Tienes entregas pendientes de confirmar'
+                      : 'Ver y gestionar correspondencias',
+                  style: TextStyle(
+                    color: hasAnyNotifications
+                        ? Colors.red.shade600
+                        : null,
                   ),
-                const SizedBox(width: 4),
-                const Icon(Icons.arrow_forward_ios),
-              ],
-            ),
-            onTap: () => _handleCorrespondenciasNavigation(),
-          ),
-        );
-      },
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (hasAnyNotifications)
+                      Icon(
+                        Icons.notification_important,
+                        color: Colors.red.shade600,
+                        size: 20,
+                      ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.arrow_forward_ios),
+                  ],
+                ),
+                onTap: () => _handleCorrespondenciasNavigation(),
+              ),
+            );
+           },
+         );
+       },
     );
   }
   

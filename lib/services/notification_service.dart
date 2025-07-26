@@ -168,6 +168,38 @@ class NotificationService {
     }
   }
 
+  // Stream para escuchar notificaciones de confirmación de entrega en tiempo real
+  Stream<List<NotificationModel>> getEntregaNotificationsStream({
+    required String condominioId,
+    required String userId,
+  }) {
+    try {
+      return _firestore
+          .collection(condominioId)
+          .doc('usuarios')
+          .collection('residentes')
+          .doc(userId)
+          .collection('notificaciones')
+          .where('tipoNotificacion', isEqualTo: 'confirmacion_entrega')
+          .snapshots()
+          .map(
+            (snapshot) {
+              final notifications = snapshot.docs
+                  .map((doc) => NotificationModel.fromMap(doc.data()))
+                  .toList();
+              
+              // Ordenar en memoria para evitar el índice compuesto
+              notifications.sort((a, b) => b.fechaRegistro.compareTo(a.fechaRegistro));
+              
+              return notifications;
+            },
+          );
+    } catch (e) {
+      print('Error al escuchar notificaciones de entrega: $e');
+      return Stream.value([]);
+    }
+  }
+
   // Marcar notificación como leída
   Future<void> markNotificationAsRead({
     required String condominioId,
