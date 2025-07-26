@@ -130,6 +130,7 @@ class NotificationService {
           .map(
             (snapshot) => snapshot.docs
                 .map((doc) => NotificationModel.fromMap(doc.data()))
+                .where((notification) => notification.notificationType != 'confirmacion_entrega') // Filtrar notificaciones de entrega
                 .toList(),
           );
     } catch (e) {
@@ -138,11 +139,39 @@ class NotificationService {
     }
   }
 
+  // Obtener notificaciones de confirmación de entrega para un usuario
+  Future<List<NotificationModel>> getNotificationsForUser(
+    String userId,
+    String condominioId,
+  ) async {
+    try {
+      final snapshot = await _firestore
+          .collection(condominioId)
+          .doc('usuarios')
+          .collection('residentes')
+          .doc(userId)
+          .collection('notificaciones')
+          .where('tipoNotificacion', isEqualTo: 'confirmacion_entrega')
+          .get();
+      
+      final notifications = snapshot.docs
+          .map((doc) => NotificationModel.fromMap(doc.data()))
+          .toList();
+      
+      // Ordenar en memoria para evitar el índice compuesto
+      notifications.sort((a, b) => b.fechaRegistro.compareTo(a.fechaRegistro));
+      
+      return notifications;
+    } catch (e) {
+      print('Error al obtener notificaciones de entrega: $e');
+      return [];
+    }
+  }
+
   // Marcar notificación como leída
   Future<void> markNotificationAsRead({
     required String condominioId,
     required String notificationId,
-    required String userName,
     required String userId,
     required String userType,
     bool isCondominioNotification = false,
@@ -151,7 +180,6 @@ class NotificationService {
   }) async {
     try {
       final readData = {
-        'nombre': userName,
         'id': userId,
         'tipo': userType,
         'fechaLectura': DateTime.now().toIso8601String(),
@@ -236,7 +264,9 @@ class NotificationService {
         .collection('notificaciones')
         .where('isRead', isNull: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs.length);
+        .map((snapshot) => snapshot.docs
+            .where((doc) => doc.data()['tipoNotificacion'] != 'confirmacion_entrega')
+            .length);
   }
 
   // Eliminar notificación específica
@@ -387,11 +417,11 @@ class NotificationService {
   ) {
     return _firestore
         .collection(condominioId)
-        .doc('notificaciones')
+        .doc('usuarios')
         .collection('residentes')
         .doc(residenteId)
         .collection('notificaciones')
-        .orderBy('fechaCreacion', descending: true)
+        .orderBy('fechaRegistro', descending: true)
         .snapshots();
   }
 
@@ -402,14 +432,21 @@ class NotificationService {
     String notificacionId,
   ) async {
     try {
+      final fechaLectura = DateTime.now().toIso8601String();
       await _firestore
           .collection(condominioId)
-          .doc('notificaciones')
+          .doc('usuarios')
           .collection('residentes')
           .doc(residenteId)
           .collection('notificaciones')
           .doc(notificacionId)
-          .update({'leida': true});
+          .update({
+        'isRead': {
+          'id': residenteId,
+          'tipo': 'residentes',
+          'fechaLectura': fechaLectura,
+        }
+      });
     } catch (e) {
       print('Error al marcar notificación como leída: $e');
       rethrow;
@@ -425,19 +462,88 @@ class NotificationService {
   ) async {
     try {
       final estado = aceptada ? 'aceptada' : 'rechazada';
+      final fechaRespuesta = DateTime.now().toIso8601String();
       
+      // Primero obtener la notificación para extraer el correspondenciaId
+      final notifDoc = await _firestore
+          .collection(condominioId)
+          .doc('usuarios')
+          .collection('residentes')
+          .doc(residenteId)
+          .collection('notificaciones')
+          .doc(notificacionId)
+          .get();
+      
+      if (!notifDoc.exists) {
+        throw Exception('Notificación no encontrada');
+      }
+      
+      final notifData = notifDoc.data()!;
+      final correspondenciaId = notifData['additionalData']?['correspondenciaId'];
+      
+      if (correspondenciaId == null) {
+        throw Exception('ID de correspondencia no encontrado en la notificación');
+      }
+      
+      // Actualizar la notificación
       await _firestore
           .collection(condominioId)
-          .doc('notificaciones')
+          .doc('usuarios')
           .collection('residentes')
           .doc(residenteId)
           .collection('notificaciones')
           .doc(notificacionId)
           .update({
         'estado': estado,
-        'fechaRespuesta': DateTime.now().toIso8601String(),
-        'leida': true,
+        'fechaRespuesta': fechaRespuesta,
+        'isRead': {
+          'id': residenteId,
+          'tipo': 'residentes',
+          'fechaLectura': fechaRespuesta,
+        },
       });
+      
+      // Actualizar el campo notificacionEntrega en la correspondencia
+      // Buscar la notificación más reciente sin respuesta para este correspondenciaId
+      final correspondenciaDoc = await _firestore
+          .collection(condominioId)
+          .doc('correspondencia')
+          .collection('correspondencias')
+          .doc(correspondenciaId)
+          .get();
+      
+      if (correspondenciaDoc.exists) {
+        final correspondenciaData = correspondenciaDoc.data()!;
+        final notificacionEntrega = correspondenciaData['notificacionEntrega'] as Map<String, dynamic>? ?? {};
+        
+        // Buscar la notificación más reciente pendiente
+        String? timestampToUpdate;
+        for (var entry in notificacionEntrega.entries) {
+          final notifData = entry.value as Map<String, dynamic>;
+          if (notifData['respuesta'] == 'pendiente') {
+            timestampToUpdate = entry.key;
+            break;
+          }
+        }
+        
+        if (timestampToUpdate != null) {
+          // Generar timestamp de respuesta
+          final now = DateTime.now();
+          final timestampRespuesta = '${now.day.toString().padLeft(2, '0')}-${now.month.toString().padLeft(2, '0')}-${now.year}-${now.hour.toString().padLeft(2, '0')}-${now.minute.toString().padLeft(2, '0')}-${now.second.toString().padLeft(2, '0')}';
+          
+          await _firestore
+              .collection(condominioId)
+              .doc('correspondencia')
+              .collection('correspondencias')
+              .doc(correspondenciaId)
+              .update({
+            'notificacionEntrega.$timestampToUpdate.respuesta': estado,
+            'notificacionEntrega.$timestampToUpdate.fechaRespuesta': timestampRespuesta,
+          });
+          
+          print('Campo notificacionEntrega actualizado: $estado en $timestampRespuesta');
+        }
+      }
 
       print('Respuesta de confirmación guardada: $estado');
     } catch (e) {
@@ -484,7 +590,7 @@ class NotificationService {
     try {
       final doc = await _firestore
           .collection(condominioId)
-          .doc('notificaciones')
+          .doc('usuarios')
           .collection('residentes')
           .doc(residenteId)
           .collection('notificaciones')
@@ -509,7 +615,7 @@ class NotificationService {
   ) {
     return _firestore
         .collection(condominioId)
-        .doc('notificaciones')
+        .doc('usuarios')
         .collection('residentes')
         .doc(residenteId)
         .collection('notificaciones')

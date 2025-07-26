@@ -1,14 +1,19 @@
 import 'package:comunidad_activa/screens/residente/r_seleccion_vivienda_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/residente_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
 import '../../services/notification_service.dart';
 import '../../widgets/notification_card_widget.dart';
+import '../../widgets/modal_confirmacion_entrega_residente.dart';
+import '../../models/correspondencia_config_model.dart';
+import '../../services/correspondencia_service.dart';
 import 'comunicaciones/r_notifications_screen.dart';
 import 'r_config_screen.dart';
 import 'gastos_comunes_residente_screen.dart';
 import 'estacionamientos_residente_screen.dart';
+import 'correspondencias_residente_screen.dart';
 import '../home_screen.dart';
 
 class ResidenteScreen extends StatefulWidget {
@@ -24,6 +29,7 @@ class _ResidenteScreenState extends State<ResidenteScreen> {
   final AuthService _authService = AuthService();
   final FirestoreService _firestoreService = FirestoreService();
   final NotificationService _notificationService = NotificationService();
+  final CorrespondenciaService _correspondenciaService = CorrespondenciaService();
   ResidenteModel? _residente;
   bool _isLoading = true;
   bool _modalShown = false; // Para evitar mostrar el modal múltiples veces
@@ -254,6 +260,8 @@ class _ResidenteScreenState extends State<ResidenteScreen> {
                               ),
                               const SizedBox(height: 16),
 
+                              _buildCorrespondenciasTile(),
+                              const SizedBox(height: 8),
                               _buildActionTile(
                                 'Estacionamientos',
                                 'Gestionar estacionamientos y solicitudes',
@@ -427,5 +435,236 @@ class _ResidenteScreenState extends State<ResidenteScreen> {
       trailing: const Icon(Icons.arrow_forward_ios),
       onTap: onTap,
     );
+  }
+  
+  Widget _buildCorrespondenciasTile() {
+    final user = _authService.currentUser;
+    if (user == null) {
+      return _buildActionTile(
+        'Correspondencias',
+        'Ver y gestionar correspondencias',
+        Icons.mail,
+        () => _handleCorrespondenciasNavigation(),
+      );
+    }
+    
+    return FutureBuilder(
+      future: Future.wait([
+        _notificationService.getNotificationsForUser(
+          user.uid,
+          widget.condominioId,
+        ),
+        _checkCorrespondenciasConNotificacionesPendientes(),
+      ]),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return _buildActionTile(
+            'Correspondencias',
+            'Ver y gestionar correspondencias',
+            Icons.mail,
+            () => _handleCorrespondenciasNavigation(),
+          );
+        }
+        
+        final notifications = snapshot.data![0] as List;
+        final hasCorrespondenciasConNotificaciones = snapshot.data![1] as bool;
+        
+        final hasEntregaNotifications = notifications.any((notification) {
+          return notification.notificationType == 'confirmacion_entrega' &&
+                 notification.isRead == null &&
+                 (notification.additionalData?['estado'] == null || 
+                  notification.additionalData?['estado'] == 'pendiente');
+        }) || hasCorrespondenciasConNotificaciones;
+        
+        return Container(
+          decoration: hasEntregaNotifications
+              ? BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade400, width: 2),
+                  color: Colors.red.shade50,
+                )
+              : null,
+          child: ListTile(
+            leading: Stack(
+              children: [
+                Icon(
+                  Icons.mail,
+                  color: hasEntregaNotifications
+                      ? Colors.red.shade600
+                      : Colors.green.shade600,
+                ),
+                if (hasEntregaNotifications)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 1),
+                      ),
+                      child: const Icon(
+                        Icons.priority_high,
+                        color: Colors.white,
+                        size: 8,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            title: Text(
+              'Correspondencias',
+              style: TextStyle(
+                fontWeight: hasEntregaNotifications
+                    ? FontWeight.bold
+                    : FontWeight.normal,
+                color: hasEntregaNotifications
+                    ? Colors.red.shade700
+                    : null,
+              ),
+            ),
+            subtitle: Text(
+              hasEntregaNotifications
+                  ? 'Tienes entregas pendientes de confirmar'
+                  : 'Ver y gestionar correspondencias',
+              style: TextStyle(
+                color: hasEntregaNotifications
+                    ? Colors.red.shade600
+                    : null,
+              ),
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (hasEntregaNotifications)
+                  Icon(
+                    Icons.notification_important,
+                    color: Colors.red.shade600,
+                    size: 20,
+                  ),
+                const SizedBox(width: 4),
+                const Icon(Icons.arrow_forward_ios),
+              ],
+            ),
+            onTap: () => _handleCorrespondenciasNavigation(),
+          ),
+        );
+      },
+    );
+  }
+  
+  Future<void> _handleCorrespondenciasNavigation() async {
+    try {
+      // Verificar si hay notificaciones de entrega de correspondencia pendientes
+      final user = _authService.currentUser;
+      if (user == null || _residente == null) {
+        _navigateToCorrespondencias();
+        return;
+      }
+      
+      // Buscar notificaciones de confirmación de entrega para este residente
+      final notifications = await _notificationService.getNotificationsForUser(
+        user.uid,
+        widget.condominioId,
+      );
+      
+      // Filtrar notificaciones de entrega de correspondencia no leídas y pendientes
+      final entregaNotifications = notifications.where((notification) {
+        return notification.notificationType == 'confirmacion_entrega' &&
+               notification.isRead == null &&
+               (notification.additionalData?['estado'] == null || 
+                notification.additionalData?['estado'] == 'pendiente');
+      }).toList();
+      
+      if (entregaNotifications.isNotEmpty) {
+        // Si hay notificaciones de entrega, mostrar el modal
+        final notification = entregaNotifications.first;
+        await _showEntregaModal(notification);
+      } else {
+        // Si no hay notificaciones, navegar directamente a la pantalla
+        _navigateToCorrespondencias();
+      }
+    } catch (e) {
+      print('Error al verificar notificaciones de entrega: $e');
+      // En caso de error, navegar directamente a la pantalla
+      _navigateToCorrespondencias();
+    }
+  }
+  
+  void _navigateToCorrespondencias() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CorrespondenciasResidenteScreen(
+          condominioId: widget.condominioId,
+        ),
+      ),
+    );
+  }
+  
+  Future<void> _showEntregaModal(dynamic notification) async {
+    try {
+      final user = _authService.currentUser;
+      if (user == null) {
+        _navigateToCorrespondencias();
+        return;
+      }
+      
+      // Mostrar el modal de confirmación para residentes
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => ModalConfirmacionEntregaResidente(
+          notification: notification,
+          userId: user.uid,
+          condominioId: widget.condominioId,
+        ),
+      );
+      
+      // Marcar la notificación como leída
+      await _notificationService.markNotificationAsRead(
+         condominioId: widget.condominioId,
+         notificationId: notification.id,
+         userId: user.uid,
+         userType: 'residentes',
+       );
+    } catch (e) {
+      print('Error al mostrar modal de entrega: $e');
+      _navigateToCorrespondencias();
+    }
+  }
+  
+  /// Verifica si hay correspondencias con notificaciones de entrega pendientes
+  Future<bool> _checkCorrespondenciasConNotificacionesPendientes() async {
+    try {
+      if (_residente == null) return false;
+      
+      final correspondenciasSnapshot = await FirebaseFirestore.instance
+          .collection(widget.condominioId)
+          .doc('correspondencia')
+          .collection('correspondencias')
+          .where('viviendaRecepcion', isEqualTo: _residente!.descripcionVivienda)
+          .get();
+      
+      for (final doc in correspondenciasSnapshot.docs) {
+        final data = doc.data();
+        final notificacionEntrega = data['notificacionEntrega'] as Map<String, dynamic>? ?? {};
+        
+        // Verificar si hay alguna notificación pendiente
+         for (final entry in notificacionEntrega.entries) {
+           final notifData = entry.value as Map<String, dynamic>;
+           if (notifData['respuesta'] == 'pendiente') {
+             return true; // Hay al menos una notificación pendiente
+           }
+         }
+      }
+      
+      return false;
+    } catch (e) {
+      print('Error al verificar correspondencias con notificaciones pendientes: $e');
+      return false;
+    }
   }
 }

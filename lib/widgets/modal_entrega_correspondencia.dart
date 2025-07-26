@@ -38,7 +38,9 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
   String? _firmaBase64;
   bool _esperandoConfirmacion = false;
   bool _confirmacionRecibida = false;
+  bool _entregaRechazada = false;
   bool _isLoading = false;
+  bool _escuchaActiva = false;
   
   @override
   void initState() {
@@ -54,6 +56,11 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
     if (!widget.config.aceptacionResidente) {
       _confirmacionRecibida = true;
       print('No requiere aceptación - _confirmacionRecibida establecido a true');
+    } else {
+      // Verificar el estado actual de las notificaciones de entrega
+      _verificarEstadoNotificacionesEntrega();
+      // Iniciar escucha inmediatamente para capturar cambios en tiempo real
+      _escucharRespuestaResidente();
     }
   }
 
@@ -558,12 +565,14 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
 
     // Determinar qué estado mostrar
     String estadoUI = '';
-    if (!_esperandoConfirmacion && !_confirmacionRecibida) {
+    if (!_esperandoConfirmacion && !_confirmacionRecibida && !_entregaRechazada) {
       estadoUI = 'Botón enviar notificación';
-    } else if (_esperandoConfirmacion && !_confirmacionRecibida) {
+    } else if (_esperandoConfirmacion && !_confirmacionRecibida && !_entregaRechazada) {
       estadoUI = 'Esperando confirmación';
     } else if (_confirmacionRecibida) {
       estadoUI = 'Confirmación recibida';
+    } else if (_entregaRechazada) {
+      estadoUI = 'Entrega rechazada';
     } else {
       estadoUI = 'Estado desconocido';
     }
@@ -585,7 +594,7 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
             ),
             const SizedBox(height: 12),
             
-            if (!_esperandoConfirmacion && !_confirmacionRecibida) ...[
+            if (!_esperandoConfirmacion && !_confirmacionRecibida && !_entregaRechazada) ...[
               ElevatedButton.icon(
                 onPressed: () {
                   print('=== BOTÓN PRESIONADO: Enviar Notificación ===');
@@ -598,7 +607,7 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
                   foregroundColor: Colors.white,
                 ),
               ),
-            ] else if (_esperandoConfirmacion && !_confirmacionRecibida) ...[
+            ] else if (_esperandoConfirmacion && !_confirmacionRecibida && !_entregaRechazada) ...[
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -642,6 +651,53 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
                       child: Text(
                         'Entrega confirmada por el residente',
                         style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ] else if (_entregaRechazada) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  border: Border.all(color: Colors.red.shade200),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.cancel, color: Colors.red.shade600),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Entrega rechazada por el residente',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'El residente ha rechazado la entrega. Puede intentar entregar nuevamente enviando otra notificación.',
+                      style: TextStyle(color: Colors.red.shade700, fontSize: 13),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          print('=== BOTÓN PRESIONADO: Reenviar Notificación ===');
+                          _reenviarNotificacionResidente();
+                        },
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Reenviar Notificación'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange.shade600,
+                          foregroundColor: Colors.white,
+                        ),
                       ),
                     ),
                   ],
@@ -744,6 +800,17 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
     print('Estado actualizado - _esperandoConfirmacion: $_esperandoConfirmacion');
 
     try {
+      // Generar timestamp para la notificación
+      final now = DateTime.now();
+      final timestampEnvio = '${now.day.toString().padLeft(2, '0')}-${now.month.toString().padLeft(2, '0')}-${now.year}-${now.hour.toString().padLeft(2, '0')}-${now.minute.toString().padLeft(2, '0')}-${now.second.toString().padLeft(2, '0')}';
+      
+      print('Registrando notificación de entrega con timestamp: $timestampEnvio');
+      await _correspondenciaService.registrarNotificacionEntrega(
+        widget.condominioId,
+        widget.correspondencia.id,
+        timestampEnvio,
+      );
+      
       print('Llamando a _notificationService.enviarNotificacionConfirmacionEntrega...');
       await _notificationService.enviarNotificacionConfirmacionEntrega(
         widget.condominioId,
@@ -779,80 +846,234 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
     }
     print('=== FIN: _enviarNotificacionResidente ===\n');
   }
-  
-  void _escucharRespuestaResidente() {
-    print('=== DEBUG: Iniciando escucha de respuesta del residente ===');
+
+  Future<void> _reenviarNotificacionResidente() async {
+    print('\n=== INICIO: _reenviarNotificacionResidente ===');
+    print('Timestamp: ${DateTime.now()}');
     print('Correspondencia ID: ${widget.correspondencia.id}');
     print('Residente ID: ${widget.correspondencia.residenteIdEntrega}');
     
-    // Escuchar las notificaciones del residente para detectar cuando responda
-    _notificationService.getUserNotifications(
-      condominioId: widget.condominioId,
-      userId: widget.correspondencia.residenteIdEntrega!,
-      userType: 'residentes',
-    ).listen((notifications) {
-      print('=== DEBUG: Notificaciones recibidas ===');
-      print('Total notificaciones: ${notifications.length}');
+    if (widget.correspondencia.residenteIdEntrega == null) {
+      print('ERROR: residenteIdEntrega es null');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se puede reenviar notificación: residente no identificado'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    print('=== setState: Reiniciando estados para reenvío ===');
+    setState(() {
+      _esperandoConfirmacion = true;
+      _confirmacionRecibida = false;
+      _entregaRechazada = false;
+    });
+    print('Estados reiniciados - _esperandoConfirmacion: $_esperandoConfirmacion');
+
+    try {
+      // Generar timestamp para la nueva notificación
+      final now = DateTime.now();
+      final timestampEnvio = '${now.day.toString().padLeft(2, '0')}-${now.month.toString().padLeft(2, '0')}-${now.year}-${now.hour.toString().padLeft(2, '0')}-${now.minute.toString().padLeft(2, '0')}-${now.second.toString().padLeft(2, '0')}';
       
-      // Imprimir todas las notificaciones para debug
-      for (var notif in notifications) {
-        print('Notificación: ${notif.notificationType}');
-        if (notif.additionalData != null) {
-          print('  - correspondenciaId: ${notif.additionalData!['correspondenciaId']}');
-          print('  - estado: ${notif.additionalData!['estado']}');
-        }
+      print('Registrando nueva notificación de entrega con timestamp: $timestampEnvio');
+      await _correspondenciaService.registrarNotificacionEntrega(
+        widget.condominioId,
+        widget.correspondencia.id,
+        timestampEnvio,
+      );
+      
+      print('Reenviando notificación de confirmación de entrega...');
+      await _notificationService.enviarNotificacionConfirmacionEntrega(
+        widget.condominioId,
+        widget.correspondencia.residenteIdEntrega!,
+        widget.correspondencia.id,
+        widget.correspondencia.tipoCorrespondencia,
+      );
+      print('Notificación reenviada exitosamente');
+      
+      // Escuchar las notificaciones del residente para detectar la respuesta
+      print('Iniciando escucha de respuesta del residente...');
+      _escucharRespuestaResidente();
+      print('Escucha iniciada');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Notificación reenviada al residente'),
+            backgroundColor: Colors.green,
+          ),
+        );
       }
       
-      // Buscar la notificación de confirmación de entrega para esta correspondencia
-      try {
-        final notificacionConfirmacion = notifications.firstWhere(
-          (notif) => 
-            notif.notificationType == 'confirmacion_entrega' &&
-            notif.additionalData?['correspondenciaId'] == widget.correspondencia.id,
+    } catch (e) {
+      print('ERROR al reenviar notificación: $e');
+      
+      print('=== setState: Error - Restaurando estado de rechazo ===');
+      setState(() {
+        _esperandoConfirmacion = false;
+        _confirmacionRecibida = false;
+        _entregaRechazada = true;
+      });
+      print('Estado restaurado después del error');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al reenviar notificación: $e'),
+            backgroundColor: Colors.red.shade600,
+          ),
         );
+      }
+    }
+    print('=== FIN: _reenviarNotificacionResidente ===\n');
+  }
+  
+  Future<void> _verificarEstadoNotificacionesEntrega() async {
+    print('=== DEBUG: Verificando estado actual de notificaciones de entrega ===');
+    try {
+      // Obtener las notificaciones de entrega desde el campo notificacionEntrega
+      final notificaciones = widget.correspondencia.notificacionEntrega;
+      
+      if (notificaciones.isNotEmpty) {
+        // Buscar la notificación más reciente con respuesta
+        String? ultimaRespuesta;
+        String? ultimoTimestamp;
+        bool hayNotificacionesPendientes = false;
         
-        print('=== DEBUG: Notificación encontrada ===');
-        print('Tipo: ${notificacionConfirmacion.notificationType}');
-        print('Additional data: ${notificacionConfirmacion.additionalData}');
-        
-        if (notificacionConfirmacion.additionalData != null) {
-          final estado = notificacionConfirmacion.additionalData!['estado'];
-          print('Estado de la notificación: $estado');
-          
-          if (estado == 'aceptada' || estado == 'rechazada') {
-            print('=== DEBUG: Actualizando estado ===');
-            print('Antes - _confirmacionRecibida: $_confirmacionRecibida');
-            print('Antes - _esperandoConfirmacion: $_esperandoConfirmacion');
-            
-            if (mounted) {
-              print('=== setState: Actualizando confirmación del residente ===');
-              setState(() {
-                _confirmacionRecibida = estado == 'aceptada';
-                _esperandoConfirmacion = false;
-              });
-              
-              print('Después - _confirmacionRecibida: $_confirmacionRecibida');
-              print('Después - _esperandoConfirmacion: $_esperandoConfirmacion');
-              
-              // Debug: Mostrar mensaje de confirmación
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    estado == 'aceptada' 
-                      ? 'Entrega aceptada por el residente. Ya puedes guardar la entrega.' 
-                      : 'Entrega rechazada por el residente.',
-                  ),
-                  backgroundColor: estado == 'aceptada' ? Colors.green : Colors.red,
-                  duration: const Duration(seconds: 3),
-                ),
-              );
-            }
+        for (var entry in notificaciones.entries) {
+          final notifData = entry.value;
+          if (notifData['respuesta'] == 'pendiente') {
+            hayNotificacionesPendientes = true;
+          } else if (notifData['respuesta'] != null && notifData['respuesta'] != 'pendiente') {
+            ultimaRespuesta = notifData['respuesta'];
+            ultimoTimestamp = entry.key;
           }
         }
-      } catch (e) {
-        // No se encontró la notificación específica, continuar esperando
-        print('Notificación de confirmación no encontrada aún: $e');
+        
+        if (ultimaRespuesta != null) {
+          print('Respuesta encontrada: $ultimaRespuesta en $ultimoTimestamp');
+          if (mounted) {
+            setState(() {
+              _confirmacionRecibida = ultimaRespuesta == 'aceptada';
+              _entregaRechazada = ultimaRespuesta == 'rechazada';
+              _esperandoConfirmacion = false;
+            });
+            print('Estado actualizado - _confirmacionRecibida: $_confirmacionRecibida, _entregaRechazada: $_entregaRechazada');
+          }
+        } else if (hayNotificacionesPendientes) {
+          print('Hay notificaciones pendientes de respuesta');
+          if (mounted) {
+            setState(() {
+              _esperandoConfirmacion = true;
+              _confirmacionRecibida = false;
+              _entregaRechazada = false;
+            });
+            print('Estado actualizado - esperando confirmación');
+          }
+        } else {
+          print('No hay notificaciones o están sin respuesta');
+        }
+      } else {
+        print('No hay notificaciones de entrega registradas');
       }
+    } catch (e) {
+      print('Error al verificar notificaciones de entrega: $e');
+    }
+  }
+
+  void _escucharRespuestaResidente() {
+    if (_escuchaActiva) {
+      print('=== DEBUG: Escucha ya está activa, omitiendo ===');
+      return;
+    }
+    
+    _escuchaActiva = true;
+    print('=== DEBUG: Iniciando escucha de notificaciones de entrega ===');
+    print('Correspondencia ID: ${widget.correspondencia.id}');
+    
+    // Escuchar cambios en el campo notificacionEntrega de la correspondencia
+    _correspondenciaService.escucharNotificacionesEntrega(
+      widget.condominioId,
+      widget.correspondencia.id,
+    ).listen((notificaciones) {
+      print('=== DEBUG: Notificaciones de entrega recibidas ===');
+      print('Total notificaciones: ${notificaciones.length}');
+      
+      if (notificaciones.isNotEmpty) {
+        // Buscar la notificación más reciente con respuesta
+        String? ultimaRespuesta;
+        String? ultimoTimestamp;
+        String? fechaRespuesta;
+        
+        // Ordenar por timestamp para obtener la más reciente
+        final sortedEntries = notificaciones.entries.toList()
+          ..sort((a, b) => b.key.compareTo(a.key));
+        
+        bool hayNotificacionesPendientes = false;
+        
+        for (var entry in sortedEntries) {
+          final notifData = entry.value;
+          if (notifData['respuesta'] == 'pendiente') {
+            hayNotificacionesPendientes = true;
+          } else if (notifData['respuesta'] != null && notifData['respuesta'] != 'pendiente') {
+            ultimaRespuesta = notifData['respuesta'];
+            ultimoTimestamp = entry.key;
+            fechaRespuesta = notifData['fechaRespuesta'];
+            break; // Tomar la más reciente
+          }
+        }
+        
+        if (ultimaRespuesta != null) {
+          print('=== DEBUG: Respuesta del residente detectada ===');
+          print('Respuesta: $ultimaRespuesta');
+          print('Timestamp: $ultimoTimestamp');
+          print('Fecha respuesta: $fechaRespuesta');
+          
+          if (mounted) {
+            print('=== setState: Actualizando confirmación del residente ===');
+            setState(() {
+              _confirmacionRecibida = ultimaRespuesta == 'aceptada';
+              _entregaRechazada = ultimaRespuesta == 'rechazada';
+              _esperandoConfirmacion = false;
+            });
+            
+            print('Estado actualizado - _confirmacionRecibida: $_confirmacionRecibida');
+            print('Estado actualizado - _entregaRechazada: $_entregaRechazada');
+            print('Estado actualizado - _esperandoConfirmacion: $_esperandoConfirmacion');
+            
+            // Mostrar mensaje de confirmación
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  ultimaRespuesta == 'aceptada' 
+                    ? 'Entrega aceptada por el residente. Ya puedes guardar la entrega.' 
+                    : 'Entrega rechazada por el residente.',
+                ),
+                backgroundColor: ultimaRespuesta == 'aceptada' ? Colors.green : Colors.red,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        } else if (hayNotificacionesPendientes) {
+          print('Hay notificaciones pendientes de respuesta');
+          if (mounted) {
+            setState(() {
+              _esperandoConfirmacion = true;
+              _confirmacionRecibida = false;
+              _entregaRechazada = false;
+            });
+            print('Estado actualizado - esperando confirmación');
+          }
+        } else {
+          print('No hay notificaciones o están sin respuesta');
+        }
+      } else {
+        print('No hay notificaciones de entrega');
+      }
+    }, onError: (error) {
+      print('Error en la escucha de notificaciones: $error');
     });
   }
 
@@ -901,6 +1122,11 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
       }
       if (!_confirmacionRecibida) {
         print('Bloqueado por: falta confirmación del residente');
+        return false;
+      }
+      // Si la entrega fue rechazada, no permitir guardar
+      if (_entregaRechazada) {
+        print('Bloqueado por: entrega rechazada por el residente');
         return false;
       }
     }

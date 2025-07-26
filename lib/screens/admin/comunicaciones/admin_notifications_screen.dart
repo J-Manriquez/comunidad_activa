@@ -333,7 +333,6 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
           await _notificationService.markNotificationAsRead(
             condominioId: widget.condominioId,
             notificationId: notification.id,
-            userName: admin.nombre,
             userId: admin.uid,
             userType: 'administrador',
             isCondominioNotification: true,

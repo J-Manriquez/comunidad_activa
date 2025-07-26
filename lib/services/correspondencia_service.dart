@@ -247,4 +247,83 @@ class CorrespondenciaService {
     }
   }
 
+  /// Registra una notificación de entrega en el campo notificacionEntrega
+  Future<void> registrarNotificacionEntrega(
+    String condominioId,
+    String correspondenciaId,
+    String timestampEnvio,
+  ) async {
+    try {
+      final notificacionData = {
+        'fechaEnvio': timestampEnvio,
+        'respuesta': 'pendiente',
+        'fechaRespuesta': null,
+      };
+
+      await _firestore
+          .collection(condominioId)
+          .doc('correspondencia')
+          .collection('correspondencias')
+          .doc(correspondenciaId)
+          .update({
+        'notificacionEntrega.$timestampEnvio': notificacionData,
+      });
+
+      print('Notificación de entrega registrada: $timestampEnvio');
+    } catch (e) {
+      print('Error al registrar notificación de entrega: $e');
+      throw Exception('Error al registrar notificación de entrega: $e');
+    }
+  }
+
+  /// Actualiza la respuesta de una notificación de entrega
+  Future<void> actualizarRespuestaNotificacionEntrega(
+    String condominioId,
+    String correspondenciaId,
+    String timestampEnvio,
+    String respuesta,
+    String timestampRespuesta,
+  ) async {
+    try {
+      await _firestore
+          .collection(condominioId)
+          .doc('correspondencia')
+          .collection('correspondencias')
+          .doc(correspondenciaId)
+          .update({
+        'notificacionEntrega.$timestampEnvio.respuesta': respuesta,
+        'notificacionEntrega.$timestampEnvio.fechaRespuesta': timestampRespuesta,
+      });
+
+      print('Respuesta de notificación actualizada: $respuesta en $timestampRespuesta');
+    } catch (e) {
+      print('Error al actualizar respuesta de notificación: $e');
+      throw Exception('Error al actualizar respuesta de notificación: $e');
+    }
+  }
+
+  /// Escucha cambios en el campo notificacionEntrega de una correspondencia específica
+  Stream<Map<String, Map<String, dynamic>>> escucharNotificacionesEntrega(
+    String condominioId,
+    String correspondenciaId,
+  ) {
+    return _firestore
+        .collection(condominioId)
+        .doc('correspondencia')
+        .collection('correspondencias')
+        .doc(correspondenciaId)
+        .snapshots()
+        .map((snapshot) {
+      if (snapshot.exists && snapshot.data() != null) {
+        final data = snapshot.data()!;
+        final notificaciones = data['notificacionEntrega'] as Map<String, dynamic>?;
+        if (notificaciones != null) {
+          return notificaciones.map((key, value) => 
+            MapEntry(key, Map<String, dynamic>.from(value as Map)));
+        }
+      }
+      return <String, Map<String, dynamic>>{};
+    });
+  }
+
 }

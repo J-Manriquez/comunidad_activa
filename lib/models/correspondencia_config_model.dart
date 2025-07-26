@@ -83,6 +83,7 @@ class CorrespondenciaModel {
   final String? firma;
   final Map<String, dynamic> adjuntos;
   final List<Map<String, dynamic>>? infAdicional;
+  final Map<String, Map<String, dynamic>> notificacionEntrega;
 
   CorrespondenciaModel({
     required this.id,
@@ -97,6 +98,7 @@ class CorrespondenciaModel {
     this.firma,
     this.adjuntos = const {},
     this.infAdicional,
+    this.notificacionEntrega = const {},
   });
 
   Map<String, dynamic> toMap() {
@@ -113,6 +115,7 @@ class CorrespondenciaModel {
       'firma': firma,
       'adjuntos': adjuntos,
       'infAdicional': infAdicional,
+      'notificacionEntrega': notificacionEntrega,
     };
   }
 
@@ -133,6 +136,12 @@ class CorrespondenciaModel {
         (map['infAdicional'] is List ? 
           List<Map<String, dynamic>>.from(map['infAdicional']) : 
           [Map<String, dynamic>.from(map['infAdicional'])]) : null,
+      notificacionEntrega: map['notificacionEntrega'] != null ?
+        Map<String, Map<String, dynamic>>.from(
+          (map['notificacionEntrega'] as Map<String, dynamic>).map(
+            (key, value) => MapEntry(key, Map<String, dynamic>.from(value))
+          )
+        ) : {},
     );
   }
 
@@ -155,6 +164,7 @@ class CorrespondenciaModel {
     String? firma,
     Map<String, dynamic>? adjuntos,
     List<Map<String, dynamic>>? infAdicional,
+    Map<String, Map<String, dynamic>>? notificacionEntrega,
   }) {
     return CorrespondenciaModel(
       id: id ?? this.id,
@@ -169,6 +179,7 @@ class CorrespondenciaModel {
       firma: firma ?? this.firma,
       adjuntos: adjuntos ?? this.adjuntos,
       infAdicional: infAdicional ?? this.infAdicional,
+      notificacionEntrega: notificacionEntrega ?? this.notificacionEntrega,
     );
   }
 }

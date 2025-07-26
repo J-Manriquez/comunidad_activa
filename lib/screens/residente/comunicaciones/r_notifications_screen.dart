@@ -132,7 +132,6 @@ class _ResidenteNotificationsScreenState
       await _notificationService.markNotificationAsRead(
         condominioId: widget.condominioId,
         notificationId: notification.id,
-        userName: residente.nombre,
         userId: residente.uid,
         userType: 'residentes',
         targetUserId: userId,
@@ -994,7 +993,6 @@ Future<void> _responderConfirmacionEntrega(
         await _notificationService.markNotificationAsRead(
           condominioId: widget.condominioId,
           notificationId: notification.id,
-          userName: residente.nombre,
           userId: residente.uid,
           userType: 'residentes',
           targetUserId: userId,

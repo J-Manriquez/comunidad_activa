@@ -18,7 +18,6 @@ class NotificationModel {
   });
 
   factory NotificationModel.fromMap(Map<String, dynamic> data) {
-    print('Datos recibidos en fromMap: $data'); // Print de depuración
     return NotificationModel(
       id: data['id'] ?? '',
       fechaRegistro: data['fechaRegistro'] ?? '',
