@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -41,6 +42,7 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
   bool _entregaRechazada = false;
   bool _isLoading = false;
   bool _escuchaActiva = false;
+  Timer? _signatureUpdateTimer;
   
   @override
   void initState() {
@@ -51,6 +53,11 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
     print('_confirmacionRecibida inicial: $_confirmacionRecibida');
     print('_esperandoConfirmacion inicial: $_esperandoConfirmacion');
     print('_isLoading inicial: $_isLoading');
+    
+    // Configurar listener para firma digital si es requerida
+    if (widget.config.tipoFirma == 'firmar en la app') {
+      _signatureController.addListener(_onSignatureChanged);
+    }
     
     // Si no requiere aceptación del residente, marcar como confirmado
     if (!widget.config.aceptacionResidente) {
@@ -66,8 +73,43 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
 
   @override
   void dispose() {
+    if (widget.config.tipoFirma == 'firmar en la app') {
+      _signatureController.removeListener(_onSignatureChanged);
+    }
+    _signatureUpdateTimer?.cancel();
     _signatureController.dispose();
     super.dispose();
+  }
+  
+  /// Callback para detectar cambios significativos en la firma digital
+  /// Usa debounce para evitar interrumpir el proceso de dibujo
+  void _onSignatureChanged() {
+    // Cancelar el timer anterior si existe
+    _signatureUpdateTimer?.cancel();
+    
+    // Crear un nuevo timer con delay para evitar interrumpir el dibujo
+    _signatureUpdateTimer = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        // Verificar si la firma está vacía o tiene contenido significativo
+        bool hasSignificantSignature = false;
+        
+        if (_signatureController.isNotEmpty) {
+          final points = _signatureController.points;
+          hasSignificantSignature = points.isNotEmpty && points.length > 5;
+        }
+        
+        // Usar post-frame callback para evitar interrumpir el dibujo
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              // El estado se actualiza automáticamente al llamar setState
+              // Esto hará que _canSave() se reevalúe y el botón se habilite/deshabilite
+              // tanto cuando se agrega como cuando se limpia la firma
+            });
+          }
+        });
+      }
+    });
   }
 
   @override
@@ -241,7 +283,11 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
       if (_esperandoConfirmacion) {
         errores.add('Esperando confirmación del residente');
       } else if (!_confirmacionRecibida) {
-        errores.add('Se requiere enviar notificación y obtener confirmación del residente');
+        if (_puedeReenviarNotificacion()) {
+          errores.add('La notificación anterior ha expirado. Puede reenviar una nueva notificación.');
+        } else {
+          errores.add('Se requiere enviar notificación y obtener confirmación del residente');
+        }
       }
     }
     
@@ -514,27 +560,16 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
 
   List<Widget> _buildFirmaDigitalSection() {
     return [
-      GestureDetector(
-        onTap: () async {
-          if (!_signatureController.isEmpty) {
-            final signature = await _signatureController.toPngBytes();
-            if (signature != null) {
-              final imageData = base64Encode(signature);
-              _mostrarImagenCompleta(imageData);
-            }
-          }
-        },
-        child: Container(
-          height: 200,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Signature(
-            controller: _signatureController,
-            backgroundColor: Colors.white,
-          ),
+      Container(
+        height: 200,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Signature(
+          controller: _signatureController,
+          backgroundColor: Colors.white,
         ),
       ),
       const SizedBox(height: 8),
@@ -542,7 +577,12 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
         children: [
           Expanded(
             child: OutlinedButton.icon(
-              onPressed: () => _signatureController.clear(),
+              onPressed: () {
+                _signatureController.clear();
+                // Forzar actualización del estado cuando se limpia la firma
+                _signatureUpdateTimer?.cancel();
+                setState(() {});
+              },
               icon: const Icon(Icons.clear),
               label: const Text('Limpiar'),
             ),
@@ -643,16 +683,62 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
                   border: Border.all(color: Colors.green.shade200),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.check_circle, color: Colors.green.shade600),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text(
-                        'Entrega confirmada por el residente',
-                        style: TextStyle(fontWeight: FontWeight.w500),
-                      ),
+                    Row(
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.green.shade600),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Entrega confirmada por el residente',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
                     ),
+                    // Mostrar botón de reenvío si la notificación ha expirado
+                    if (_puedeReenviarNotificacion()) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          border: Border.all(color: Colors.orange.shade200),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'La notificación anterior ha expirado (más de 5 minutos).',
+                              style: TextStyle(
+                                color: Colors.orange.shade700,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  print('=== BOTÓN PRESIONADO: Reenviar Notificación (Expirada) ===');
+                                  _reenviarNotificacionResidente();
+                                },
+                                icon: const Icon(Icons.refresh),
+                                label: const Text('Enviar Nueva Notificación'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange.shade600,
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -931,52 +1017,71 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
   }
   
   Future<void> _verificarEstadoNotificacionesEntrega() async {
-    print('=== DEBUG: Verificando estado actual de notificaciones de entrega ===');
+    print('=== DEBUG: Verificando estado actual de notificaciones de entrega (nueva lógica) ===');
     try {
-      // Obtener las notificaciones de entrega desde el campo notificacionEntrega
-      final notificaciones = widget.correspondencia.notificacionEntrega;
+      // Obtener la notificación más reciente
+      final notificacionReciente = _obtenerNotificacionMasReciente();
       
-      if (notificaciones.isNotEmpty) {
-        // Buscar la notificación más reciente con respuesta
-        String? ultimaRespuesta;
-        String? ultimoTimestamp;
-        bool hayNotificacionesPendientes = false;
+      if (notificacionReciente != null) {
+        final timestamp = notificacionReciente['timestamp'] as String;
+        final notifData = notificacionReciente['data'] as Map<String, dynamic>;
+        final respuesta = notifData['respuesta'];
         
-        for (var entry in notificaciones.entries) {
-          final notifData = entry.value;
-          if (notifData['respuesta'] == 'pendiente') {
-            hayNotificacionesPendientes = true;
-          } else if (notifData['respuesta'] != null && notifData['respuesta'] != 'pendiente') {
-            ultimaRespuesta = notifData['respuesta'];
-            ultimoTimestamp = entry.key;
-          }
-        }
+        print('Notificación más reciente: $timestamp');
+        print('Respuesta: $respuesta');
         
-        if (ultimaRespuesta != null) {
-          print('Respuesta encontrada: $ultimaRespuesta en $ultimoTimestamp');
-          if (mounted) {
-            setState(() {
-              _confirmacionRecibida = ultimaRespuesta == 'aceptada';
-              _entregaRechazada = ultimaRespuesta == 'rechazada';
-              _esperandoConfirmacion = false;
-            });
-            print('Estado actualizado - _confirmacionRecibida: $_confirmacionRecibida, _entregaRechazada: $_entregaRechazada');
+        // Verificar si la notificación más reciente ha expirado
+        bool notificacionExpirada = _esNotificacionExpirada(timestamp);
+        print('Notificación expirada: $notificacionExpirada');
+        
+        if (mounted) {
+          if (respuesta == 'pendiente') {
+            if (notificacionExpirada) {
+              // Notificación pendiente pero expirada
+              setState(() {
+                _esperandoConfirmacion = false;
+                _confirmacionRecibida = false;
+                _entregaRechazada = false;
+              });
+              print('Estado actualizado - notificación pendiente expirada');
+            } else {
+              // Notificación pendiente y activa
+              setState(() {
+                _esperandoConfirmacion = true;
+                _confirmacionRecibida = false;
+                _entregaRechazada = false;
+              });
+              print('Estado actualizado - esperando confirmación');
+            }
+          } else if (respuesta == 'aceptada' || respuesta == 'rechazada') {
+            if (notificacionExpirada) {
+              // Respuesta recibida pero expirada - permitir reenvío
+              setState(() {
+                _esperandoConfirmacion = false;
+                _confirmacionRecibida = false;
+                _entregaRechazada = false;
+              });
+              print('Estado actualizado - respuesta expirada, permitir reenvío');
+            } else {
+              // Respuesta recibida y activa
+              setState(() {
+                _confirmacionRecibida = respuesta == 'aceptada';
+                _entregaRechazada = respuesta == 'rechazada';
+                _esperandoConfirmacion = false;
+              });
+              print('Estado actualizado - respuesta activa: $respuesta');
+            }
           }
-        } else if (hayNotificacionesPendientes) {
-          print('Hay notificaciones pendientes de respuesta');
-          if (mounted) {
-            setState(() {
-              _esperandoConfirmacion = true;
-              _confirmacionRecibida = false;
-              _entregaRechazada = false;
-            });
-            print('Estado actualizado - esperando confirmación');
-          }
-        } else {
-          print('No hay notificaciones o están sin respuesta');
         }
       } else {
         print('No hay notificaciones de entrega registradas');
+        if (mounted) {
+          setState(() {
+            _esperandoConfirmacion = false;
+            _confirmacionRecibida = false;
+            _entregaRechazada = false;
+          });
+        }
       }
     } catch (e) {
       print('Error al verificar notificaciones de entrega: $e');
@@ -1002,72 +1107,82 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
       print('Total notificaciones: ${notificaciones.length}');
       
       if (notificaciones.isNotEmpty) {
-        // Buscar la notificación más reciente con respuesta
-        String? ultimaRespuesta;
-        String? ultimoTimestamp;
-        String? fechaRespuesta;
+        // Actualizar el widget.correspondencia con las nuevas notificaciones
+        widget.correspondencia.notificacionEntrega.clear();
+        widget.correspondencia.notificacionEntrega.addAll(notificaciones);
         
-        // Ordenar por timestamp para obtener la más reciente
-        final sortedEntries = notificaciones.entries.toList()
-          ..sort((a, b) => b.key.compareTo(a.key));
+        // Obtener la notificación más reciente usando la nueva función
+        final notificacionReciente = _obtenerNotificacionMasReciente();
         
-        bool hayNotificacionesPendientes = false;
-        
-        for (var entry in sortedEntries) {
-          final notifData = entry.value;
-          if (notifData['respuesta'] == 'pendiente') {
-            hayNotificacionesPendientes = true;
-          } else if (notifData['respuesta'] != null && notifData['respuesta'] != 'pendiente') {
-            ultimaRespuesta = notifData['respuesta'];
-            ultimoTimestamp = entry.key;
-            fechaRespuesta = notifData['fechaRespuesta'];
-            break; // Tomar la más reciente
-          }
-        }
-        
-        if (ultimaRespuesta != null) {
-          print('=== DEBUG: Respuesta del residente detectada ===');
-          print('Respuesta: $ultimaRespuesta');
-          print('Timestamp: $ultimoTimestamp');
+        if (notificacionReciente != null) {
+          final timestamp = notificacionReciente['timestamp'] as String;
+          final notifData = notificacionReciente['data'] as Map<String, dynamic>;
+          final respuesta = notifData['respuesta'];
+          final fechaRespuesta = notifData['fechaRespuesta'];
+          
+          print('=== DEBUG: Notificación más reciente detectada ===');
+          print('Timestamp: $timestamp');
+          print('Respuesta: $respuesta');
           print('Fecha respuesta: $fechaRespuesta');
           
+          // Verificar si la notificación más reciente ha expirado
+          bool notificacionExpirada = _esNotificacionExpirada(timestamp);
+          print('Notificación expirada: $notificacionExpirada');
+          
           if (mounted) {
-            print('=== setState: Actualizando confirmación del residente ===');
-            setState(() {
-              _confirmacionRecibida = ultimaRespuesta == 'aceptada';
-              _entregaRechazada = ultimaRespuesta == 'rechazada';
-              _esperandoConfirmacion = false;
-            });
-            
-            print('Estado actualizado - _confirmacionRecibida: $_confirmacionRecibida');
-            print('Estado actualizado - _entregaRechazada: $_entregaRechazada');
-            print('Estado actualizado - _esperandoConfirmacion: $_esperandoConfirmacion');
-            
-            // Mostrar mensaje de confirmación
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  ultimaRespuesta == 'aceptada' 
-                    ? 'Entrega aceptada por el residente. Ya puedes guardar la entrega.' 
-                    : 'Entrega rechazada por el residente.',
-                ),
-                backgroundColor: ultimaRespuesta == 'aceptada' ? Colors.green : Colors.red,
-                duration: const Duration(seconds: 3),
-              ),
-            );
-          }
-        } else if (hayNotificacionesPendientes) {
-          print('Hay notificaciones pendientes de respuesta');
-          if (mounted) {
-            setState(() {
-              _esperandoConfirmacion = true;
-              _confirmacionRecibida = false;
-              _entregaRechazada = false;
-            });
-            print('Estado actualizado - esperando confirmación');
+            if (respuesta == 'pendiente') {
+              if (notificacionExpirada) {
+                // Notificación pendiente pero expirada
+                setState(() {
+                  _esperandoConfirmacion = false;
+                  _confirmacionRecibida = false;
+                  _entregaRechazada = false;
+                });
+                print('Estado actualizado - notificación pendiente expirada');
+              } else {
+                // Notificación pendiente y activa
+                setState(() {
+                  _esperandoConfirmacion = true;
+                  _confirmacionRecibida = false;
+                  _entregaRechazada = false;
+                });
+                print('Estado actualizado - esperando confirmación');
+              }
+            } else if (respuesta == 'aceptada' || respuesta == 'rechazada') {
+              if (notificacionExpirada) {
+                // Respuesta recibida pero expirada - permitir reenvío
+                setState(() {
+                  _esperandoConfirmacion = false;
+                  _confirmacionRecibida = false;
+                  _entregaRechazada = false;
+                });
+                print('Estado actualizado - respuesta expirada, permitir reenvío');
+              } else {
+                // Respuesta recibida y activa
+                setState(() {
+                  _confirmacionRecibida = respuesta == 'aceptada';
+                  _entregaRechazada = respuesta == 'rechazada';
+                  _esperandoConfirmacion = false;
+                });
+                print('Estado actualizado - respuesta activa: $respuesta');
+                
+                // Mostrar mensaje de confirmación solo si es una respuesta nueva y activa
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      respuesta == 'aceptada' 
+                        ? 'Entrega aceptada por el residente. Ya puedes guardar la entrega.' 
+                        : 'Entrega rechazada por el residente.',
+                    ),
+                    backgroundColor: respuesta == 'aceptada' ? Colors.green : Colors.red,
+                    duration: const Duration(seconds: 3),
+                  ),
+                );
+              }
+            }
           }
         } else {
-          print('No hay notificaciones o están sin respuesta');
+          print('No se pudo obtener la notificación más reciente');
         }
       } else {
         print('No hay notificaciones de entrega');
@@ -1075,6 +1190,111 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
     }, onError: (error) {
       print('Error en la escucha de notificaciones: $error');
     });
+  }
+
+  /// Obtiene la notificación de entrega más reciente
+  Map<String, dynamic>? _obtenerNotificacionMasReciente() {
+    final notificaciones = widget.correspondencia.notificacionEntrega;
+    if (notificaciones.isEmpty) return null;
+    
+    // Ordenar por timestamp para obtener la más reciente
+    final sortedEntries = notificaciones.entries.toList()
+      ..sort((a, b) => b.key.compareTo(a.key));
+    
+    final entryMasReciente = sortedEntries.first;
+    return {
+      'timestamp': entryMasReciente.key,
+      'data': entryMasReciente.value,
+    };
+  }
+  
+  /// Verifica si la notificación más reciente ha expirado (más de 5 minutos)
+  bool _esNotificacionMasRecienteExpirada() {
+    final notificacionReciente = _obtenerNotificacionMasReciente();
+    if (notificacionReciente == null) return false;
+    
+    final timestamp = notificacionReciente['timestamp'] as String;
+    return _esNotificacionExpirada(timestamp);
+  }
+  
+  /// Verifica si una notificación ha expirado (más de 5 minutos)
+  bool _esNotificacionExpirada(String timestamp) {
+    try {
+      final notificaciones = widget.correspondencia.notificacionEntrega;
+      final notifData = notificaciones[timestamp];
+      
+      if (notifData == null) return false;
+      
+      // Si tiene fechaRespuesta, verificar expiración desde esa fecha
+      String? fechaParaVerificar;
+      if (notifData['fechaRespuesta'] != null) {
+        fechaParaVerificar = notifData['fechaRespuesta'];
+      } else {
+        // Si no tiene respuesta, verificar desde fechaEnvio
+        fechaParaVerificar = notifData['fechaEnvio'];
+      }
+      
+      if (fechaParaVerificar == null) return false;
+      
+      // Parsear el timestamp en formato: DD-MM-YYYY-HH-MM-SS
+      final parts = fechaParaVerificar.split('-');
+      if (parts.length != 6) return false;
+      
+      final day = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final year = int.parse(parts[2]);
+      final hour = int.parse(parts[3]);
+      final minute = int.parse(parts[4]);
+      final second = int.parse(parts[5]);
+      
+      final fechaReferencia = DateTime(year, month, day, hour, minute, second);
+      final ahora = DateTime.now();
+      final diferencia = ahora.difference(fechaReferencia);
+      
+      // Considerar expirada si han pasado más de 5 minutos
+      bool expirada = diferencia.inMinutes > 5;
+      print('Verificando expiración para $timestamp:');
+      print('  - Fecha referencia: $fechaParaVerificar');
+      print('  - Diferencia en minutos: ${diferencia.inMinutes}');
+      print('  - Expirada: $expirada');
+      
+      return expirada;
+    } catch (e) {
+      print('Error al parsear timestamp $timestamp: $e');
+      return false;
+    }
+  }
+  
+  /// Verifica si se puede reenviar una notificación basándose en la más reciente
+  bool _puedeReenviarNotificacion() {
+    if (!widget.config.aceptacionResidente) return false;
+    
+    final notificaciones = widget.correspondencia.notificacionEntrega;
+    if (notificaciones.isEmpty) return true; // No hay notificaciones, se puede enviar
+    
+    // Obtener la notificación más reciente
+    final notificacionReciente = _obtenerNotificacionMasReciente();
+    if (notificacionReciente == null) return true;
+    
+    final timestamp = notificacionReciente['timestamp'] as String;
+    final notifData = notificacionReciente['data'] as Map<String, dynamic>;
+    final respuesta = notifData['respuesta'];
+    
+    // Si la notificación más reciente ha expirado, se puede reenviar
+    bool notificacionExpirada = _esNotificacionMasRecienteExpirada();
+    
+    // Se puede reenviar si:
+    // 1. La notificación más reciente ha expirado (más de 5 minutos)
+    // 2. Independientemente de si fue aceptada, rechazada o está pendiente
+    bool puedeReenviar = notificacionExpirada;
+    
+    print('_puedeReenviarNotificacion (nueva lógica):');
+    print('  - Timestamp más reciente: $timestamp');
+    print('  - Respuesta: $respuesta');
+    print('  - Expirada: $notificacionExpirada');
+    print('  - Puede reenviar: $puedeReenviar');
+    
+    return puedeReenviar;
   }
 
   bool _canSave() {
