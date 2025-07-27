@@ -1,3 +1,4 @@
+import 'package:comunidad_activa/screens/residente/correspondencia/correspondencias_residente_screen.dart';
 import 'package:comunidad_activa/screens/residente/r_seleccion_vivienda_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -13,7 +14,6 @@ import 'comunicaciones/r_notifications_screen.dart';
 import 'r_config_screen.dart';
 import 'gastos_comunes_residente_screen.dart';
 import 'estacionamientos_residente_screen.dart';
-import 'correspondencias_residente_screen.dart';
 import '../home_screen.dart';
 
 class ResidenteScreen extends StatefulWidget {

@@ -34,10 +34,8 @@ class PublicacionService {
 
       // Guardar en la estructura: {condominioId}/comunicaciones/publicaciones/{publicacionId}
       await _firestore
-          .collection('condominios')
-          .doc(condominioId)
-          .collection('comunicaciones')
-          .doc('publicaciones')
+          .collection(condominioId)
+          .doc('comunicaciones')
           .collection('publicaciones')
           .doc(publicacionId)
           .set(publicacion.toMap());
@@ -51,24 +49,33 @@ class PublicacionService {
   }
 
   // Obtener todas las publicaciones de un condominio
-  Future<List<PublicacionModel>> obtenerPublicaciones(String condominioId) async {
+  Future<List<PublicacionModel>> obtenerPublicaciones(
+    String condominioId,
+  ) async {
     try {
       final QuerySnapshot snapshot = await _firestore
-          .collection('condominios')
-          .doc(condominioId)
-          .collection('comunicaciones')
-          .doc('publicaciones')
+          .collection(condominioId)
+          .doc('comunicaciones')
           .collection('publicaciones')
           .get();
 
       final publicaciones = snapshot.docs
-          .map((doc) => PublicacionModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .map(
+            (doc) => PublicacionModel.fromMap(
+              doc.data() as Map<String, dynamic>,
+              doc.id,
+            ),
+          )
           .cast<PublicacionModel>()
           .toList();
-      
+
       // Ordenar por fecha en el cliente
-      publicaciones.sort((a, b) => DateTime.parse(b.fechaPublicacion).compareTo(DateTime.parse(a.fechaPublicacion)));
-      
+      publicaciones.sort(
+        (a, b) => DateTime.parse(
+          b.fechaPublicacion,
+        ).compareTo(DateTime.parse(a.fechaPublicacion)),
+      );
+
       return publicaciones;
     } catch (e) {
       print('Error al obtener publicaciones: $e');
@@ -82,20 +89,20 @@ class PublicacionService {
     String tipoPublicacion,
   ) async {
     try {
-      print('🔍 Buscando publicaciones en: condominios/$condominioId/comunicaciones/publicaciones/publicaciones');
+      print(
+        '🔍 Buscando publicaciones en: condominios/$condominioId/comunicaciones/publicaciones/publicaciones',
+      );
       print('🔍 Filtro tipoPublicacion: $tipoPublicacion');
-      
+
       // Obtener TODAS las publicaciones sin filtros para evitar índices
       final QuerySnapshot snapshot = await _firestore
-          .collection('condominios')
-          .doc(condominioId)
-          .collection('comunicaciones')
-          .doc('publicaciones')
+          .collection(condominioId)
+          .doc('comunicaciones')
           .collection('publicaciones')
           .get();
 
       print('📊 Documentos encontrados: ${snapshot.docs.length}');
-      
+
       if (snapshot.docs.isNotEmpty) {
         for (var doc in snapshot.docs) {
           print('📄 Doc ID: ${doc.id}');
@@ -105,23 +112,42 @@ class PublicacionService {
 
       // Filtrar TODO en el cliente para evitar índices compuestos
       final publicaciones = snapshot.docs
-          .map((doc) => PublicacionModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .map(
+            (doc) => PublicacionModel.fromMap(
+              doc.data() as Map<String, dynamic>,
+              doc.id,
+            ),
+          )
           .cast<PublicacionModel>()
-          .where((publicacion) => 
-              publicacion.tipoPublicacion == tipoPublicacion && 
-              (publicacion.estado == 'activa' || publicacion.estado == 'inactiva'))
+          .where(
+            (publicacion) =>
+                publicacion.tipoPublicacion == tipoPublicacion &&
+                (publicacion.estado == 'activa' ||
+                    publicacion.estado == 'inactiva'),
+          )
           .toList();
-      
+
       print('✅ Publicaciones filtradas encontradas: ${publicaciones.length}');
-      
+
       // Debug: mostrar estados de las publicaciones
-      for (var pub in snapshot.docs.map((doc) => PublicacionModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))) {
-        print('📋 Publicación ${pub.id}: tipo=${pub.tipoPublicacion}, estado=${pub.estado}');
+      for (var pub in snapshot.docs.map(
+        (doc) => PublicacionModel.fromMap(
+          doc.data() as Map<String, dynamic>,
+          doc.id,
+        ),
+      )) {
+        print(
+          '📋 Publicación ${pub.id}: tipo=${pub.tipoPublicacion}, estado=${pub.estado}',
+        );
       }
-      
+
       // Ordenar por fecha en el cliente
-      publicaciones.sort((a, b) => DateTime.parse(b.fechaPublicacion).compareTo(DateTime.parse(a.fechaPublicacion)));
-      
+      publicaciones.sort(
+        (a, b) => DateTime.parse(
+          b.fechaPublicacion,
+        ).compareTo(DateTime.parse(a.fechaPublicacion)),
+      );
+
       return publicaciones;
     } catch (e) {
       print('❌ Error al obtener publicaciones por tipo: $e');
@@ -135,25 +161,35 @@ class PublicacionService {
     String tipoPublicacion,
   ) {
     return _firestore
-        .collection('condominios')
-        .doc(condominioId)
-        .collection('comunicaciones')
-        .doc('publicaciones')
+        .collection(condominioId)
+        .doc('comunicaciones')
         .collection('publicaciones')
         .snapshots()
         .map((snapshot) {
           // Filtrar TODO en el cliente para evitar índices compuestos
           final publicaciones = snapshot.docs
-              .map((doc) => PublicacionModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+              .map(
+                (doc) => PublicacionModel.fromMap(
+                  doc.data() as Map<String, dynamic>,
+                  doc.id,
+                ),
+              )
               .cast<PublicacionModel>()
-              .where((publicacion) => 
-                  publicacion.tipoPublicacion == tipoPublicacion && 
-                  (publicacion.estado == 'activa' || publicacion.estado == 'inactiva'))
+              .where(
+                (publicacion) =>
+                    publicacion.tipoPublicacion == tipoPublicacion &&
+                    (publicacion.estado == 'activa' ||
+                        publicacion.estado == 'inactiva'),
+              )
               .toList();
-          
+
           // Ordenar por fecha en el cliente
-          publicaciones.sort((a, b) => DateTime.parse(b.fechaPublicacion).compareTo(DateTime.parse(a.fechaPublicacion)));
-          
+          publicaciones.sort(
+            (a, b) => DateTime.parse(
+              b.fechaPublicacion,
+            ).compareTo(DateTime.parse(a.fechaPublicacion)),
+          );
+
           return publicaciones;
         });
   }
@@ -166,15 +202,11 @@ class PublicacionService {
   ) async {
     try {
       await _firestore
-          .collection('condominios')
-          .doc(condominioId)
-          .collection('comunicaciones')
-          .doc('publicaciones')
+          .collection(condominioId)
+          .doc('comunicaciones')
           .collection('publicaciones')
           .doc(publicacionId)
-          .update({
-        'isRead.$userId': true,
-      });
+          .update({'isRead.$userId': true});
     } catch (e) {
       print('Error al marcar publicación como leída: $e');
     }
@@ -188,10 +220,8 @@ class PublicacionService {
   ) async {
     try {
       await _firestore
-          .collection('condominios')
-          .doc(condominioId)
-          .collection('comunicaciones')
-          .doc('publicaciones')
+          .collection(condominioId)
+          .doc('comunicaciones')
           .collection('publicaciones')
           .doc(publicacionId)
           .update({'estado': nuevoEstado});
@@ -209,8 +239,10 @@ class PublicacionService {
     try {
       if (publicacion.tipoPublicacion == 'residentes') {
         // Obtener todos los residentes del condominio
-        final residentes = await _firestoreService.obtenerResidentesCondominio(condominioId);
-        
+        final residentes = await _firestoreService.obtenerResidentesCondominio(
+          condominioId,
+        );
+
         for (final residente in residentes) {
           await _notificationService.createUserNotification(
             condominioId: condominioId,
@@ -227,7 +259,9 @@ class PublicacionService {
       } else if (publicacion.tipoPublicacion == 'trabajadores') {
         // TODO: Implementar cuando se agreguen los trabajadores
         // Por ahora, solo preparamos la estructura
-        print('Notificación para trabajadores preparada para: ${publicacion.titulo}');
+        print(
+          'Notificación para trabajadores preparada para: ${publicacion.titulo}',
+        );
       }
     } catch (e) {
       print('Error al generar notificaciones: $e');
@@ -241,16 +275,17 @@ class PublicacionService {
   ) async {
     try {
       final DocumentSnapshot doc = await _firestore
-          .collection('condominios')
-          .doc(condominioId)
-          .collection('comunicaciones')
-          .doc('publicaciones')
+          .collection(condominioId)
+          .doc('comunicaciones')
           .collection('publicaciones')
           .doc(publicacionId)
           .get();
 
       if (doc.exists) {
-        return PublicacionModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+        return PublicacionModel.fromMap(
+          doc.data() as Map<String, dynamic>,
+          doc.id,
+        );
       }
       return null;
     } catch (e) {
@@ -270,18 +305,16 @@ class PublicacionService {
   }) async {
     try {
       await _firestore
-          .collection('condominios')
-          .doc(condominioId)
-          .collection('comunicaciones')
-          .doc('publicaciones')
+          .collection(condominioId)
+          .doc('comunicaciones')
           .collection('publicaciones')
           .doc(publicacionId)
           .update({
-        'tipoPublicacion': tipoPublicacion,
-        'contenido': contenido,
-        'titulo': titulo,
-        'additionalData': additionalData,
-      });
+            'tipoPublicacion': tipoPublicacion,
+            'contenido': contenido,
+            'titulo': titulo,
+            'additionalData': additionalData,
+          });
     } catch (e) {
       print('Error al actualizar publicación: $e');
       throw Exception('Error al actualizar la publicación: $e');
@@ -295,10 +328,8 @@ class PublicacionService {
   ) async {
     try {
       await _firestore
-          .collection('condominios')
-          .doc(condominioId)
-          .collection('comunicaciones')
-          .doc('publicaciones')
+          .collection(condominioId)
+          .doc('comunicaciones')
           .collection('publicaciones')
           .doc(publicacionId)
           .delete();
@@ -312,18 +343,16 @@ class PublicacionService {
   Future<void> corregirEstadoPublicaciones(String condominioId) async {
     try {
       print('🔧 Iniciando corrección de estado de publicaciones');
-      
+
       // Actualizar directamente los documentos específicos que vemos en los logs
       final docIds = ['TAN1hojXJAGAkN8FpVha', 'VyJQnxieP592RMHLFNs5'];
-      
+
       for (String docId in docIds) {
         try {
           print('🔄 Actualizando documento $docId a estado activa');
           await _firestore
-              .collection('condominios')
-              .doc(condominioId)
-              .collection('comunicaciones')
-              .doc('publicaciones')
+              .collection(condominioId)
+              .doc('comunicaciones')
               .collection('publicaciones')
               .doc(docId)
               .update({'estado': 'activa'});
@@ -332,7 +361,7 @@ class PublicacionService {
           print('❌ Error actualizando documento $docId: $e');
         }
       }
-      
+
       print('✅ Corrección de estado completada');
     } catch (e) {
       print('❌ Error en corrección de estado: $e');
