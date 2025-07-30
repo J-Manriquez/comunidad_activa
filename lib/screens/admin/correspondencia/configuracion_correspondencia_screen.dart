@@ -398,10 +398,39 @@ class _ConfiguracionCorrespondenciaScreenState
                         value: _config!.aceptacionResidente,
                         onChanged: (value) {
                           setState(() {
-                            _config = _config!.copyWith(aceptacionResidente: value);
+                            if (value && _config!.eleccionResidente) {
+                              // Si se activa aceptacionResidente y eleccionResidente está activo, desactivar eleccionResidente
+                              _config = _config!.copyWith(
+                                aceptacionResidente: value,
+                                eleccionResidente: false,
+                              );
+                            } else {
+                              _config = _config!.copyWith(aceptacionResidente: value);
+                            }
                           });
                         },
                         icon: Icons.check_circle,
+                      ),
+                      
+                      // Elección del Residente
+                      _buildSwitchCard(
+                        title: 'Elección del Residente',
+                        subtitle: 'El residente puede elegir si solicitar aceptación por correspondencia',
+                        value: _config!.eleccionResidente,
+                        onChanged: (value) {
+                          setState(() {
+                            if (value && _config!.aceptacionResidente) {
+                              // Si se activa eleccionResidente y aceptacionResidente está activo, desactivar aceptacionResidente
+                              _config = _config!.copyWith(
+                                eleccionResidente: value,
+                                aceptacionResidente: false,
+                              );
+                            } else {
+                              _config = _config!.copyWith(eleccionResidente: value);
+                            }
+                          });
+                        },
+                        icon: Icons.how_to_vote,
                       ),
                       
                       // Tipo de Firma

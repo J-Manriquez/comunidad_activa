@@ -746,12 +746,106 @@ class _CorrespondenciasResidenteScreenState extends State<CorrespondenciasReside
                 );
               }),
             ],
+            
+            // Switch para solicitar aceptación (solo visible si eleccionResidente está activo)
+            StreamBuilder<CorrespondenciaConfigModel>(
+              stream: _correspondenciaService.getCorrespondenciaConfigStream(widget.condominioId),
+              builder: (context, configSnapshot) {
+                // Debug: imprimir estado del snapshot
+                print('DEBUG StreamBuilder - hasData: ${configSnapshot.hasData}');
+                print('DEBUG StreamBuilder - hasError: ${configSnapshot.hasError}');
+                if (configSnapshot.hasData) {
+                  print('DEBUG StreamBuilder - eleccionResidente: ${configSnapshot.data!.eleccionResidente}');
+                }
+                if (configSnapshot.hasError) {
+                  print('DEBUG StreamBuilder - error: ${configSnapshot.error}');
+                }
+                
+                // Manejar estados de carga y error
+                if (configSnapshot.connectionState == ConnectionState.waiting) {
+                  return const SizedBox.shrink(); // Ocultar mientras carga
+                }
+                
+                if (configSnapshot.hasError) {
+                  print('Error en stream de configuración: ${configSnapshot.error}');
+                  return const SizedBox.shrink(); // Ocultar si hay error
+                }
+                
+                // Verificar si hay datos y si eleccionResidente está activo
+                if (!configSnapshot.hasData || configSnapshot.data!.eleccionResidente != true) {
+                  return const SizedBox.shrink(); // Ocultar si eleccionResidente es false o no hay datos
+                }
+                
+                return Column(
+                  children: [
+                    const SizedBox(height: 12),
+                    const Divider(),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Solicitar aceptación',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Switch(
+                          value: correspondencia.solicitarAceptacion ?? false,
+                          onChanged: (value) {
+                            _updateSolicitarAceptacion(correspondencia, value);
+                          },
+                          activeColor: Colors.green.shade600,
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              },
+            ),
           ],
         ),
       ),
     ));
   }
   
+  Future<void> _updateSolicitarAceptacion(CorrespondenciaModel correspondencia, bool value) async {
+    try {
+      final correspondenciaService = CorrespondenciaService();
+      
+      await correspondenciaService.updateCorrespondencia(
+        widget.condominioId,
+        correspondencia.id,
+        {'solicitarAceptacion': value},
+      );
+      
+      // Mostrar mensaje de confirmación
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              value 
+                ? 'Solicitud de aceptación activada'
+                : 'Solicitud de aceptación desactivada',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error al actualizar solicitar aceptación: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error al actualizar la configuración'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   void _showCorrespondenciaModal(CorrespondenciaModel correspondencia) {
     showDialog(
       context: context,

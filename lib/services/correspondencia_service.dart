@@ -27,6 +27,21 @@ class CorrespondenciaService {
     }
   }
 
+  // Obtener configuración de correspondencia en tiempo real
+  Stream<CorrespondenciaConfigModel> getCorrespondenciaConfigStream(String condominioId) {
+    return _firestore
+        .collection(condominioId)
+        .doc('correspondencia')
+        .snapshots()
+        .map((snapshot) {
+      if (snapshot.exists && snapshot.data() != null) {
+        return CorrespondenciaConfigModel.fromFirestore(snapshot);
+      } else {
+        return CorrespondenciaConfigModel.defaultConfig;
+      }
+    });
+  }
+
   // Guardar configuración de correspondencia
   Future<void> saveCorrespondenciaConfig(
     String condominioId,

@@ -49,6 +49,8 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
     super.initState();
     print('=== DEBUG: Inicializando ModalEntregaCorrespondencia ===');
     print('aceptacionResidente: ${widget.config.aceptacionResidente}');
+    print('eleccionResidente: ${widget.config.eleccionResidente}');
+    print('solicitarAceptacion: ${widget.correspondencia.solicitarAceptacion}');
     print('tipoFirma: ${widget.config.tipoFirma}');
     print('_confirmacionRecibida inicial: $_confirmacionRecibida');
     print('_esperandoConfirmacion inicial: $_esperandoConfirmacion');
@@ -59,10 +61,20 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
       _signatureController.addListener(_onSignatureChanged);
     }
     
-    // Si no requiere aceptación del residente, marcar como confirmado
-    if (!widget.config.aceptacionResidente) {
+    // Verificar las condiciones para requerir confirmación del residente
+    bool requiereConfirmacion = false;
+    
+    if (widget.config.aceptacionResidente) {
+      // Condición original: aceptacionResidente está activo
+      requiereConfirmacion = true;
+    } else if (widget.config.eleccionResidente && widget.correspondencia.solicitarAceptacion) {
+      // Nueva condición: eleccionResidente está activo Y solicitarAceptacion es true para esta correspondencia
+      requiereConfirmacion = true;
+    }
+    
+    if (!requiereConfirmacion) {
       _confirmacionRecibida = true;
-      print('No requiere aceptación - _confirmacionRecibida establecido a true');
+      print('No requiere confirmación - _confirmacionRecibida establecido a true');
     } else {
       // Verificar el estado actual de las notificaciones de entrega
       _verificarEstadoNotificacionesEntrega();
@@ -284,7 +296,20 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
         errores.add('Esperando confirmación del residente');
       } else if (!_confirmacionRecibida) {
         if (_puedeReenviarNotificacion()) {
-          errores.add('La notificación anterior ha expirado. Puede reenviar una nueva notificación.');
+          errores.add('Se requiere enviar notificación y obtener confirmación del residente');
+        } else {
+          errores.add('Se requiere enviar notificación y obtener confirmación del residente');
+        }
+      }
+    }
+
+    // Verificar confirmación del residente
+    if (widget.correspondencia.solicitarAceptacion) {
+      if (_esperandoConfirmacion) {
+        errores.add('Esperando confirmación del residente');
+      } else if (!_confirmacionRecibida) {
+        if (_puedeReenviarNotificacion()) {
+          errores.add('Se requiere enviar notificación y obtener confirmación del residente');
         } else {
           errores.add('Se requiere enviar notificación y obtener confirmación del residente');
         }
@@ -595,11 +620,24 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
   Widget _buildConfirmacionSection() {
     print('\n=== _buildConfirmacionSection ===');
     print('aceptacionResidente: ${widget.config.aceptacionResidente}');
+    print('eleccionResidente: ${widget.config.eleccionResidente}');
+    print('solicitarAceptacion: ${widget.correspondencia.solicitarAceptacion}');
     print('_esperandoConfirmacion: $_esperandoConfirmacion');
     print('_confirmacionRecibida: $_confirmacionRecibida');
     
-    if (!widget.config.aceptacionResidente) {
-      print('No requiere aceptación - retornando SizedBox.shrink()');
+    // Verificar las condiciones para mostrar la card de confirmación
+    bool mostrarConfirmacion = false;
+    
+    if (widget.config.aceptacionResidente) {
+      // Condición original: aceptacionResidente está activo
+      mostrarConfirmacion = true;
+    } else if (widget.config.eleccionResidente && widget.correspondencia.solicitarAceptacion) {
+      // Nueva condición: eleccionResidente está activo Y solicitarAceptacion es true para esta correspondencia
+      mostrarConfirmacion = true;
+    }
+    
+    if (!mostrarConfirmacion) {
+      print('No requiere confirmación - retornando SizedBox.shrink()');
       return const SizedBox.shrink();
     }
 
@@ -1267,7 +1305,18 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
   
   /// Verifica si se puede reenviar una notificación basándose en la más reciente
   bool _puedeReenviarNotificacion() {
-    if (!widget.config.aceptacionResidente) return false;
+    // Verificar si se requiere confirmación del residente
+    bool requiereConfirmacion = false;
+    
+    if (widget.config.aceptacionResidente) {
+      // Condición original: aceptacionResidente está activo
+      requiereConfirmacion = true;
+    } else if (widget.config.eleccionResidente && widget.correspondencia.solicitarAceptacion) {
+      // Nueva condición: eleccionResidente está activo Y solicitarAceptacion es true para esta correspondencia
+      requiereConfirmacion = true;
+    }
+    
+    if (!requiereConfirmacion) return false;
     
     final notificaciones = widget.correspondencia.notificacionEntrega;
     if (notificaciones.isEmpty) return true; // No hay notificaciones, se puede enviar
@@ -1304,6 +1353,8 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
     print('_fotoFirma: ${_fotoFirma != null}');
     print('_signatureController.isEmpty: ${_signatureController.isEmpty}');
     print('aceptacionResidente: ${widget.config.aceptacionResidente}');
+    print('eleccionResidente: ${widget.config.eleccionResidente}');
+    print('solicitarAceptacion: ${widget.correspondencia.solicitarAceptacion}');
     print('_confirmacionRecibida: $_confirmacionRecibida');
     print('_esperandoConfirmacion: $_esperandoConfirmacion');
     print('_isLoading: $_isLoading');
@@ -1335,7 +1386,17 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
     }
     
     // Verificar si se requiere confirmación del residente y está presente
+    bool requiereConfirmacion = false;
+    
     if (widget.config.aceptacionResidente) {
+      // Condición original: aceptacionResidente está activo
+      requiereConfirmacion = true;
+    } else if (widget.config.eleccionResidente && widget.correspondencia.solicitarAceptacion) {
+      // Nueva condición: eleccionResidente está activo Y solicitarAceptacion es true para esta correspondencia
+      requiereConfirmacion = true;
+    }
+    
+    if (requiereConfirmacion) {
       if (_esperandoConfirmacion) {
         print('Bloqueado por: esperando confirmación del residente');
         return false;
@@ -1353,7 +1414,7 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
     
     print('Validación exitosa - Puede guardar: true');
     print('  - Firma requerida: $firmaRequerida, completa: ${firmaRequerida ? firmaCompleta : 'N/A'}');
-    print('  - Confirmación requerida: ${widget.config.aceptacionResidente}, recibida: ${widget.config.aceptacionResidente ? _confirmacionRecibida : 'N/A'}');
+    print('  - Confirmación requerida: $requiereConfirmacion, recibida: ${requiereConfirmacion ? _confirmacionRecibida : 'N/A'}');
     return true;
   }
 
@@ -1364,6 +1425,8 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
     print('Condominio ID: ${widget.condominioId}');
     print('Tipo firma: ${widget.config.tipoFirma}');
     print('Aceptación residente requerida: ${widget.config.aceptacionResidente}');
+    print('Elección residente activa: ${widget.config.eleccionResidente}');
+    print('Solicitar aceptación (correspondencia): ${widget.correspondencia.solicitarAceptacion}');
     print('Estado actual:');
     print('  - _confirmacionRecibida: $_confirmacionRecibida');
     print('  - _esperandoConfirmacion: $_esperandoConfirmacion');
@@ -1446,7 +1509,17 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
       }
       
       // Validar confirmación del residente si es requerida
-      if (widget.config.aceptacionResidente && !_confirmacionRecibida) {
+      bool requiereConfirmacion = false;
+      
+      if (widget.config.aceptacionResidente) {
+        // Condición original: aceptacionResidente está activo
+        requiereConfirmacion = true;
+      } else if (widget.config.eleccionResidente && widget.correspondencia.solicitarAceptacion) {
+        // Nueva condición: eleccionResidente está activo Y solicitarAceptacion es true para esta correspondencia
+        requiereConfirmacion = true;
+      }
+      
+      if (requiereConfirmacion && !_confirmacionRecibida) {
         print('ERROR: Se requiere confirmación del residente pero no se ha recibido');
         throw Exception('Se requiere confirmación del residente');
       }

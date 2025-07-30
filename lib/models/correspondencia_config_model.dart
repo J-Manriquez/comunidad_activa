@@ -4,12 +4,14 @@ class CorrespondenciaConfigModel {
   final String tiempoMaximoRetencion;
   final bool fotoObligatoria;
   final bool aceptacionResidente;
+  final bool eleccionResidente;
   final String tipoFirma;
 
   CorrespondenciaConfigModel({
     required this.tiempoMaximoRetencion,
     required this.fotoObligatoria,
     required this.aceptacionResidente,
+    required this.eleccionResidente,
     required this.tipoFirma,
   });
 
@@ -18,6 +20,7 @@ class CorrespondenciaConfigModel {
       'tiempoMaximoRetencion': tiempoMaximoRetencion,
       'fotoObligatoria': fotoObligatoria,
       'aceptacionResidente': aceptacionResidente,
+      'eleccionResidente': eleccionResidente,
       'tipoFirma': tipoFirma,
     };
   }
@@ -27,6 +30,7 @@ class CorrespondenciaConfigModel {
       tiempoMaximoRetencion: map['tiempoMaximoRetencion']?.toString() ?? '3 dias',
       fotoObligatoria: _parseBool(map['fotoObligatoria']),
       aceptacionResidente: _parseBool(map['aceptacionResidente']),
+      eleccionResidente: _parseBool(map['eleccionResidente']),
       tipoFirma: map['tipoFirma']?.toString() ?? 'no solicitar firma',
     );
   }
@@ -51,12 +55,14 @@ class CorrespondenciaConfigModel {
     String? tiempoMaximoRetencion,
     bool? fotoObligatoria,
     bool? aceptacionResidente,
+    bool? eleccionResidente,
     String? tipoFirma,
   }) {
     return CorrespondenciaConfigModel(
       tiempoMaximoRetencion: tiempoMaximoRetencion ?? this.tiempoMaximoRetencion,
       fotoObligatoria: fotoObligatoria ?? this.fotoObligatoria,
       aceptacionResidente: aceptacionResidente ?? this.aceptacionResidente,
+      eleccionResidente: eleccionResidente ?? this.eleccionResidente,
       tipoFirma: tipoFirma ?? this.tipoFirma,
     );
   }
@@ -66,6 +72,7 @@ class CorrespondenciaConfigModel {
     tiempoMaximoRetencion: '3 dias',
     fotoObligatoria: false,
     aceptacionResidente: false,
+    eleccionResidente: false,
     tipoFirma: 'no solicitar firma',
   );
 }
@@ -84,6 +91,7 @@ class CorrespondenciaModel {
   final Map<String, dynamic> adjuntos;
   final List<Map<String, dynamic>>? infAdicional;
   final Map<String, Map<String, dynamic>> notificacionEntrega;
+  final bool solicitarAceptacion;
 
   CorrespondenciaModel({
     required this.id,
@@ -99,6 +107,7 @@ class CorrespondenciaModel {
     this.adjuntos = const {},
     this.infAdicional,
     this.notificacionEntrega = const {},
+    this.solicitarAceptacion = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -116,6 +125,7 @@ class CorrespondenciaModel {
       'adjuntos': adjuntos,
       'infAdicional': infAdicional,
       'notificacionEntrega': notificacionEntrega,
+      'solicitarAceptacion': solicitarAceptacion,
     };
   }
 
@@ -142,6 +152,7 @@ class CorrespondenciaModel {
             (key, value) => MapEntry(key, Map<String, dynamic>.from(value))
           )
         ) : {},
+      solicitarAceptacion: CorrespondenciaConfigModel._parseBool(map['solicitarAceptacion']),
     );
   }
 
@@ -165,6 +176,7 @@ class CorrespondenciaModel {
     Map<String, dynamic>? adjuntos,
     List<Map<String, dynamic>>? infAdicional,
     Map<String, Map<String, dynamic>>? notificacionEntrega,
+    bool? solicitarAceptacion,
   }) {
     return CorrespondenciaModel(
       id: id ?? this.id,
@@ -180,6 +192,7 @@ class CorrespondenciaModel {
       adjuntos: adjuntos ?? this.adjuntos,
       infAdicional: infAdicional ?? this.infAdicional,
       notificacionEntrega: notificacionEntrega ?? this.notificacionEntrega,
+      solicitarAceptacion: solicitarAceptacion ?? this.solicitarAceptacion,
     );
   }
 }
