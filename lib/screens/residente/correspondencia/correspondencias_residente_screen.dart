@@ -776,6 +776,13 @@ class _CorrespondenciasResidenteScreenState extends State<CorrespondenciasReside
                   return const SizedBox.shrink(); // Ocultar si eleccionResidente es false o no hay datos
                 }
                 
+                // Ocultar el switch si el tipoEntrega es 'Entre residentes' SOLO para correspondencias enviadas
+                print('DEBUG: Verificando tipoEntrega: ${correspondencia.tipoEntrega}, mostrarRecibidas: $_mostrarRecibidas');
+                if (!_mostrarRecibidas && correspondencia.tipoEntrega == 'Entre residentes') {
+                  print('DEBUG: Ocultando switch solicitar aceptación para correspondencia enviada entre residentes');
+                  return const SizedBox.shrink(); // Ocultar para correspondencias enviadas entre residentes
+                }
+                
                 return Column(
                   children: [
                     const SizedBox(height: 12),

@@ -902,12 +902,35 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
     print('\n=== INICIO: _enviarNotificacionResidente ===');
     print('Timestamp: ${DateTime.now()}');
     print('Correspondencia ID: ${widget.correspondencia.id}');
-    print('Residente ID: ${widget.correspondencia.residenteIdEntrega}');
+    print('Tipo de entrega: ${widget.correspondencia.tipoEntrega}');
+    print('Residente ID Entrega: ${widget.correspondencia.residenteIdEntrega}');
+    print('Residente ID Recepción: ${widget.correspondencia.residenteIdRecepcion}');
     print('Condominio ID: ${widget.condominioId}');
     print('Tipo correspondencia: ${widget.correspondencia.tipoCorrespondencia}');
     
-    if (widget.correspondencia.residenteIdEntrega == null) {
-      print('ERROR: residenteIdEntrega es null');
+    // Determinar el ID del residente al que enviar la notificación
+    String? residenteIdNotificacion;
+    if (widget.correspondencia.tipoEntrega == 'Residente a un tercero') {
+      // Para correspondencias a terceros, notificar al residente que envía (residenteIdRecepcion)
+      residenteIdNotificacion = widget.correspondencia.residenteIdRecepcion;
+      print('Correspondencia a tercero - usando residenteIdRecepcion: $residenteIdNotificacion');
+      if (residenteIdNotificacion == null || residenteIdNotificacion.isEmpty) {
+        print('ERROR: residenteIdRecepcion es null o vacío para correspondencia a tercero');
+        print('Datos de la correspondencia:');
+        print('- ID: ${widget.correspondencia.id}');
+        print('- tipoEntrega: ${widget.correspondencia.tipoEntrega}');
+        print('- viviendaRecepcion: ${widget.correspondencia.viviendaRecepcion}');
+        print('- residenteIdRecepcion: ${widget.correspondencia.residenteIdRecepcion}');
+        print('- residenteIdEntrega: ${widget.correspondencia.residenteIdEntrega}');
+      }
+    } else {
+      // Para otros tipos, usar el residente de entrega normal
+      residenteIdNotificacion = widget.correspondencia.residenteIdEntrega;
+      print('Correspondencia normal - usando residenteIdEntrega: $residenteIdNotificacion');
+    }
+    
+    if (residenteIdNotificacion == null) {
+      print('ERROR: No se pudo determinar el residente para la notificación');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('No se puede enviar notificación: residente no identificado'),
@@ -936,16 +959,17 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
       );
       
       print('Llamando a _notificationService.enviarNotificacionConfirmacionEntrega...');
+      print('Enviando notificación al residente: $residenteIdNotificacion');
       await _notificationService.enviarNotificacionConfirmacionEntrega(
         widget.condominioId,
-        widget.correspondencia.residenteIdEntrega!,
+        residenteIdNotificacion,
         widget.correspondencia.id,
         widget.correspondencia.tipoCorrespondencia,
       );
       print('Notificación enviada exitosamente');
       
       // Escuchar las notificaciones del residente para detectar la respuesta
-      print('Iniciando escucha de respuesta del residente...');
+      print('Iniciando escucha de respuesta del residente: $residenteIdNotificacion');
       _escucharRespuestaResidente();
       print('Escucha iniciada');
       
@@ -975,10 +999,33 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
     print('\n=== INICIO: _reenviarNotificacionResidente ===');
     print('Timestamp: ${DateTime.now()}');
     print('Correspondencia ID: ${widget.correspondencia.id}');
-    print('Residente ID: ${widget.correspondencia.residenteIdEntrega}');
+    print('Tipo de entrega: ${widget.correspondencia.tipoEntrega}');
+    print('Residente ID Entrega: ${widget.correspondencia.residenteIdEntrega}');
+    print('Residente ID Recepción: ${widget.correspondencia.residenteIdRecepcion}');
     
-    if (widget.correspondencia.residenteIdEntrega == null) {
-      print('ERROR: residenteIdEntrega es null');
+    // Determinar el ID del residente al que reenviar la notificación
+    String? residenteIdNotificacion;
+    if (widget.correspondencia.tipoEntrega == 'Residente a un tercero') {
+      // Para correspondencias a terceros, notificar al residente que envía (residenteIdRecepcion)
+      residenteIdNotificacion = widget.correspondencia.residenteIdRecepcion;
+      print('Correspondencia a tercero - usando residenteIdRecepcion: $residenteIdNotificacion');
+      if (residenteIdNotificacion == null || residenteIdNotificacion.isEmpty) {
+        print('ERROR: residenteIdRecepcion es null o vacío para correspondencia a tercero');
+        print('Datos de la correspondencia:');
+        print('- ID: ${widget.correspondencia.id}');
+        print('- tipoEntrega: ${widget.correspondencia.tipoEntrega}');
+        print('- viviendaRecepcion: ${widget.correspondencia.viviendaRecepcion}');
+        print('- residenteIdRecepcion: ${widget.correspondencia.residenteIdRecepcion}');
+        print('- residenteIdEntrega: ${widget.correspondencia.residenteIdEntrega}');
+      }
+    } else {
+      // Para otros tipos, usar el residente de entrega normal
+      residenteIdNotificacion = widget.correspondencia.residenteIdEntrega;
+      print('Correspondencia normal - usando residenteIdEntrega: $residenteIdNotificacion');
+    }
+    
+    if (residenteIdNotificacion == null) {
+      print('ERROR: No se pudo determinar el residente para la notificación');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('No se puede reenviar notificación: residente no identificado'),
@@ -1009,16 +1056,17 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
       );
       
       print('Reenviando notificación de confirmación de entrega...');
+      print('Reenviando notificación al residente: $residenteIdNotificacion');
       await _notificationService.enviarNotificacionConfirmacionEntrega(
         widget.condominioId,
-        widget.correspondencia.residenteIdEntrega!,
+        residenteIdNotificacion,
         widget.correspondencia.id,
         widget.correspondencia.tipoCorrespondencia,
       );
       print('Notificación reenviada exitosamente');
       
       // Escuchar las notificaciones del residente para detectar la respuesta
-      print('Iniciando escucha de respuesta del residente...');
+      print('Iniciando escucha de respuesta del residente: $residenteIdNotificacion');
       _escucharRespuestaResidente();
       print('Escucha iniciada');
       
