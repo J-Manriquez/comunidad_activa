@@ -465,12 +465,16 @@ class _ResidenteScreenState extends State<ResidenteScreen> {
         
         final notifications = snapshot.data!;
         
-        // Verificar notificaciones de entrega pendientes
+        // Verificar notificaciones de entrega pendientes y no expiradas
         final hasEntregaNotifications = notifications.any((notification) {
-          return notification.notificationType == 'confirmacion_entrega' &&
-                 notification.isRead == null &&
-                 (notification.additionalData?['estado'] == null || 
-                  notification.additionalData?['estado'] == 'pendiente');
+          if (notification.notificationType == 'confirmacion_entrega' &&
+              notification.isRead == null &&
+              (notification.additionalData?['estado'] == null || 
+               notification.additionalData?['estado'] == 'pendiente')) {
+            // Verificar si la notificación no ha expirado
+            return !_esNotificacionSistemaExpirada(notification);
+          }
+          return false;
         });
         
         // También verificar correspondencias con notificaciones pendientes usando FutureBuilder interno
@@ -576,12 +580,16 @@ class _ResidenteScreenState extends State<ResidenteScreen> {
         widget.condominioId,
       );
       
-      // Filtrar notificaciones de entrega de correspondencia no leídas y pendientes
+      // Filtrar notificaciones de entrega de correspondencia no leídas, pendientes y no expiradas
       final entregaNotifications = notifications.where((notification) {
-        return notification.notificationType == 'confirmacion_entrega' &&
-               notification.isRead == null &&
-               (notification.additionalData?['estado'] == null || 
-                notification.additionalData?['estado'] == 'pendiente');
+        if (notification.notificationType == 'confirmacion_entrega' &&
+            notification.isRead == null &&
+            (notification.additionalData?['estado'] == null || 
+             notification.additionalData?['estado'] == 'pendiente')) {
+          // Verificar si la notificación no ha expirado
+          return !_esNotificacionSistemaExpirada(notification);
+        }
+        return false;
       }).toList();
       
       if (entregaNotifications.isNotEmpty) {
@@ -658,18 +666,78 @@ class _ResidenteScreenState extends State<ResidenteScreen> {
         final data = doc.data();
         final notificacionEntrega = data['notificacionEntrega'] as Map<String, dynamic>? ?? {};
         
-        // Verificar si hay alguna notificación pendiente
-         for (final entry in notificacionEntrega.entries) {
-           final notifData = entry.value as Map<String, dynamic>;
-           if (notifData['respuesta'] == 'pendiente') {
-             return true; // Hay al menos una notificación pendiente
-           }
-         }
+        // Verificar si hay alguna notificación pendiente y no expirada
+        for (final entry in notificacionEntrega.entries) {
+          final notifData = entry.value as Map<String, dynamic>;
+          if (notifData['respuesta'] == 'pendiente') {
+            // Verificar si la notificación no ha expirado
+            if (!_esNotificacionExpirada(entry.key, notifData)) {
+              return true; // Hay al menos una notificación pendiente y activa
+            }
+          }
+        }
       }
       
       return false;
     } catch (e) {
       print('Error al verificar correspondencias con notificaciones pendientes: $e');
+      return false;
+    }
+  }
+  
+  /// Verifica si una notificación ha expirado (más de 5 minutos)
+  bool _esNotificacionExpirada(String timestamp, Map<String, dynamic> notifData) {
+    try {
+      // Si tiene fechaRespuesta, verificar expiración desde esa fecha
+      String? fechaParaVerificar;
+      if (notifData['fechaRespuesta'] != null) {
+        fechaParaVerificar = notifData['fechaRespuesta'];
+      } else {
+        // Si no tiene respuesta, verificar desde fechaEnvio
+        fechaParaVerificar = notifData['fechaEnvio'];
+      }
+      
+      if (fechaParaVerificar == null) return false;
+      
+      // Parsear el timestamp en formato: DD-MM-YYYY-HH-MM-SS
+      final parts = fechaParaVerificar.split('-');
+      if (parts.length != 6) return false;
+      
+      final day = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final year = int.parse(parts[2]);
+      final hour = int.parse(parts[3]);
+      final minute = int.parse(parts[4]);
+      final second = int.parse(parts[5]);
+      
+      final fechaReferencia = DateTime(year, month, day, hour, minute, second);
+      final ahora = DateTime.now();
+      final diferencia = ahora.difference(fechaReferencia);
+      
+      // Considerar expirada si han pasado más de 5 minutos
+      return diferencia.inMinutes > 5;
+    } catch (e) {
+      print('Error al parsear timestamp $timestamp: $e');
+      return false;
+    }
+  }
+  
+  /// Verifica si una notificación del sistema ha expirado (más de 5 minutos)
+  bool _esNotificacionSistemaExpirada(dynamic notification) {
+    try {
+      // Verificar si tiene mostrarHasta en additionalData
+      final mostrarHasta = notification.additionalData?['mostrarHasta'];
+      if (mostrarHasta != null) {
+        final fechaLimite = DateTime.parse(mostrarHasta);
+        return DateTime.now().isAfter(fechaLimite);
+      }
+      
+      // Si no tiene mostrarHasta, verificar por fechaRegistro (5 minutos)
+      final fechaRegistro = DateTime.parse(notification.fechaRegistro);
+      final diferencia = DateTime.now().difference(fechaRegistro);
+      return diferencia.inMinutes > 5;
+    } catch (e) {
+      print('Error al verificar expiración de notificación del sistema: $e');
       return false;
     }
   }

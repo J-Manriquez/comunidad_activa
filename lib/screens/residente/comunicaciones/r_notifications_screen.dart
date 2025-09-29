@@ -28,6 +28,7 @@ class _ResidenteNotificationsScreenState
   final NotificationService _notificationService = NotificationService();
   final FirestoreService _firestoreService = FirestoreService();
   final AuthService _authService = AuthService();
+  final TextEditingController _respuestaNotificacionController = TextEditingController();
   ResidenteModel? _residente;
   bool _isLoading = true;
 
@@ -1583,6 +1584,12 @@ Future<void> _responderConfirmacionEntrega(
                             ),
                           ),
                         ),
+                        
+                        // Campo de respuesta
+                        const SizedBox(height: 20),
+                        const Divider(),
+                        const SizedBox(height: 16),
+                        _buildCampoRespuestaNotificacion(additionalData['correspondenciaId']),
                       ],
                     ),
                   ),
@@ -1605,6 +1612,123 @@ Future<void> _responderConfirmacionEntrega(
         );
       },
     );
+  }
+
+  @override
+  void dispose() {
+    _respuestaNotificacionController.dispose();
+    super.dispose();
+  }
+
+  Widget _buildCampoRespuestaNotificacion(String? correspondenciaId) {
+    if (correspondenciaId == null) return const SizedBox.shrink();
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Responder:',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _respuestaNotificacionController,
+          decoration: const InputDecoration(
+            hintText: 'Escribe tu respuesta aquí...',
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.all(12),
+          ),
+          maxLines: 3,
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            ElevatedButton(
+              onPressed: () => _enviarRespuestaNotificacion(correspondenciaId),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue.shade600,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Enviar'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Future<void> _enviarRespuestaNotificacion(String correspondenciaId) async {
+    if (_respuestaNotificacionController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor, escribe una respuesta'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final user = _authService.currentUser;
+      if (user == null) return;
+
+      final nuevoMensaje = {
+        'mensaje': _respuestaNotificacionController.text.trim(),
+        'fechaHora': DateTime.now().toIso8601String(),
+        'usuarioId': user.uid,
+      };
+
+      // Obtener la correspondencia actual
+      final correspondenciaDoc = await FirebaseFirestore.instance
+          .collection(widget.condominioId)
+          .doc('correspondencia')
+          .collection('correspondencias')
+          .doc(correspondenciaId)
+          .get();
+
+      if (!correspondenciaDoc.exists) {
+        throw Exception('Correspondencia no encontrada');
+      }
+
+      final correspondenciaData = correspondenciaDoc.data()!;
+      List<dynamic> mensajesExistentes = correspondenciaData['infAdicional'] ?? [];
+      mensajesExistentes.add(nuevoMensaje);
+
+      // Actualizar en Firestore
+      await FirebaseFirestore.instance
+          .collection(widget.condominioId)
+          .doc('correspondencia')
+          .collection('correspondencias')
+          .doc(correspondenciaId)
+          .update({
+        'infAdicional': mensajesExistentes,
+      });
+
+      // Limpiar el campo de texto
+      _respuestaNotificacionController.clear();
+
+      // Mostrar mensaje de éxito
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Respuesta enviada correctamente'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      // Cerrar el modal
+      Navigator.of(context).pop();
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al enviar respuesta: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   String _formatearFechaNotificacion(String fechaHora) {

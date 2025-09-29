@@ -43,6 +43,7 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
   bool _isLoading = false;
   bool _escuchaActiva = false;
   Timer? _signatureUpdateTimer;
+  StreamSubscription? _notificacionesSubscription;
   
   @override
   void initState() {
@@ -89,6 +90,7 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
       _signatureController.removeListener(_onSignatureChanged);
     }
     _signatureUpdateTimer?.cancel();
+    _notificacionesSubscription?.cancel();
     _signatureController.dispose();
     super.dispose();
   }
@@ -1185,7 +1187,7 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
     print('Correspondencia ID: ${widget.correspondencia.id}');
     
     // Escuchar cambios en el campo notificacionEntrega de la correspondencia
-    _correspondenciaService.escucharNotificacionesEntrega(
+    _notificacionesSubscription = _correspondenciaService.escucharNotificacionesEntrega(
       widget.condominioId,
       widget.correspondencia.id,
     ).listen((notificaciones) {
@@ -1611,6 +1613,14 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
       
       if (mounted) {
         print('Cerrando modal y mostrando mensaje de éxito');
+        
+        // Resetear estado de notificación antes de cerrar
+        setState(() {
+          _esperandoConfirmacion = false;
+          _confirmacionRecibida = false;
+          _entregaRechazada = false;
+        });
+        
         Navigator.of(context).pop(true); // Retornar true para indicar éxito
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

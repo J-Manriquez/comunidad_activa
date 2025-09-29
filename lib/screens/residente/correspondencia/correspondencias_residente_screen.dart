@@ -33,11 +33,24 @@ class _CorrespondenciasResidenteScreenState extends State<CorrespondenciasReside
   bool _isLoading = true;
   String? _error;
   bool _mostrarRecibidas = true; // Toggle para correspondencias activas recibidas/enviadas
+  final TextEditingController _respuestaController = TextEditingController();
+  final Map<String, TextEditingController> _respuestaControllers = {};
+  final Map<String, bool> _mensajesExpandidos = {};
   
   @override
   void initState() {
     super.initState();
     _loadResidenteData();
+  }
+
+  @override
+  void dispose() {
+    _respuestaController.dispose();
+    for (var controller in _respuestaControllers.values) {
+      controller.dispose();
+    }
+    _respuestaControllers.clear();
+    super.dispose();
   }
   
   Future<void> _loadResidenteData() async {
@@ -625,17 +638,21 @@ class _CorrespondenciasResidenteScreenState extends State<CorrespondenciasReside
   }
   
   Widget _buildCorrespondenciaCard(CorrespondenciaModel correspondencia) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      child: InkWell(
-        onTap: () => _showCorrespondenciaModal(correspondencia),
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return StatefulBuilder(
+      builder: (context, setCardState) {
+        final isExpanded = _mensajesExpandidos[correspondencia.id] ?? false;
+        
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          elevation: 2,
+          child: InkWell(
+            onTap: () => _showCorrespondenciaModal(correspondencia),
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
             Row(
               children: [
                 Icon(
@@ -698,54 +715,118 @@ class _CorrespondenciasResidenteScreenState extends State<CorrespondenciasReside
             ),
             // Observaciones no están disponibles en el modelo actual
             
-            // Mostrar mensajes adicionales si existen
+            // Mostrar mensajes adicionales si existen (colapsable)
             if (correspondencia.infAdicional?.isNotEmpty == true) ...[
               const SizedBox(height: 8),
               const Divider(),
               const SizedBox(height: 8),
-              Text(
-                'Mensajes adicionales:',
-                style: TextStyle(
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey.shade700,
+              GestureDetector(
+                onTap: () {
+                  setCardState(() {
+                    _mensajesExpandidos[correspondencia.id] = !isExpanded;
+                  });
+                },
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      isExpanded
+                          ? 'Mensajes adicionales:'
+                          : 'Mensajes adicionales (${correspondencia.infAdicional!.length}):',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    Icon(
+                      isExpanded ? Icons.expand_less : Icons.expand_more,
+                      color: Colors.grey.shade600,
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 8),
-              ...correspondencia.infAdicional!.map((mensaje) {
-                final mensajeTexto = mensaje['mensaje'] as String? ?? '';
-                final timestamp = mensaje['timestamp'] as Timestamp?;
-                final fechaFormateada = timestamp != null 
-                    ? _formatDateTime(timestamp)
-                    : 'Fecha no disponible';
-                
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue.shade200),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        mensajeTexto,
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        fechaFormateada,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 400),
+                curve: Curves.easeInOut,
+                child: isExpanded
+                    ? Column(
+                        children: [
+                          const SizedBox(height: 8),
+                          ...correspondencia.infAdicional!.map((mensaje) {
+                            final mensajeTexto = mensaje['mensaje'] as String? ?? '';
+                            final usuarioId = mensaje['usuarioId'] as String? ?? '';
+                            // Buscar tanto 'timestamp' como 'fechaHora' para compatibilidad
+                            final timestamp = mensaje['timestamp'];
+                            final fechaHora = mensaje['fechaHora'];
+                            final fechaFormateada = timestamp != null 
+                                ? _formatDateTime(timestamp)
+                                : fechaHora != null
+                                    ? _formatDateTime(fechaHora)
+                                    : 'Fecha no disponible';
+                            
+                            return AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.blue.shade200),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    mensajeTexto,
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        fechaFormateada,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                      if (usuarioId.isNotEmpty)
+                                        Text(
+                                          usuarioId == 'admin' ? 'Administrador' : 'Residente',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade600,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
             ],
+            
+            // Campo para responder (solo visible cuando los mensajes están expandidos)
+            if (correspondencia.infAdicional?.isNotEmpty == true)
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeInOut,
+                  child: isExpanded
+                      ? Column(
+                          children: [
+                            const SizedBox(height: 16),
+                            _buildCampoRespuesta(correspondencia),
+                          ],
+                        )
+                      : const SizedBox.shrink(),
+                ),
             
             // Switch para solicitar aceptación (solo visible si eleccionResidente está activo)
             StreamBuilder<CorrespondenciaConfigModel>(
@@ -815,6 +896,8 @@ class _CorrespondenciasResidenteScreenState extends State<CorrespondenciasReside
         ),
       ),
     ));
+      },
+    );
   }
   
   Future<void> _updateSolicitarAceptacion(CorrespondenciaModel correspondencia, bool value) async {
@@ -950,7 +1033,7 @@ class _CorrespondenciasResidenteScreenState extends State<CorrespondenciasReside
                         ],
                         
                         // Mensajes adicionales
-                        if (correspondencia.infAdicional?.isNotEmpty == true) ...[
+                        if (correspondencia.infAdicional?.isNotEmpty == true) ...[  
                           const SizedBox(height: 20),
                           _buildModalSection(
                             'Mensajes Adicionales',
@@ -959,6 +1042,10 @@ class _CorrespondenciasResidenteScreenState extends State<CorrespondenciasReside
                             }).toList(),
                           ),
                         ],
+                        
+                        // Campo de respuesta
+                        const SizedBox(height: 20),
+                        _buildCampoRespuesta(correspondencia),
                         
                         // Firma (si está entregado)
                         if (correspondencia.firma != null && correspondencia.firma!.isNotEmpty) ...[
@@ -1156,10 +1243,15 @@ class _CorrespondenciasResidenteScreenState extends State<CorrespondenciasReside
 
   Widget _buildMensajeItem(Map<String, dynamic> mensaje) {
     final mensajeTexto = mensaje['mensaje'] as String? ?? '';
+    final usuarioId = mensaje['usuarioId'] as String? ?? '';
+    // Buscar tanto 'timestamp' como 'fechaHora' para compatibilidad
     final timestamp = mensaje['timestamp'];
+    final fechaHora = mensaje['fechaHora'];
     final fechaFormateada = timestamp != null 
         ? _formatDateTime(timestamp)
-        : 'Fecha no disponible';
+        : fechaHora != null
+            ? _formatDateTime(fechaHora)
+            : 'Fecha no disponible';
     
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -1173,21 +1265,35 @@ class _CorrespondenciasResidenteScreenState extends State<CorrespondenciasReside
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(
-                Icons.message,
-                color: Colors.amber.shade600,
-                size: 16,
+              Row(
+                children: [
+                  Icon(
+                    Icons.message,
+                    color: Colors.amber.shade600,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    fechaFormateada,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Text(
-                fechaFormateada,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
-                  fontWeight: FontWeight.w500,
+              if (usuarioId.isNotEmpty)
+                Text(
+                  usuarioId == 'admin' ? 'Administrador' : 'Residente',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -1777,5 +1883,183 @@ class _CorrespondenciasResidenteScreenState extends State<CorrespondenciasReside
     String hora = '${parsedDate.hour.toString().padLeft(2, '0')}:${parsedDate.minute.toString().padLeft(2, '0')}:${parsedDate.second.toString().padLeft(2, '0')}';
     
     return {'fecha': fecha, 'hora': hora};
+  }
+
+  Widget _buildCampoRespuesta(CorrespondenciaModel correspondencia) {
+    // Crear un controlador único para cada correspondencia
+    final controllerId = 'modal_${correspondencia.id}';
+    if (!_respuestaControllers.containsKey(controllerId)) {
+      _respuestaControllers[controllerId] = TextEditingController();
+    }
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Responder:',
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _respuestaControllers[controllerId],
+            maxLines: 3,
+            decoration: const InputDecoration(
+              hintText: 'Escribe tu respuesta...',
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.all(12),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              ElevatedButton(
+                onPressed: () => _enviarRespuestaModal(correspondencia, controllerId),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Enviar'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _enviarRespuesta(CorrespondenciaModel correspondencia) async {
+    if (_respuestaController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor, escribe una respuesta'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      // Usar el condominioId disponible en la pantalla
+      final condominioId = widget.condominioId;
+
+      final nuevoMensaje = {
+        'mensaje': _respuestaController.text.trim(),
+        'fechaHora': DateTime.now().toIso8601String(),
+        'usuarioId': user.uid,
+      };
+
+      // Obtener mensajes existentes
+      List<dynamic> mensajesExistentes = correspondencia.infAdicional ?? [];
+      mensajesExistentes.add(nuevoMensaje);
+
+      // Actualizar en Firestore con la ruta correcta
+      await FirebaseFirestore.instance
+          .collection(condominioId)
+          .doc('correspondencia')
+          .collection('correspondencias')
+          .doc(correspondencia.id)
+          .update({
+        'infAdicional': mensajesExistentes,
+      });
+
+      // Limpiar el campo de texto
+      _respuestaController.clear();
+
+      // Mostrar mensaje de éxito
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Respuesta enviada correctamente'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      // Cerrar el modal - el StreamBuilder se actualizará automáticamente
+      Navigator.of(context).pop();
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al enviar respuesta: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _enviarRespuestaModal(CorrespondenciaModel correspondencia, String controllerId) async {
+    final controller = _respuestaControllers[controllerId];
+    if (controller == null || controller.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor, escribe una respuesta'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      // Usar el condominioId disponible en la pantalla
+      final condominioId = widget.condominioId;
+
+      final nuevoMensaje = {
+        'mensaje': controller.text.trim(),
+        'fechaHora': DateTime.now().toIso8601String(),
+        'usuarioId': user.uid,
+      };
+
+      // Obtener mensajes existentes
+      List<dynamic> mensajesExistentes = correspondencia.infAdicional ?? [];
+      mensajesExistentes.add(nuevoMensaje);
+
+      // Actualizar en Firestore con la ruta correcta
+      await FirebaseFirestore.instance
+          .collection(condominioId)
+          .doc('correspondencia')
+          .collection('correspondencias')
+          .doc(correspondencia.id)
+          .update({
+        'infAdicional': mensajesExistentes,
+      });
+
+      // Limpiar el campo de texto
+      controller.clear();
+
+      // Mostrar mensaje de éxito
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Respuesta enviada correctamente'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      // Cerrar el modal - el StreamBuilder se actualizará automáticamente
+      Navigator.of(context).pop();
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al enviar respuesta: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

@@ -320,8 +320,11 @@ class _CorrespondenciasActivasScreenState
     );
 
     if (resultado == true && mounted) {
-      // La entrega fue exitosa, el modal ya mostró el mensaje de éxito
-      // No necesitamos hacer nada adicional aquí
+      // La entrega fue exitosa, actualizar la lista para reflejar los cambios
+      setState(() {
+        // Esto forzará la reconstrucción del widget y actualizará la lista
+        // de correspondencias, removiendo el estilo de notificación de entrega
+      });
     }
   }
 }
