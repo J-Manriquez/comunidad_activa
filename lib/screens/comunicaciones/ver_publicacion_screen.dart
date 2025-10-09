@@ -5,6 +5,7 @@ import '../../models/user_model.dart';
 import '../../models/publicacion_model.dart';
 import '../../services/publicacion_service.dart';
 import '../../utils/profile_image.dart';
+import '../../utils/image_display_widget.dart';
 
 class VerPublicacionScreen extends StatefulWidget {
   final PublicacionModel publicacion;
@@ -61,16 +62,24 @@ class _VerPublicacionScreenState extends State<VerPublicacionScreen> {
     }
   }
 
-  List<String> _obtenerImagenes() {
-    final imagenes = <String>[];
+  List<Map<String, dynamic>> _obtenerImagenes() {
+    final imagenes = <Map<String, dynamic>>[];
     final additionalData = _publicacion.additionalData;
     
     if (additionalData != null) {
-      // Buscar imágenes en additionalData
-      for (int i = 1; i <= 5; i++) {
-        final imagen = additionalData['imagen$i'];
-        if (imagen != null && imagen.toString().isNotEmpty) {
-          imagenes.add(imagen.toString());
+      // Buscar imágenes en additionalData (soporte para ambos formatos)
+      for (int i = 1; i <= 3; i++) {
+        // Nuevo formato fragmentado
+        final imagenData = additionalData['imagen${i}Data'];
+        if (imagenData != null && imagenData is Map<String, dynamic>) {
+          imagenes.add(imagenData);
+        }
+        // Formato anterior Base64
+        else {
+          final imagenBase64 = additionalData['imagen$i'] ?? additionalData['imagen${i}Base64'];
+          if (imagenBase64 != null && imagenBase64.toString().isNotEmpty) {
+            imagenes.add({'type': 'base64', 'data': imagenBase64.toString()});
+          }
         }
       }
     }
@@ -78,7 +87,7 @@ class _VerPublicacionScreenState extends State<VerPublicacionScreen> {
     return imagenes;
   }
 
-  void _mostrarImagenCompleta(String imagenBase64, int index) {
+  void _mostrarImagenCompleta(Map<String, dynamic> imagenData, int index) {
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -87,8 +96,8 @@ class _VerPublicacionScreenState extends State<VerPublicacionScreen> {
           children: [
             Center(
               child: InteractiveViewer(
-                child: Image.memory(
-                  base64Decode(imagenBase64.split(',').last),
+                child: ImageDisplayWidget(
+                  imageData: imagenData,
                   fit: BoxFit.contain,
                 ),
               ),
@@ -97,7 +106,7 @@ class _VerPublicacionScreenState extends State<VerPublicacionScreen> {
               top: 40,
               right: 20,
               child: IconButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.of(context).pop(),
                 icon: const Icon(
                   Icons.close,
                   color: Colors.white,
@@ -302,7 +311,7 @@ class _VerPublicacionScreenState extends State<VerPublicacionScreen> {
     );
   }
 
-  Widget _buildImagenesGrid(List<String> imagenes) {
+  Widget _buildImagenesGrid(List<Map<String, dynamic>> imagenes) {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -314,9 +323,9 @@ class _VerPublicacionScreenState extends State<VerPublicacionScreen> {
       ),
       itemCount: imagenes.length,
       itemBuilder: (context, index) {
-        final imagen = imagenes[index];
+        final imagenData = imagenes[index];
         return GestureDetector(
-          onTap: () => _mostrarImagenCompleta(imagen, index),
+          onTap: () => _mostrarImagenCompleta(imagenData, index),
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
@@ -334,8 +343,8 @@ class _VerPublicacionScreenState extends State<VerPublicacionScreen> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.memory(
-                    base64Decode(imagen.split(',').last),
+                  ImageDisplayWidget(
+                    imageData: imagenData,
                     fit: BoxFit.cover,
                   ),
                   // Overlay para indicar que se puede tocar

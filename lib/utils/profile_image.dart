@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:comunidad_activa/utils/storage_service.dart';
 
 class ProfileImage extends StatefulWidget {
-  final String base64Image;
+  final String? base64Image;
+  final Map<String, dynamic>? imageData;
   final double width;
   final double height;
   final BoxFit fit;
@@ -12,12 +14,14 @@ class ProfileImage extends StatefulWidget {
 
   const ProfileImage({
     Key? key,
-    required this.base64Image,
+    this.base64Image,
+    this.imageData,
     this.width = 100,
     this.height = 100,
     this.fit = BoxFit.cover,
     this.radius = 50,
-  }) : super(key: key);
+  }) : assert(base64Image != null || imageData != null, 'Debe proporcionar base64Image o imageData'),
+       super(key: key);
 
   @override
   State<ProfileImage> createState() => _ProfileImageState();
@@ -27,6 +31,7 @@ class _ProfileImageState extends State<ProfileImage> {
   bool _isLoading = true;
   bool _hasError = false;
   Uint8List? _imageBytes;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -37,32 +42,59 @@ class _ProfileImageState extends State<ProfileImage> {
   @override
   void didUpdateWidget(ProfileImage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.base64Image != widget.base64Image) {
+    if (oldWidget.base64Image != widget.base64Image || 
+        oldWidget.imageData != widget.imageData) {
       _processImage();
     }
   }
 
   Future<void> _processImage() async {
-    if (widget.base64Image.isEmpty || widget.base64Image.trim().isEmpty) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _hasError = false;
-        });
-      }
-      return;
-    }
-
-    if (mounted) {
-      setState(() {
-        _isLoading = true;
-        _hasError = false;
-      });
-    }
+    if (!mounted) return;
+    
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _imageBytes = null;
+      _errorMessage = null;
+    });
 
     try {
+      String imageToProcess;
+      
+      // Determinar qué tipo de imagen procesar
+      if (widget.imageData != null) {
+        // Procesar imagen fragmentada
+        if (StorageService.esImagenFragmentada(widget.imageData!)) {
+          final type = widget.imageData!['type'] as String;
+          
+          if (type == 'external_fragmented') {
+            throw Exception('Las imágenes fragmentadas externamente requieren carga asíncrona');
+          }
+          
+          imageToProcess = StorageService.obtenerImagenCompleta(widget.imageData!);
+        } else {
+          // Imagen normal en formato de mapa
+          imageToProcess = widget.imageData!['data'] as String? ?? '';
+        }
+      } else if (widget.base64Image != null) {
+        // Imagen base64 tradicional
+        imageToProcess = widget.base64Image!;
+      } else {
+        throw Exception('No image data provided');
+      }
+
+      if (imageToProcess.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _hasError = false;
+          });
+        }
+        return;
+      }
+
       // Verificar si es una URL de blob codificada en base64
-      String cleanBase64 = widget.base64Image.trim();
+      String cleanBase64 = imageToProcess.trim();
       
       // Validar que la cadena no esté vacía después del trim
       if (cleanBase64.isEmpty) {
@@ -116,6 +148,7 @@ class _ProfileImageState extends State<ProfileImage> {
           setState(() {
             _hasError = true;
             _isLoading = false;
+            _errorMessage = e.toString();
           });
         }
       }
@@ -125,6 +158,7 @@ class _ProfileImageState extends State<ProfileImage> {
         setState(() {
           _hasError = true;
           _isLoading = false;
+          _errorMessage = e.toString();
         });
       }
     }
@@ -152,7 +186,7 @@ class _ProfileImageState extends State<ProfileImage> {
       );
     }
 
-    if (_hasError || widget.base64Image.isEmpty || _imageBytes == null) {
+    if (_hasError || (widget.base64Image?.isEmpty ?? true && widget.imageData == null) || _imageBytes == null) {
       return _buildPlaceholder();
     }
 

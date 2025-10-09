@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../../../models/user_model.dart';
 import '../../../models/publicacion_model.dart';
 import '../../../services/publicacion_service.dart';
+import '../../../widgets/image_carousel_widget.dart';
 import '../../comunicaciones/ver_publicacion_screen.dart';
 
 class PublicacionesResidenteScreen extends StatefulWidget {
@@ -188,6 +189,71 @@ class _PublicacionesResidenteScreenState extends State<PublicacionesResidenteScr
     );
   }
 
+  Widget _buildImagenesPublicacion(PublicacionModel publicacion) {
+    List<Map<String, dynamic>> images = [];
+    
+    if (publicacion.additionalData != null) {
+      // Buscar imagen1Data, imagen2Data, imagen3Data
+      for (int i = 1; i <= 3; i++) {
+        final imageKey = 'imagen${i}Data';
+        if (publicacion.additionalData![imageKey] != null) {
+          final imageData = publicacion.additionalData![imageKey];
+          if (imageData is Map<String, dynamic>) {
+            // Imagen fragmentada
+            images.add(imageData);
+          } else if (imageData is String && imageData.isNotEmpty) {
+            // Imagen Base64 (compatibilidad hacia atrás)
+            images.add({'type': 'base64', 'data': imageData});
+          }
+        }
+      }
+    }
+    
+    if (images.isEmpty) {
+      return Container(
+        width: 120,
+        height: 100,
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          Icons.article,
+          color: Colors.grey[400],
+          size: 40,
+        ),
+      );
+    }
+
+    return Container(
+      width: 120,
+      height: 100,
+      child: ImageCarouselWidget(
+        images: images,
+        width: 120,
+        height: 100,
+        fit: BoxFit.cover,
+        borderRadius: BorderRadius.circular(8),
+        onImageTap: (imageData) {
+          _mostrarImagenCompleta(publicacion, imageData);
+        },
+      ),
+    );
+  }
+
+  void _mostrarImagenCompleta(PublicacionModel publicacion, Map<String, dynamic> imageData) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => VerPublicacionScreen(
+          publicacion: publicacion,
+          currentUser: widget.currentUser,
+          esAdministrador: false,
+        ),
+      ),
+    );
+  }
+
   Widget _buildPublicacionCard(PublicacionModel publicacion) {
     final esLeida = _esPublicacionLeida(publicacion);
     
@@ -205,90 +271,102 @@ class _PublicacionesResidenteScreenState extends State<PublicacionesResidenteScr
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header con título y estado
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      publicacion.titulo,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: esLeida ? Colors.grey[700] : Colors.black,
-                      ),
-                    ),
-                  ),
-                  if (!esLeida)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.green[100],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        'NUEVA',
-                        style: TextStyle(
-                          color: Colors.green[700],
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+              // Carrusel de imágenes a la izquierda
+              _buildImagenesPublicacion(publicacion),
+              const SizedBox(width: 16),
+              
+              // Contenido de texto a la derecha
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header con título y estado
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            publicacion.titulo,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: esLeida ? Colors.grey[700] : Colors.black,
+                            ),
+                          ),
                         ),
+                        if (!esLeida)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.green[100],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              'NUEVA',
+                              style: TextStyle(
+                                color: Colors.green[700],
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    
+                    // Contenido (preview)
+                    Text(
+                      publicacion.contenido.length > 100
+                          ? '${publicacion.contenido.substring(0, 100)}...'
+                          : publicacion.contenido,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: esLeida ? Colors.grey[600] : Colors.grey[800],
+                        height: 1.4,
                       ),
                     ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              
-              // Contenido (preview)
-              Text(
-                publicacion.contenido.length > 100
-                    ? '${publicacion.contenido.substring(0, 100)}...'
-                    : publicacion.contenido,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: esLeida ? Colors.grey[600] : Colors.grey[800],
-                  height: 1.4,
+                    const SizedBox(height: 12),
+                    
+                    // Footer con fecha y acción
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.schedule,
+                          size: 14,
+                          color: Colors.grey[500],
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _formatearFecha(publicacion.fechaPublicacion),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          'Toca para leer más',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.green[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.arrow_forward_ios,
+                          size: 12,
+                          color: Colors.green[600],
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 12),
-              
-              // Footer con fecha y acción
-              Row(
-                children: [
-                  Icon(
-                    Icons.schedule,
-                    size: 14,
-                    color: Colors.grey[500],
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    _formatearFecha(publicacion.fechaPublicacion),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[500],
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    'Toca para leer más',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.green[600],
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Icon(
-                    Icons.arrow_forward_ios,
-                    size: 12,
-                    color: Colors.green[600],
-                  ),
-                ],
               ),
             ],
           ),

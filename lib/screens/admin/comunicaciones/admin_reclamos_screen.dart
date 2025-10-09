@@ -5,6 +5,9 @@ import '../../../services/reclamo_service.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'dart:typed_data';
+import '../../../utils/storage_service.dart';
+import '../../../utils/image_display_widget.dart';
+import '../../../widgets/image_carousel_widget.dart';
 
 class AdminReclamosScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -222,14 +225,28 @@ class _AdminReclamosScreenState extends State<AdminReclamosScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              Text(
-                reclamo.contenido,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey.shade700,
-                ),
+              // Mostrar contenido y carrusel de imágenes si existen
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Carrusel de imágenes a la izquierda si existen
+                  if (_tieneImagenes(reclamo.additionalData)) ...[
+                    _buildImagenesReclamo(reclamo.additionalData),
+                    const SizedBox(width: 12),
+                  ],
+                  // Contenido del reclamo
+                  Expanded(
+                    child: Text(
+                      reclamo.contenido,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 8),
               Row(
@@ -297,15 +314,155 @@ class _AdminReclamosScreenState extends State<AdminReclamosScreen> {
   bool _tieneImagenes(Map<String, dynamic>? additionalData) {
     if (additionalData == null) return false;
     
+    // Verificar imágenes usando las mismas claves que se guardan en crear reclamo
     for (int i = 1; i <= 3; i++) {
       final imagenKey = 'imagen${i}Base64';
       if (additionalData.containsKey(imagenKey) && 
-          additionalData[imagenKey] != null && 
-          additionalData[imagenKey].toString().isNotEmpty) {
-        return true;
+          additionalData[imagenKey] != null) {
+        final imagenData = additionalData[imagenKey];
+        // Puede ser String (Base64 tradicional) o Map (fragmentada)
+        if (imagenData is String && imagenData.isNotEmpty) {
+          return true;
+        } else if (imagenData is Map<String, dynamic>) {
+          return true;
+        }
       }
     }
     return false;
+  }
+
+  Widget _buildImagenesReclamo(Map<String, dynamic>? additionalData) {
+    if (additionalData == null) return const SizedBox.shrink();
+
+    print('🖼️ AdminReclamosScreen - _buildImagenesReclamo - Iniciando construcción del carrusel');
+    print('🖼️ AdminReclamosScreen - _buildImagenesReclamo - additionalData: $additionalData');
+    
+    // Extraer las imágenes del additionalData usando la MISMA lógica que r_reclamos_screen.dart
+    List<Map<String, dynamic>> imagenes = [];
+    
+    for (int i = 1; i <= 3; i++) {
+      final imagenKey = 'imagen${i}Base64';
+      
+      print('🖼️ AdminReclamosScreen - _buildImagenesReclamo - Procesando imagen $i con clave: $imagenKey');
+      
+      if (additionalData.containsKey(imagenKey) && 
+          additionalData[imagenKey] != null) {
+        final imagenData = additionalData[imagenKey];
+        print('🖼️ AdminReclamosScreen - _buildImagenesReclamo - Imagen $i encontrada: ${imagenData.runtimeType}');
+        print('🖼️ AdminReclamosScreen - _buildImagenesReclamo - Contenido de imagenData: $imagenData');
+        
+        if (imagenData is String && imagenData.isNotEmpty) {
+          // Imagen tradicional Base64 - usar estructura compatible con ImageDisplayWidget
+          imagenes.add({
+            'type': 'normal',
+            'data': imagenData
+          });
+          print('✅ AdminReclamosScreen - _buildImagenesReclamo - Imagen Base64 $i agregada al carrusel');
+        } else if (imagenData is Map<String, dynamic>) {
+          // Imagen fragmentada - usar la misma lógica que r_reclamos_screen.dart
+          if (imagenData.containsKey('fragments') && imagenData['fragments'] is List) {
+            final fragments = imagenData['fragments'] as List;
+            print('🖼️ AdminReclamosScreen - _buildImagenesReclamo - Fragmentos encontrados: ${fragments.length}');
+            
+            if (fragments.length <= 10) {
+              // Fragmentada internamente
+              imagenes.add({
+                'type': 'internal_fragmented',
+                'fragments': fragments,
+                'original_type': imagenData['original_type'] ?? 'image/jpeg'
+              });
+              print('✅ AdminReclamosScreen - _buildImagenesReclamo - Imagen fragmentada interna $i agregada');
+            } else {
+              // Fragmentada externamente
+              imagenes.add({
+                'type': 'external_fragmented',
+                'fragment_id': imagenData['fragment_id'],
+                'total_fragments': imagenData['total_fragments'],
+                'original_type': imagenData['original_type'] ?? 'image/jpeg'
+              });
+              print('✅ AdminReclamosScreen - _buildImagenesReclamo - Imagen fragmentada externa $i agregada');
+            }
+          } else if (imagenData.containsKey('fragment_id')) {
+            // Fragmentada externamente sin lista de fragmentos
+            imagenes.add({
+              'type': 'external_fragmented',
+              'fragment_id': imagenData['fragment_id'],
+              'total_fragments': imagenData['total_fragments'] ?? 1,
+              'original_type': imagenData['original_type'] ?? 'image/jpeg'
+            });
+            print('✅ AdminReclamosScreen - _buildImagenesReclamo - Imagen fragmentada externa $i agregada (sin lista)');
+          } else {
+            // Estructura desconocida, intentar extraer datos directamente
+            print('⚠️ AdminReclamosScreen - _buildImagenesReclamo - Estructura desconocida para imagen $i: ${imagenData.keys}');
+            
+            // Buscar si hay datos base64 directos en la estructura
+            String? base64Data;
+            if (imagenData.containsKey('data') && imagenData['data'] is String) {
+              base64Data = imagenData['data'];
+            } else if (imagenData.containsKey('base64') && imagenData['base64'] is String) {
+              base64Data = imagenData['base64'];
+            }
+            
+            if (base64Data != null && base64Data.isNotEmpty) {
+              imagenes.add({
+                'type': 'normal',
+                'data': base64Data
+              });
+              print('✅ AdminReclamosScreen - _buildImagenesReclamo - Imagen extraída como normal $i');
+            } else {
+              print('❌ AdminReclamosScreen - _buildImagenesReclamo - No se pudo procesar imagen $i');
+            }
+          }
+        }
+      }
+    }
+
+    print('🖼️ AdminReclamosScreen - _buildImagenesReclamo - Total de imágenes encontradas: ${imagenes.length}');
+
+    if (imagenes.isEmpty) {
+      print('⚠️ AdminReclamosScreen - _buildImagenesReclamo - No se encontraron imágenes válidas');
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      height: 100,
+      width: 120,
+      child: ImageCarouselWidget(
+        images: imagenes,
+        height: 100,
+        width: 120,
+        onImageTap: (imageData) {
+          // Mostrar imagen en pantalla completa
+          showDialog(
+            context: context,
+            builder: (context) => Dialog(
+              backgroundColor: Colors.transparent,
+              child: Stack(
+                children: [
+                  Center(
+                    child: Container(
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(context).size.height * 0.8,
+                        maxWidth: MediaQuery.of(context).size.width * 0.9,
+                      ),
+                      child: ImageDisplayWidget(imageData: imageData),
+                    ),
+                  ),
+                  Positioned(
+                    top: 40,
+                    right: 20,
+                    child: IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 }
 
@@ -626,18 +783,95 @@ class _ReclamoDetalleDialogState extends State<_ReclamoDetalleDialog> {
   Widget _buildImagenesEvidencia(Map<String, dynamic>? additionalData) {
     if (additionalData == null) return const SizedBox.shrink();
 
-    // Extraer las imágenes del additionalData
-    List<String> imagenes = [];
+    print('🖼️ AdminReclamosScreen - _buildImagenesEvidencia - Iniciando construcción del carrusel');
+    print('🖼️ AdminReclamosScreen - _buildImagenesEvidencia - additionalData: $additionalData');
+    
+    // Extraer las imágenes del additionalData usando la MISMA lógica que r_reclamos_screen.dart
+    List<Map<String, dynamic>> imagenes = [];
+    
     for (int i = 1; i <= 3; i++) {
       final imagenKey = 'imagen${i}Base64';
+      
+      print('🖼️ AdminReclamosScreen - _buildImagenesEvidencia - Procesando imagen $i con clave: $imagenKey');
+      
       if (additionalData.containsKey(imagenKey) && 
-          additionalData[imagenKey] != null && 
-          additionalData[imagenKey].toString().isNotEmpty) {
-        imagenes.add(additionalData[imagenKey]);
+          additionalData[imagenKey] != null) {
+        final imagenData = additionalData[imagenKey];
+        print('🖼️ AdminReclamosScreen - _buildImagenesEvidencia - Imagen $i encontrada: ${imagenData.runtimeType}');
+        print('🖼️ AdminReclamosScreen - _buildImagenesEvidencia - Contenido de imagenData: $imagenData');
+        
+        if (imagenData is String && imagenData.isNotEmpty) {
+          // Imagen tradicional Base64 - usar estructura compatible con ImageDisplayWidget
+          imagenes.add({
+            'type': 'normal',
+            'data': imagenData
+          });
+          print('✅ AdminReclamosScreen - _buildImagenesEvidencia - Imagen Base64 $i agregada al carrusel');
+        } else if (imagenData is Map<String, dynamic>) {
+          // Imagen fragmentada - usar la misma lógica que r_reclamos_screen.dart
+          if (imagenData.containsKey('fragments') && imagenData['fragments'] is List) {
+            final fragments = imagenData['fragments'] as List;
+            print('🖼️ AdminReclamosScreen - _buildImagenesEvidencia - Fragmentos encontrados: ${fragments.length}');
+            
+            if (fragments.length <= 10) {
+              // Fragmentada internamente
+              imagenes.add({
+                'type': 'internal_fragmented',
+                'fragments': fragments,
+                'original_type': imagenData['original_type'] ?? 'image/jpeg'
+              });
+              print('✅ AdminReclamosScreen - _buildImagenesEvidencia - Imagen fragmentada interna $i agregada');
+            } else {
+              // Fragmentada externamente
+              imagenes.add({
+                'type': 'external_fragmented',
+                'fragment_id': imagenData['fragment_id'],
+                'total_fragments': imagenData['total_fragments'],
+                'original_type': imagenData['original_type'] ?? 'image/jpeg'
+              });
+              print('✅ AdminReclamosScreen - _buildImagenesEvidencia - Imagen fragmentada externa $i agregada');
+            }
+          } else if (imagenData.containsKey('fragment_id')) {
+            // Fragmentada externamente sin lista de fragmentos
+            imagenes.add({
+              'type': 'external_fragmented',
+              'fragment_id': imagenData['fragment_id'],
+              'total_fragments': imagenData['total_fragments'] ?? 1,
+              'original_type': imagenData['original_type'] ?? 'image/jpeg'
+            });
+            print('✅ AdminReclamosScreen - _buildImagenesEvidencia - Imagen fragmentada externa $i agregada (sin lista)');
+          } else {
+            // Estructura desconocida, intentar extraer datos directamente
+            print('⚠️ AdminReclamosScreen - _buildImagenesEvidencia - Estructura desconocida para imagen $i: ${imagenData.keys}');
+            
+            // Buscar si hay datos base64 directos en la estructura
+            String? base64Data;
+            if (imagenData.containsKey('data') && imagenData['data'] is String) {
+              base64Data = imagenData['data'];
+            } else if (imagenData.containsKey('base64') && imagenData['base64'] is String) {
+              base64Data = imagenData['base64'];
+            }
+            
+            if (base64Data != null && base64Data.isNotEmpty) {
+              imagenes.add({
+                'type': 'normal',
+                'data': base64Data
+              });
+              print('✅ AdminReclamosScreen - _buildImagenesEvidencia - Imagen extraída como normal $i');
+            } else {
+              print('❌ AdminReclamosScreen - _buildImagenesEvidencia - No se pudo procesar imagen $i');
+            }
+          }
+        }
       }
     }
 
-    if (imagenes.isEmpty) return const SizedBox.shrink();
+    print('🖼️ AdminReclamosScreen - _buildImagenesEvidencia - Total de imágenes encontradas: ${imagenes.length}');
+
+    if (imagenes.isEmpty) {
+      print('⚠️ AdminReclamosScreen - _buildImagenesEvidencia - No se encontraron imágenes válidas');
+      return const SizedBox.shrink();
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -651,39 +885,38 @@ class _ReclamoDetalleDialogState extends State<_ReclamoDetalleDialog> {
           ),
         ),
         const SizedBox(height: 12),
-        SizedBox(
-          height: 120,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: imagenes.length,
-            itemBuilder: (context, index) {
-              return Container(
-                margin: const EdgeInsets.only(right: 12),
-                child: GestureDetector(
-                  onTap: () => _mostrarImagenCompleta(context, imagenes[index]),
-                  child: Container(
-                    width: 120,
-                    height: 120,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.memory(
-                        base64Decode(imagenes[index]),
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: Colors.grey[200],
-                            child: const Icon(
-                              Icons.error,
-                              color: Colors.grey,
-                            ),
-                          );
-                        },
+        Container(
+          height: 200,
+          child: ImageCarouselWidget(
+            images: imagenes,
+            height: 200,
+            width: double.infinity,
+            onImageTap: (imageData) {
+              // Mostrar imagen en pantalla completa
+              showDialog(
+                context: context,
+                builder: (context) => Dialog(
+                  backgroundColor: Colors.transparent,
+                  child: Stack(
+                    children: [
+                      Center(
+                        child: Container(
+                          constraints: BoxConstraints(
+                            maxHeight: MediaQuery.of(context).size.height * 0.8,
+                            maxWidth: MediaQuery.of(context).size.width * 0.9,
+                          ),
+                          child: ImageDisplayWidget(imageData: imageData),
+                        ),
                       ),
-                    ),
+                      Positioned(
+                        top: 40,
+                        right: 20,
+                        child: IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -692,7 +925,7 @@ class _ReclamoDetalleDialogState extends State<_ReclamoDetalleDialog> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Toca una imagen para verla en pantalla completa',
+          'Desliza para ver más imágenes. Toca una imagen para verla en pantalla completa',
           style: TextStyle(
             fontSize: 12,
             color: Colors.grey[600],
@@ -703,7 +936,7 @@ class _ReclamoDetalleDialogState extends State<_ReclamoDetalleDialog> {
     );
   }
 
-  void _mostrarImagenCompleta(BuildContext context, String imagenBase64) {
+  void _mostrarImagenCompleta(BuildContext context, Map<String, dynamic> imagenInfo) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -717,22 +950,27 @@ class _ReclamoDetalleDialogState extends State<_ReclamoDetalleDialog> {
                   boundaryMargin: const EdgeInsets.all(20),
                   minScale: 0.5,
                   maxScale: 4.0,
-                  child: Image.memory(
-                    base64Decode(imagenBase64),
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: Colors.grey[800],
-                        child: const Center(
-                          child: Icon(
-                            Icons.error,
-                            color: Colors.white,
-                            size: 50,
-                          ),
+                  child: imagenInfo['type'] == 'base64'
+                      ? Image.memory(
+                          base64Decode(imagenInfo['data']),
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey[800],
+                              child: const Center(
+                                child: Icon(
+                                  Icons.error,
+                                  color: Colors.white,
+                                  size: 50,
+                                ),
+                              ),
+                            );
+                          },
+                        )
+                      : ImageDisplayWidget(
+                          imageData: imagenInfo['data'],
+                          fit: BoxFit.contain,
                         ),
-                      );
-                    },
-                  ),
                 ),
               ),
               Positioned(

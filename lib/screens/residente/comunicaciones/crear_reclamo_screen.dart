@@ -4,6 +4,8 @@ import 'dart:convert';
 import '../../../models/user_model.dart';
 import '../../../services/reclamo_service.dart';
 import '../../../utils/storage_service.dart';
+import '../../../utils/image_display_widget.dart';
+import '../../../utils/fragment_storage_service.dart';
 
 class CrearReclamoScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -27,10 +29,11 @@ class _CrearReclamoScreenState extends State<CrearReclamoScreen> {
   bool _isLoading = false;
   bool _isUploadingImage = false;
   
-  // Variables para las imágenes
-  String? _imagen1Base64;
-  String? _imagen2Base64;
-  String? _imagen3Base64;
+  // Variables para las imágenes (ahora soportan fragmentación)
+  Map<String, dynamic>? _imagen1Data;
+  Map<String, dynamic>? _imagen2Data;
+  Map<String, dynamic>? _imagen3Data;
+  double _uploadProgress = 0.0;
 
   @override
   Widget build(BuildContext context) {
@@ -265,11 +268,11 @@ class _CrearReclamoScreenState extends State<CrearReclamoScreen> {
             ? _tipoPersonalizadoController.text 
             : _tipoSeleccionado!;
             
-        // Preparar additionalData con imágenes
+        // Preparar additionalData con imágenes fragmentadas
         Map<String, dynamic> additionalData = {};
-        if (_imagen1Base64 != null) additionalData['imagen1Base64'] = _imagen1Base64!;
-        if (_imagen2Base64 != null) additionalData['imagen2Base64'] = _imagen2Base64!;
-        if (_imagen3Base64 != null) additionalData['imagen3Base64'] = _imagen3Base64!;
+        if (_imagen1Data != null) additionalData['imagen1Base64'] = _imagen1Data!;
+        if (_imagen2Data != null) additionalData['imagen2Base64'] = _imagen2Data!;
+        if (_imagen3Data != null) additionalData['imagen3Base64'] = _imagen3Data!;
         
         await _reclamoService.crearReclamo(
           condominioId: widget.currentUser.condominioId.toString(),
@@ -310,31 +313,31 @@ class _CrearReclamoScreenState extends State<CrearReclamoScreen> {
       children: [
         Row(
           children: [
-            Expanded(child: _buildImagePicker(1, _imagen1Base64)),
+            Expanded(child: _buildImagePicker(1, _imagen1Data)),
             const SizedBox(width: 8),
-            Expanded(child: _buildImagePicker(2, _imagen2Base64)),
+            Expanded(child: _buildImagePicker(2, _imagen2Data)),
             const SizedBox(width: 8),
-            Expanded(child: _buildImagePicker(3, _imagen3Base64)),
+            Expanded(child: _buildImagePicker(3, _imagen3Data)),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildImagePicker(int imageNumber, String? imageBase64) {
+  Widget _buildImagePicker(int imageNumber, Map<String, dynamic>? imageData) {
     return Container(
       height: 100,
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey[300]!),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: imageBase64 != null
+      child: imageData != null
           ? Stack(
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.memory(
-                    base64Decode(imageBase64),
+                  child: ImageDisplayWidget(
+                    imageData: imageData,
                     width: double.infinity,
                     height: double.infinity,
                     fit: BoxFit.cover,
@@ -362,7 +365,14 @@ class _CrearReclamoScreenState extends State<CrearReclamoScreen> {
               ],
             )
           : _isUploadingImage
-          ? const Center(child: CircularProgressIndicator())
+          ? Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 8),
+                Text('${(_uploadProgress * 100).toInt()}%'),
+              ],
+            )
           : InkWell(
               onTap: () => _selectImage(imageNumber),
               child: Column(
@@ -376,7 +386,10 @@ class _CrearReclamoScreenState extends State<CrearReclamoScreen> {
                   const SizedBox(height: 4),
                   Text(
                     'Imagen $imageNumber',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
@@ -385,7 +398,10 @@ class _CrearReclamoScreenState extends State<CrearReclamoScreen> {
   }
 
   Future<void> _selectImage(int imageNumber) async {
-    setState(() => _isUploadingImage = true);
+    setState(() {
+      _isUploadingImage = true;
+      _uploadProgress = 0.0;
+    });
 
     try {
       final ImagePicker picker = ImagePicker();
@@ -397,19 +413,26 @@ class _CrearReclamoScreenState extends State<CrearReclamoScreen> {
       );
 
       if (image != null) {
-        final bytes = await image.readAsBytes();
-        final base64String = base64Encode(bytes);
+        // Usar el nuevo sistema de fragmentación
+        final imageData = await _storageService.procesarImagenFragmentada(
+          xFile: image,
+          onProgress: (progress) {
+            setState(() {
+              _uploadProgress = progress;
+            });
+          },
+        );
 
         setState(() {
           switch (imageNumber) {
             case 1:
-              _imagen1Base64 = base64String;
+              _imagen1Data = imageData;
               break;
             case 2:
-              _imagen2Base64 = base64String;
+              _imagen2Data = imageData;
               break;
             case 3:
-              _imagen3Base64 = base64String;
+              _imagen3Data = imageData;
               break;
           }
         });
@@ -427,13 +450,13 @@ class _CrearReclamoScreenState extends State<CrearReclamoScreen> {
     setState(() {
       switch (imageNumber) {
         case 1:
-          _imagen1Base64 = null;
+          _imagen1Data = null;
           break;
         case 2:
-          _imagen2Base64 = null;
+          _imagen2Data = null;
           break;
         case 3:
-          _imagen3Base64 = null;
+          _imagen3Data = null;
           break;
       }
     });

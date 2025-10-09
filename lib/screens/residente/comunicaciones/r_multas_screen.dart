@@ -5,6 +5,8 @@ import '../../../models/user_model.dart';
 import '../../../models/multa_model.dart';
 import 'package:intl/intl.dart';
 import 'historial_multas_screen.dart';
+import '../../../utils/image_display_widget.dart';
+import '../../../widgets/image_carousel_widget.dart';
 
 class MultasResidenteScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -343,135 +345,155 @@ class _MultasResidenteScreenState extends State<MultasResidenteScreen> {
         ),
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child: Column(
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Primera fila: Tipo de multa y estado
-              Row(
-                children: [
-                  Icon(
-                    Icons.warning_amber_rounded,
-                    color: yaLeida ? Colors.grey[600] : Colors.red[600],
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      multa.tipoMulta,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: yaLeida ? Colors.grey[700] : Colors.red[800],
-                      ),
-                    ),
-                  ),
-                  if (!yaLeida)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.red[100],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'NUEVA',
-                        style: TextStyle(
-                          color: Colors.red[700],
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              
-              // Segunda fila: Descripción
-              Text(
-                multa.contenido,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: yaLeida ? Colors.grey[600] : Colors.black87,
-                  fontSize: 13,
+              // Carrusel de imágenes a la izquierda
+              Container(
+                width: 120,
+                height: 100,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.grey.shade200,
                 ),
+                child: _buildMultaImages(multa),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(width: 12),
               
-              // Tercera fila: Monto y fecha
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Monto
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: yaLeida ? Colors.grey[200] : Colors.red[50],
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: yaLeida ? Colors.grey[400]! : Colors.red[200]!,
-                        width: 1,
-                      ),
-                    ),
-                    child: Text(
-                      valorMulta,
-                      style: TextStyle(
-                        color: yaLeida ? Colors.grey[700] : Colors.red[700],
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  
-                  // Fecha de aplicación
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.calendar_today,
-                        size: 14,
-                        color: Colors.grey[600],
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        _formatearFecha(multa.date),
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 12,
+              // Contenido de la multa a la derecha
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Primera fila: Tipo de multa y estado
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          color: yaLeida ? Colors.grey[600] : Colors.red[600],
+                          size: 18,
                         ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            multa.tipoMulta,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: yaLeida ? Colors.grey[700] : Colors.red[800],
+                            ),
+                          ),
+                        ),
+                        if (!yaLeida)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red[100],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'NUEVA',
+                              style: TextStyle(
+                                color: Colors.red[700],
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    
+                    // Segunda fila: Descripción
+                    Text(
+                      multa.contenido,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: yaLeida ? Colors.grey[600] : Colors.black87,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    
+                    // Tercera fila: Monto y fecha
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Monto
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: yaLeida ? Colors.grey[200] : Colors.red[50],
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: yaLeida ? Colors.grey[400]! : Colors.red[200]!,
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            valorMulta,
+                            style: TextStyle(
+                              color: yaLeida ? Colors.grey[700] : Colors.red[700],
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        
+                        // Fecha de aplicación
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.calendar_today,
+                              size: 14,
+                              color: Colors.grey[600],
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _formatearFecha(multa.date),
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    
+                    // Indicador de leída (si aplica)
+                    if (yaLeida) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            color: Colors.green[600],
+                            size: 14,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Leída',
+                            style: TextStyle(
+                              color: Colors.green[600],
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
-                  ),
-                ],
-              ),
-              
-              // Indicador de leída (si aplica)
-              if (yaLeida) ...[
-                const SizedBox(height: 6),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Icon(
-                      Icons.check_circle,
-                      color: Colors.green[600],
-                      size: 14,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Leída',
-                      style: TextStyle(
-                        color: Colors.green[600],
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
                   ],
                 ),
-              ],
+              ),
             ],
           ),
         ),
@@ -479,6 +501,113 @@ class _MultasResidenteScreenState extends State<MultasResidenteScreen> {
     );
   }
 
+  // Método para construir el carrusel de imágenes de la multa
+  Widget _buildMultaImages(MultaModel multa) {
+    List<Map<String, dynamic>> images = [];
+    
+    // Extraer imágenes del additionalData
+    if (multa.additionalData != null) {
+      for (int i = 1; i <= 3; i++) {
+        final imagenKey = 'imagen$i';
+        if (multa.additionalData![imagenKey] != null) {
+          final imagenData = multa.additionalData![imagenKey];
+          if (imagenData is String) {
+            // Formato Base64 (compatibilidad hacia atrás)
+            images.add({'type': 'base64', 'data': imagenData});
+          } else if (imagenData is Map<String, dynamic>) {
+            // Formato fragmentado
+            images.add(imagenData);
+          }
+        }
+      }
+    }
+    
+    if (images.isNotEmpty) {
+       return ImageCarouselWidget(
+         images: images,
+         width: 120,
+         height: 100,
+         fit: BoxFit.cover,
+         borderRadius: BorderRadius.circular(8),
+         onImageTap: (imageData) => _mostrarImagenCompleta(imageData),
+       );
+     } else {
+      return const Icon(
+        Icons.warning_amber,
+        size: 40,
+        color: Colors.grey,
+      );
+    }
+  }
+
+  
+  void _mostrarImagenCompleta(Map<String, dynamic> imageData) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Stack(
+            children: [
+              // Fondo semi-transparente
+              GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: Container(
+                  color: Colors.black54,
+                  width: double.infinity,
+                  height: double.infinity,
+                ),
+              ),
+              // Imagen en pantalla completa
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: ImageDisplayWidget(
+                      imageData: imageData,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+              ),
+              // Botón de cerrar
+              Positioned(
+                top: 40,
+                right: 40,
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
   // Nuevo método para abrir el modal de detalle
   Future<void> _abrirModalDetalle(MultaModel multa) async {
     // Marcar como leída automáticamente si no ha sido leída
@@ -888,12 +1017,22 @@ class _MultaDetalleModal extends StatelessWidget {
   }
 
   Widget _buildImagenesEvidencia(Map<String, dynamic> additionalData) {
-    List<String> imagenes = [];
+    List<Map<String, dynamic>> imagenes = [];
     
-    // Extraer imágenes del additionalData
-    if (additionalData['imagen1'] != null) imagenes.add(additionalData['imagen1']);
-    if (additionalData['imagen2'] != null) imagenes.add(additionalData['imagen2']);
-    if (additionalData['imagen3'] != null) imagenes.add(additionalData['imagen3']);
+    // Extraer imágenes del additionalData (soporte para ambos formatos)
+    for (int i = 1; i <= 3; i++) {
+      final imagenKey = 'imagen$i';
+      if (additionalData[imagenKey] != null) {
+        final imagenData = additionalData[imagenKey];
+        if (imagenData is String) {
+          // Formato Base64 (compatibilidad hacia atrás)
+          imagenes.add({'type': 'base64', 'data': imagenData});
+        } else if (imagenData is Map<String, dynamic>) {
+          // Formato fragmentado
+          imagenes.add(imagenData);
+        }
+      }
+    }
     
     if (imagenes.isEmpty) return const SizedBox.shrink();
     
@@ -926,15 +1065,14 @@ class _MultaDetalleModal extends StatelessWidget {
                 width: 120,
                 margin: EdgeInsets.only(right: index < imagenes.length - 1 ? 12 : 0),
                 child: GestureDetector(
-                  onTap: () => _mostrarImagenCompleta(imagenes[index], context),
-
+                  onTap: () => _mostrarImagenCompleta(context, imagenes[index]),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.memory(
-                      base64Decode(imagenes[index]),
-                      fit: BoxFit.cover,
+                    child: ImageDisplayWidget(
+                      imageData: imagenes[index],
                       width: 120,
                       height: 120,
+                      fit: BoxFit.cover,
                     ),
                   ),
                 ),
@@ -946,40 +1084,71 @@ class _MultaDetalleModal extends StatelessWidget {
     );
   }
   
-  void _mostrarImagenCompleta(String imagenBase64, BuildContext context) {
-
+  void _mostrarImagenCompleta(BuildContext context, Map<String, dynamic> imageData) {
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Stack(
-          children: [
-            Center(
-              child: InteractiveViewer(
-                child: Image.memory(
-                  base64Decode(imagenBase64),
-                  fit: BoxFit.contain,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Stack(
+            children: [
+              // Fondo semi-transparente
+              GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: Container(
+                  color: Colors.black54,
+                  width: double.infinity,
+                  height: double.infinity,
                 ),
               ),
-            ),
-            Positioned(
-              top: 40,
-              right: 20,
-              child: IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(
-                  Icons.close,
-                  color: Colors.white,
-                  size: 30,
-                ),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.black54,
+              // Imagen en pantalla completa
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: ImageDisplayWidget(
+                      imageData: imageData,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
+              // Botón de cerrar
+              Positioned(
+                top: 40,
+                right: 40,
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

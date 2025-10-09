@@ -6,6 +6,9 @@ import 'crear_reclamo_screen.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'dart:typed_data';
+import '../../../utils/storage_service.dart';
+import '../../../utils/image_display_widget.dart';
+import '../../../widgets/image_carousel_widget.dart';
 
 class ReclamosResidenteScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -353,109 +356,119 @@ class _ReclamosResidenteScreenState extends State<ReclamosResidenteScreen> {
             width: 1,
           ),
         ),
-        child: Column(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(
-                  reclamo.isResuelto ? Icons.check_circle : Icons.pending,
-                  color: reclamo.isResuelto
-                      ? Colors.green[700]
-                      : Colors.orange[700],
-                  size: 20,
+            // Carrusel de imágenes a la izquierda
+            if (_tieneImagenes(reclamo.additionalData))
+              _buildImagenesReclamo(reclamo.additionalData!, context),
+            // Contenido del reclamo a la derecha
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: _tieneImagenes(reclamo.additionalData) ? 12 : 0,
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    reclamo.tipoReclamo,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: reclamo.isResuelto
-                          ? Colors.green[800]
-                          : Colors.orange[800],
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          reclamo.isResuelto ? Icons.check_circle : Icons.pending,
+                          color: reclamo.isResuelto
+                              ? Colors.green[700]
+                              : Colors.orange[700],
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            reclamo.tipoReclamo,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: reclamo.isResuelto
+                                  ? Colors.green[800]
+                                  : Colors.orange[800],
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: reclamo.isResuelto
+                                ? Colors.green[100]
+                                : Colors.orange[100],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            reclamo.isResuelto ? 'RESUELTO' : 'PENDIENTE',
+                            style: TextStyle(
+                              color: reclamo.isResuelto
+                                  ? Colors.green[700]
+                                  : Colors.orange[700],
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: reclamo.isResuelto
-                        ? Colors.green[100]
-                        : Colors.orange[100],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    reclamo.isResuelto ? 'RESUELTO' : 'PENDIENTE',
-                    style: TextStyle(
-                      color: reclamo.isResuelto
-                          ? Colors.green[700]
-                          : Colors.orange[700],
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+                    const SizedBox(height: 8),
+                    Text(
+                      reclamo.contenido,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: Colors.grey[700]),
                     ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              reclamo.contenido,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: Colors.grey[700]),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
-                const SizedBox(width: 4),
-                Text(
-                  '${reclamo.fechaFormateada} - ${reclamo.horaFormateada}',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                ),
-                // Mostrar indicador de imágenes si existen
-                if (_tieneImagenes(reclamo.additionalData)) ...[
-                  const SizedBox(width: 8),
-                  Icon(Icons.image, size: 16, color: Colors.blue[600]),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Con imágenes',
-                    style: TextStyle(
-                      color: Colors.blue[600],
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            '${reclamo.fechaFormateada} - ${reclamo.horaFormateada}',
+                            style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        // Mostrar indicador de imágenes si existen
+                        if (_tieneImagenes(reclamo.additionalData)) ...[
+                          const SizedBox(width: 8),
+                          Icon(Icons.image, size: 16, color: Colors.blue[600]),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Con imágenes',
+                            style: TextStyle(
+                              color: Colors.blue[600],
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                        if (reclamo.isResuelto &&
+                            reclamo.mensajeRespuesta != null) ...[
+                          const SizedBox(width: 8),
+                          Icon(Icons.message, size: 16, color: Colors.green[600]),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Con respuesta',
+                            style: TextStyle(
+                              color: Colors.green[600],
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                  ),
-                ],
-                if (reclamo.isResuelto &&
-                    reclamo.estado?['mensajeRespuesta'] != null) ...[
-                  const Spacer(),
-                  Icon(Icons.message, size: 16, color: Colors.green[600]),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Con respuesta',
-                    style: TextStyle(
-                      color: Colors.green[600],
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-                const Spacer(),
-                Text(
-                  'Toca para ver detalles',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.blue.shade600,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ],
         ),
@@ -502,19 +515,199 @@ class _ReclamosResidenteScreenState extends State<ReclamosResidenteScreen> {
   bool _tieneImagenes(Map<String, dynamic>? additionalData) {
     if (additionalData == null) return false;
     
+    // Usar la misma lógica que _buildImagenesEvidencia
     for (int i = 1; i <= 3; i++) {
       final imagenKey = 'imagen${i}Base64';
       if (additionalData.containsKey(imagenKey) && 
-          additionalData[imagenKey] != null && 
-          additionalData[imagenKey].toString().isNotEmpty) {
-        return true;
+          additionalData[imagenKey] != null) {
+        final imagenData = additionalData[imagenKey];
+        if (imagenData is String && imagenData.isNotEmpty) {
+          return true;
+        } else if (imagenData is Map<String, dynamic>) {
+          return true;
+        }
       }
     }
     return false;
   }
-}
 
-// Agregar al final del archivo, antes del último }
+  Widget _buildImagenesReclamo(Map<String, dynamic> additionalData, BuildContext context) {
+    print('🖼️ _buildImagenesReclamo - Iniciando construcción del carrusel');
+    print('🖼️ _buildImagenesReclamo - additionalData: $additionalData');
+    
+    // Extraer las imágenes del additionalData usando la MISMA lógica que _buildImagenesEvidencia
+    List<Map<String, dynamic>> imagenes = [];
+    
+    for (int i = 1; i <= 3; i++) {
+      final imagenKey = 'imagen${i}Base64';
+      
+      print('🖼️ _buildImagenesReclamo - Procesando imagen $i con clave: $imagenKey');
+      
+      if (additionalData.containsKey(imagenKey) && 
+          additionalData[imagenKey] != null) {
+        final imagenData = additionalData[imagenKey];
+        print('🖼️ _buildImagenesReclamo - Imagen $i encontrada: ${imagenData.runtimeType}');
+        print('🖼️ _buildImagenesReclamo - Contenido de imagenData: $imagenData');
+        
+        if (imagenData is String && imagenData.isNotEmpty) {
+          // Imagen tradicional Base64 - usar estructura compatible con ImageDisplayWidget
+          imagenes.add({
+            'type': 'normal',
+            'data': imagenData
+          });
+          print('✅ _buildImagenesReclamo - Imagen Base64 $i agregada al carrusel');
+        } else if (imagenData is Map<String, dynamic>) {
+          // Imagen fragmentada - usar la misma lógica que _buildImagenesEvidencia
+          if (imagenData.containsKey('fragments') && imagenData['fragments'] is List) {
+            final fragments = imagenData['fragments'] as List;
+            print('🖼️ _buildImagenesReclamo - Fragmentos encontrados: ${fragments.length}');
+            
+            if (fragments.length <= 10) {
+              // Fragmentada internamente
+              imagenes.add({
+                'type': 'internal_fragmented',
+                'fragments': fragments,
+                'original_type': imagenData['original_type'] ?? 'image/jpeg'
+              });
+              print('✅ _buildImagenesReclamo - Imagen fragmentada interna $i agregada');
+            } else {
+              // Fragmentada externamente
+              imagenes.add({
+                'type': 'external_fragmented',
+                'fragment_id': imagenData['fragment_id'],
+                'total_fragments': imagenData['total_fragments'],
+                'original_type': imagenData['original_type'] ?? 'image/jpeg'
+              });
+              print('✅ _buildImagenesReclamo - Imagen fragmentada externa $i agregada');
+            }
+          } else if (imagenData.containsKey('fragment_id')) {
+            // Fragmentada externamente sin lista de fragmentos
+            imagenes.add({
+              'type': 'external_fragmented',
+              'fragment_id': imagenData['fragment_id'],
+              'total_fragments': imagenData['total_fragments'] ?? 1,
+              'original_type': imagenData['original_type'] ?? 'image/jpeg'
+            });
+            print('✅ _buildImagenesReclamo - Imagen fragmentada externa $i agregada (sin lista)');
+          } else {
+            // Estructura desconocida, intentar extraer datos directamente
+            print('⚠️ _buildImagenesReclamo - Estructura desconocida para imagen $i: ${imagenData.keys}');
+            
+            // Buscar si hay datos base64 directos en la estructura
+            String? base64Data;
+            if (imagenData.containsKey('data') && imagenData['data'] is String) {
+              base64Data = imagenData['data'];
+            } else if (imagenData.containsKey('base64') && imagenData['base64'] is String) {
+              base64Data = imagenData['base64'];
+            }
+            
+            if (base64Data != null && base64Data.isNotEmpty) {
+              imagenes.add({
+                'type': 'normal',
+                'data': base64Data
+              });
+              print('✅ _buildImagenesReclamo - Imagen extraída como normal $i');
+            } else {
+              print('❌ _buildImagenesReclamo - No se pudo procesar imagen $i');
+            }
+          }
+        }
+      }
+    }
+
+    print('🖼️ _buildImagenesReclamo - Total de imágenes encontradas: ${imagenes.length}');
+
+    if (imagenes.isEmpty) {
+      print('❌ _buildImagenesReclamo - No hay imágenes para mostrar');
+      return const SizedBox.shrink();
+    }
+
+    print('✅ _buildImagenesReclamo - Construyendo ImageCarouselWidget con ${imagenes.length} imágenes');
+
+    return Container(
+      width: 120,
+      height: 100,
+      child: ImageCarouselWidget(
+        images: imagenes,
+        width: 120,
+        height: 100,
+        fit: BoxFit.cover,
+        borderRadius: BorderRadius.circular(8),
+        onImageTap: (imageData) {
+          print('🖼️ _buildImagenesReclamo - Imagen tocada, mostrando completa');
+          _mostrarImagenCompleta(context, imageData);
+        },
+      ),
+    );
+  }
+  void _mostrarImagenCompleta(BuildContext context, Map<String, dynamic> imageData) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Stack(
+            children: [
+              // Fondo semi-transparente
+              GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: Container(
+                  color: Colors.black54,
+                  width: double.infinity,
+                  height: double.infinity,
+                ),
+              ),
+              // Imagen en pantalla completa
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: ImageDisplayWidget(
+                      imageData: imageData,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+              ),
+              // Botón de cerrar
+              Positioned(
+                top: 40,
+                right: 40,
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
 
 // Dialog para mostrar el detalle del reclamo (versión residente)
 class _ReclamoDetalleDialog extends StatelessWidget {
@@ -740,14 +933,20 @@ class _ReclamoDetalleDialog extends StatelessWidget {
   Widget _buildImagenesEvidencia(Map<String, dynamic>? additionalData) {
     if (additionalData == null) return const SizedBox.shrink();
 
-    // Extraer las imágenes del additionalData
-    List<String> imagenes = [];
+    // Extraer las imágenes del additionalData (ahora pueden ser fragmentadas)
+    List<Map<String, dynamic>> imagenes = [];
     for (int i = 1; i <= 3; i++) {
       final imagenKey = 'imagen${i}Base64';
       if (additionalData.containsKey(imagenKey) && 
-          additionalData[imagenKey] != null && 
-          additionalData[imagenKey].toString().isNotEmpty) {
-        imagenes.add(additionalData[imagenKey]);
+          additionalData[imagenKey] != null) {
+        final imagenData = additionalData[imagenKey];
+        if (imagenData is String && imagenData.isNotEmpty) {
+          // Imagen tradicional Base64
+          imagenes.add({'type': 'base64', 'data': imagenData});
+        } else if (imagenData is Map<String, dynamic>) {
+          // Imagen fragmentada
+          imagenes.add({'type': 'fragmented', 'data': imagenData});
+        }
       }
     }
 
@@ -771,10 +970,11 @@ class _ReclamoDetalleDialog extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             itemCount: imagenes.length,
             itemBuilder: (context, index) {
+              final imagenInfo = imagenes[index];
               return Container(
                 margin: const EdgeInsets.only(right: 12),
                 child: GestureDetector(
-                  onTap: () => _mostrarImagenCompleta(context, imagenes[index]),
+                  onTap: () => _mostrarImagenCompleta(context, imagenInfo),
                   child: Container(
                     width: 120,
                     height: 120,
@@ -784,19 +984,26 @@ class _ReclamoDetalleDialog extends StatelessWidget {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.memory(
-                        base64Decode(imagenes[index]),
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: Colors.grey[200],
-                            child: const Icon(
-                              Icons.error,
-                              color: Colors.grey,
+                      child: imagenInfo['type'] == 'base64'
+                          ? Image.memory(
+                              base64Decode(imagenInfo['data']),
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: Colors.grey[200],
+                                  child: const Icon(
+                                    Icons.error,
+                                    color: Colors.grey,
+                                  ),
+                                );
+                              },
+                            )
+                          : ImageDisplayWidget(
+                              imageData: imagenInfo['data'],
+                              width: 120,
+                              height: 120,
+                              fit: BoxFit.cover,
                             ),
-                          );
-                        },
-                      ),
                     ),
                   ),
                 ),
@@ -817,7 +1024,7 @@ class _ReclamoDetalleDialog extends StatelessWidget {
     );
   }
 
-  void _mostrarImagenCompleta(BuildContext context, String imagenBase64) {
+  void _mostrarImagenCompleta(BuildContext context, Map<String, dynamic> imageData) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -831,22 +1038,7 @@ class _ReclamoDetalleDialog extends StatelessWidget {
                   boundaryMargin: const EdgeInsets.all(20),
                   minScale: 0.5,
                   maxScale: 4.0,
-                  child: Image.memory(
-                    base64Decode(imagenBase64),
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: Colors.grey[800],
-                        child: const Center(
-                          child: Icon(
-                            Icons.error,
-                            color: Colors.white,
-                            size: 50,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                  child: _buildImageFromData(imageData),
                 ),
               ),
               Positioned(
@@ -865,6 +1057,40 @@ class _ReclamoDetalleDialog extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildImageFromData(Map<String, dynamic> imageData) {
+    // Si es una imagen Base64 simple
+    if (imageData.containsKey('base64')) {
+      final base64String = imageData['base64'] as String;
+      // Limpiar el prefijo data:image si existe
+      final cleanBase64 = base64String.contains(',') 
+          ? base64String.split(',').last 
+          : base64String;
+      
+      return Image.memory(
+        base64Decode(cleanBase64),
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.grey[800],
+            child: const Center(
+              child: Icon(
+                Icons.error,
+                color: Colors.white,
+                size: 50,
+              ),
+            ),
+          );
+        },
+      );
+    }
+    
+    // Si es una imagen fragmentada, usar ImageDisplayWidget
+    return ImageDisplayWidget(
+      imageData: imageData,
+      fit: BoxFit.contain,
     );
   }
 }

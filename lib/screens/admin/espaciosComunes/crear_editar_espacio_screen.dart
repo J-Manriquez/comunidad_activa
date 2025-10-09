@@ -7,6 +7,8 @@ import 'dart:io';
 import '../../../models/user_model.dart';
 import '../../../models/espacio_comun_model.dart';
 import '../../../services/espacios_comunes_service.dart';
+import '../../../utils/storage_service.dart';
+import '../../../utils/image_display_widget.dart';
 
 class CrearEditarEspacioScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -26,6 +28,7 @@ class _CrearEditarEspacioScreenState extends State<CrearEditarEspacioScreen> {
   final _formKey = GlobalKey<FormState>();
   final EspaciosComunesService _espaciosComunesService = EspaciosComunesService();
   final ImagePicker _imagePicker = ImagePicker();
+  final StorageService _storageService = StorageService();
   
   late TextEditingController _nombreController;
   late TextEditingController _capacidadController;
@@ -36,9 +39,12 @@ class _CrearEditarEspacioScreenState extends State<CrearEditarEspacioScreen> {
   late TextEditingController _horaCierreController;
   
   String _estadoSeleccionado = 'activo';
-  List<String> _imagenesBase64 = [];
+  Map<String, dynamic>? _imagen1Data;
+  Map<String, dynamic>? _imagen2Data;
+  Map<String, dynamic>? _imagen3Data;
   bool _isLoading = false;
   bool _isUploadingImage = false;
+  double _uploadProgress = 0.0;
 
   @override
   void initState() {
@@ -67,13 +73,29 @@ class _CrearEditarEspacioScreenState extends State<CrearEditarEspacioScreen> {
     // Cargar imágenes existentes si estamos editando
     if (widget.espacio?.additionalData != null) {
       final additionalData = widget.espacio!.additionalData!;
-      for (int i = 1; i <= 3; i++) {
-        final imagenKey = 'imagen${i}Base64';
-        if (additionalData.containsKey(imagenKey) && 
-            additionalData[imagenKey] != null && 
-            additionalData[imagenKey].toString().isNotEmpty) {
-          _imagenesBase64.add(additionalData[imagenKey]);
-        }
+      
+      // Cargar imagen 1
+      if (additionalData.containsKey('imagen1Data')) {
+        _imagen1Data = additionalData['imagen1Data'];
+      } else if (additionalData.containsKey('imagen1Base64') && 
+                 additionalData['imagen1Base64'] != null) {
+        _imagen1Data = {'type': 'base64', 'data': additionalData['imagen1Base64']};
+      }
+      
+      // Cargar imagen 2
+      if (additionalData.containsKey('imagen2Data')) {
+        _imagen2Data = additionalData['imagen2Data'];
+      } else if (additionalData.containsKey('imagen2Base64') && 
+                 additionalData['imagen2Base64'] != null) {
+        _imagen2Data = {'type': 'base64', 'data': additionalData['imagen2Base64']};
+      }
+      
+      // Cargar imagen 3
+      if (additionalData.containsKey('imagen3Data')) {
+        _imagen3Data = additionalData['imagen3Data'];
+      } else if (additionalData.containsKey('imagen3Base64') && 
+                 additionalData['imagen3Base64'] != null) {
+        _imagen3Data = {'type': 'base64', 'data': additionalData['imagen3Base64']};
       }
     }
   }
@@ -91,7 +113,13 @@ class _CrearEditarEspacioScreenState extends State<CrearEditarEspacioScreen> {
   }
 
   Future<void> _seleccionarImagen() async {
-    if (_imagenesBase64.length >= 3) {
+    // Verificar cuántas imágenes ya tenemos
+    int imagenesActuales = 0;
+    if (_imagen1Data != null) imagenesActuales++;
+    if (_imagen2Data != null) imagenesActuales++;
+    if (_imagen3Data != null) imagenesActuales++;
+    
+    if (imagenesActuales >= 3) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Máximo 3 imágenes permitidas')),
       );
@@ -101,6 +129,7 @@ class _CrearEditarEspacioScreenState extends State<CrearEditarEspacioScreen> {
     try {
       setState(() {
         _isUploadingImage = true;
+        _uploadProgress = 0.0;
       });
 
       final XFile? image = await _imagePicker.pickImage(
@@ -111,11 +140,24 @@ class _CrearEditarEspacioScreenState extends State<CrearEditarEspacioScreen> {
       );
 
       if (image != null) {
-        final bytes = await image.readAsBytes();
-        final base64String = base64Encode(bytes);
+        final imageData = await _storageService.procesarImagenFragmentada(
+          xFile: image,
+          onProgress: (progress) {
+            setState(() {
+              _uploadProgress = progress;
+            });
+          },
+        );
         
         setState(() {
-          _imagenesBase64.add(base64String);
+          // Asignar a la primera variable disponible
+          if (_imagen1Data == null) {
+            _imagen1Data = imageData;
+          } else if (_imagen2Data == null) {
+            _imagen2Data = imageData;
+          } else if (_imagen3Data == null) {
+            _imagen3Data = imageData;
+          }
         });
       }
     } catch (e) {
@@ -135,7 +177,17 @@ class _CrearEditarEspacioScreenState extends State<CrearEditarEspacioScreen> {
 
   void _eliminarImagen(int index) {
     setState(() {
-      _imagenesBase64.removeAt(index);
+      switch (index) {
+        case 0:
+          _imagen1Data = null;
+          break;
+        case 1:
+          _imagen2Data = null;
+          break;
+        case 2:
+          _imagen3Data = null;
+          break;
+      }
     });
   }
 
@@ -149,13 +201,13 @@ class _CrearEditarEspacioScreenState extends State<CrearEditarEspacioScreen> {
     });
 
     try {
-      // Preparar additionalData con las imágenes
+      // Preparar additionalData con las imágenes (formato fragmentado)
       Map<String, dynamic>? additionalData;
-      if (_imagenesBase64.isNotEmpty) {
+      if (_imagen1Data != null || _imagen2Data != null || _imagen3Data != null) {
         additionalData = {};
-        for (int i = 0; i < _imagenesBase64.length && i < 3; i++) {
-          additionalData['imagen${i + 1}Base64'] = _imagenesBase64[i];
-        }
+        if (_imagen1Data != null) additionalData['imagen1Data'] = _imagen1Data!;
+        if (_imagen2Data != null) additionalData['imagen2Data'] = _imagen2Data!;
+        if (_imagen3Data != null) additionalData['imagen3Data'] = _imagen3Data!;
       }
 
       final espacio = EspacioComunModel(
@@ -476,7 +528,7 @@ class _CrearEditarEspacioScreenState extends State<CrearEditarEspacioScreen> {
               const SizedBox(height: 16),
               
               // Botón para agregar imagen
-              if (_imagenesBase64.length < 3)
+              if ((_imagen1Data == null ? 0 : 1) + (_imagen2Data == null ? 0 : 1) + (_imagen3Data == null ? 0 : 1) < 3)
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
@@ -496,21 +548,16 @@ class _CrearEditarEspacioScreenState extends State<CrearEditarEspacioScreen> {
                 ),
               
               // Vista previa de imágenes
-              if (_imagenesBase64.isNotEmpty) ...[
+              if (_imagen1Data != null || _imagen2Data != null || _imagen3Data != null) ...[
                 const SizedBox(height: 16),
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 8,
-                    mainAxisSpacing: 8,
-                    childAspectRatio: 1,
-                  ),
-                  itemCount: _imagenesBase64.length,
-                  itemBuilder: (context, index) {
-                    return _buildImagePreview(index);
-                  },
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (_imagen1Data != null) _buildImagePreview(0, _imagen1Data!),
+                    if (_imagen2Data != null) _buildImagePreview(1, _imagen2Data!),
+                    if (_imagen3Data != null) _buildImagePreview(2, _imagen3Data!),
+                  ],
                 ),
               ],
             ],
@@ -520,22 +567,22 @@ class _CrearEditarEspacioScreenState extends State<CrearEditarEspacioScreen> {
     );
   }
 
-  Widget _buildImagePreview(int index) {
-    final imageBytes = base64Decode(_imagenesBase64[index]);
-    
+  Widget _buildImagePreview(int index, Map<String, dynamic> imageData) {
     return Stack(
       children: [
         Container(
+          width: 150,
+          height: 150,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: Colors.grey.shade300),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.memory(
-              imageBytes,
-              width: double.infinity,
-              height: double.infinity,
+            child: ImageDisplayWidget(
+              imageData: imageData,
+              width: 150,
+              height: 150,
               fit: BoxFit.cover,
             ),
           ),

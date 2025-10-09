@@ -4,6 +4,7 @@ import 'dart:convert';
 import '../services/multa_service.dart';
 import '../models/multa_model.dart';
 import '../utils/storage_service.dart';
+import '../utils/image_display_widget.dart';
 
 class CrearMultaScreen extends StatefulWidget {
   final String condominioId;
@@ -44,11 +45,12 @@ class _CrearMultaScreenState extends State<CrearMultaScreen> {
   bool _usarValorPersonalizado = false;
   bool _usarUnidadPersonalizada = false;
 
-  // Variables para manejo de imágenes
-  String? _imagen1Base64;
-  String? _imagen2Base64;
-  String? _imagen3Base64;
+  // Variables para manejo de imágenes fragmentadas
+  Map<String, dynamic>? _imagen1Data;
+  Map<String, dynamic>? _imagen2Data;
+  Map<String, dynamic>? _imagen3Data;
   bool _isUploadingImage = false;
+  double _uploadProgress = 0.0;
 
   @override
   void initState() {
@@ -636,19 +638,25 @@ class _CrearMultaScreenState extends State<CrearMultaScreen> {
       );
 
       if (image != null) {
-        final bytes = await image.readAsBytes();
-        final base64String = base64Encode(bytes);
+        final imageData = await _storageService.procesarImagenFragmentada(
+          xFile: image,
+          onProgress: (progress) {
+            setState(() {
+              _uploadProgress = progress;
+            });
+          },
+        );
 
         setState(() {
           switch (imageNumber) {
             case 1:
-              _imagen1Base64 = base64String;
+              _imagen1Data = imageData;
               break;
             case 2:
-              _imagen2Base64 = base64String;
+              _imagen2Data = imageData;
               break;
             case 3:
-              _imagen3Base64 = base64String;
+              _imagen3Data = imageData;
               break;
           }
         });
@@ -666,13 +674,13 @@ class _CrearMultaScreenState extends State<CrearMultaScreen> {
     setState(() {
       switch (imageNumber) {
         case 1:
-          _imagen1Base64 = null;
+          _imagen1Data = null;
           break;
         case 2:
-          _imagen2Base64 = null;
+          _imagen2Data = null;
           break;
         case 3:
-          _imagen3Base64 = null;
+          _imagen3Data = null;
           break;
       }
     });
@@ -701,11 +709,11 @@ class _CrearMultaScreenState extends State<CrearMultaScreen> {
           unidadMedida = _unidadSeleccionada ?? '';
         }
 
-        // Preparar additionalData con imágenes
+        // Preparar additionalData con imágenes fragmentadas
         Map<String, dynamic> additionalData = {};
-        if (_imagen1Base64 != null) additionalData['imagen1'] = _imagen1Base64!;
-        if (_imagen2Base64 != null) additionalData['imagen2'] = _imagen2Base64!;
-        if (_imagen3Base64 != null) additionalData['imagen3'] = _imagen3Base64!;
+        if (_imagen1Data != null) additionalData['imagen1'] = _imagen1Data!;
+        if (_imagen2Data != null) additionalData['imagen2'] = _imagen2Data!;
+        if (_imagen3Data != null) additionalData['imagen3'] = _imagen3Data!;
 
         await _multaService.crearMulta(
           condominioId: widget.condominioId,
@@ -739,31 +747,31 @@ class _CrearMultaScreenState extends State<CrearMultaScreen> {
       children: [
         Row(
           children: [
-            Expanded(child: _buildImagePicker(1, _imagen1Base64)),
+            Expanded(child: _buildImagePicker(1, _imagen1Data)),
             const SizedBox(width: 8),
-            Expanded(child: _buildImagePicker(2, _imagen2Base64)),
+            Expanded(child: _buildImagePicker(2, _imagen2Data)),
             const SizedBox(width: 8),
-            Expanded(child: _buildImagePicker(3, _imagen3Base64)),
+            Expanded(child: _buildImagePicker(3, _imagen3Data)),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildImagePicker(int imageNumber, String? imageBase64) {
+  Widget _buildImagePicker(int imageNumber, Map<String, dynamic>? imageData) {
     return Container(
       height: 100,
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey[300]!),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: imageBase64 != null
+      child: imageData != null
           ? Stack(
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.memory(
-                    base64Decode(imageBase64),
+                  child: ImageDisplayWidget(
+                    imageData: imageData,
                     width: double.infinity,
                     height: double.infinity,
                     fit: BoxFit.cover,

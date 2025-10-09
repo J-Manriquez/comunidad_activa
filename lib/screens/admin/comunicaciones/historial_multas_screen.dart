@@ -4,6 +4,8 @@ import '../../../models/user_model.dart';
 import '../../../models/multa_model.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
+import '../../../utils/storage_service.dart';
+import '../../../utils/image_display_widget.dart';
 
 class HistorialMultasScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -804,12 +806,23 @@ class _MultaDetalleModalAdmin extends StatelessWidget {
   }
 
   Widget _buildImagenesEvidencia(Map<String, dynamic> additionalData) {
-    List<String> imagenes = [];
+    List<Map<String, dynamic>> imagenes = [];
     
-    // Extraer imágenes del additionalData
-    if (additionalData['imagen1'] != null) imagenes.add(additionalData['imagen1']);
-    if (additionalData['imagen2'] != null) imagenes.add(additionalData['imagen2']);
-    if (additionalData['imagen3'] != null) imagenes.add(additionalData['imagen3']);
+    // Extraer imágenes del additionalData (soporte para ambos formatos)
+    for (int i = 1; i <= 3; i++) {
+      final imagenKey = 'imagen$i';
+      if (additionalData.containsKey(imagenKey) && 
+          additionalData[imagenKey] != null) {
+        final imagenData = additionalData[imagenKey];
+        if (imagenData is String && imagenData.isNotEmpty) {
+          // Imagen tradicional Base64
+          imagenes.add({'type': 'base64', 'data': imagenData});
+        } else if (imagenData is Map<String, dynamic>) {
+          // Imagen fragmentada
+          imagenes.add({'type': 'fragmented', 'data': imagenData});
+        }
+      }
+    }
     
     if (imagenes.isEmpty) return const SizedBox.shrink();
     
@@ -838,20 +851,27 @@ class _MultaDetalleModalAdmin extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             itemCount: imagenes.length,
             itemBuilder: (context, index) {
+              final imagenInfo = imagenes[index];
               return Container(
                 width: 80,
                 margin: EdgeInsets.only(right: index < imagenes.length - 1 ? 8 : 0),
                 child: GestureDetector(
-                  onTap: () => _mostrarImagenCompleta(imagenes[index], context),
-
+                  onTap: () => _mostrarImagenCompleta(imagenInfo, context),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(6),
-                    child: Image.memory(
-                      base64Decode(imagenes[index]),
-                      fit: BoxFit.cover,
-                      width: 80,
-                      height: 80,
-                    ),
+                    child: imagenInfo['type'] == 'base64'
+                        ? Image.memory(
+                            base64Decode(imagenInfo['data']),
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                          )
+                        : ImageDisplayWidget(
+                            imageData: imagenInfo['data'],
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                          ),
                   ),
                 ),
               );
@@ -862,8 +882,7 @@ class _MultaDetalleModalAdmin extends StatelessWidget {
     );
   }
   
-  void _mostrarImagenCompleta(String imagenBase64, BuildContext context) {
-
+  void _mostrarImagenCompleta(Map<String, dynamic> imagenInfo, BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -872,10 +891,15 @@ class _MultaDetalleModalAdmin extends StatelessWidget {
           children: [
             Center(
               child: InteractiveViewer(
-                child: Image.memory(
-                  base64Decode(imagenBase64),
-                  fit: BoxFit.contain,
-                ),
+                child: imagenInfo['type'] == 'base64'
+                    ? Image.memory(
+                        base64Decode(imagenInfo['data']),
+                        fit: BoxFit.contain,
+                      )
+                    : ImageDisplayWidget(
+                        imageData: imagenInfo['data'],
+                        fit: BoxFit.contain,
+                      ),
               ),
             ),
             Positioned(

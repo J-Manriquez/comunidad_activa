@@ -4,6 +4,7 @@ import '../../../models/user_model.dart';
 import '../../../models/multa_model.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
+import '../../../utils/image_display_widget.dart';
 
 class HistorialMultasScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -611,12 +612,22 @@ class _MultaDetalleModal extends StatelessWidget {
   }
 
   Widget _buildImagenesEvidencia(Map<String, dynamic> additionalData) {
-    List<String> imagenes = [];
+    List<Map<String, dynamic>> imagenes = [];
     
-    // Extraer imágenes del additionalData
-    if (additionalData['imagen1'] != null) imagenes.add(additionalData['imagen1']);
-    if (additionalData['imagen2'] != null) imagenes.add(additionalData['imagen2']);
-    if (additionalData['imagen3'] != null) imagenes.add(additionalData['imagen3']);
+    // Extraer imágenes del additionalData (soporte para ambos formatos)
+    for (int i = 1; i <= 3; i++) {
+      final imagenKey = 'imagen$i';
+      if (additionalData[imagenKey] != null) {
+        final imagenData = additionalData[imagenKey];
+        if (imagenData is String) {
+          // Formato Base64 (compatibilidad hacia atrás)
+          imagenes.add({'type': 'base64', 'data': imagenData});
+        } else if (imagenData is Map<String, dynamic>) {
+          // Formato fragmentado
+          imagenes.add(imagenData);
+        }
+      }
+    }
     
     if (imagenes.isEmpty) return const SizedBox.shrink();
     
@@ -652,11 +663,11 @@ class _MultaDetalleModal extends StatelessWidget {
                   onTap: () => _mostrarImagenCompleta(imagenes[index], context),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(6),
-                    child: Image.memory(
-                      base64Decode(imagenes[index]),
-                      fit: BoxFit.cover,
+                    child: ImageDisplayWidget(
+                      imageData: imagenes[index],
                       width: 80,
                       height: 80,
+                      fit: BoxFit.cover,
                     ),
                   ),
                 ),
@@ -668,7 +679,7 @@ class _MultaDetalleModal extends StatelessWidget {
     );
   }
   
-  void _mostrarImagenCompleta(String imagenBase64, BuildContext context) {
+  void _mostrarImagenCompleta(Map<String, dynamic> imagenData, BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -677,8 +688,8 @@ class _MultaDetalleModal extends StatelessWidget {
           children: [
             Center(
               child: InteractiveViewer(
-                child: Image.memory(
-                  base64Decode(imagenBase64),
+                child: ImageDisplayWidget(
+                  imageData: imagenData,
                   fit: BoxFit.contain,
                 ),
               ),

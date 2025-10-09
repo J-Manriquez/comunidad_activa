@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:comunidad_activa/utils/image_display_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -9,6 +10,7 @@ import '../../../models/correspondencia_config_model.dart';
 import '../../../services/correspondencia_service.dart';
 import '../../../services/notification_service.dart';
 import '../../../widgets/modal_entrega_correspondencia.dart';
+import '../../../widgets/image_carousel_widget.dart';
 import 'historial_correspondencias_residente_screen.dart';
 
 class CorrespondenciasResidenteScreen extends StatefulWidget {
@@ -650,252 +652,258 @@ class _CorrespondenciasResidenteScreenState extends State<CorrespondenciasReside
             borderRadius: BorderRadius.circular(8),
             child: Padding(
               padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-            Row(
-              children: [
-                Icon(
-                  _getCorrespondenciaIcon(correspondencia.tipoCorrespondencia),
-                  color: Colors.green.shade600,
-                  size: 24,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // PRIMERA FILA: Carrusel a la izquierda e información a la derecha
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        correspondencia.tipoCorrespondencia,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        correspondencia.tipoEntrega,
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 14,
+                      // Carrusel de imágenes a la izquierda
+                      _buildImageCarousel(correspondencia),
+                      const SizedBox(width: 16),
+                      
+                      // Contenido de la correspondencia a la derecha
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  _getCorrespondenciaIcon(correspondencia.tipoCorrespondencia),
+                                  color: Colors.green.shade600,
+                                  size: 24,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        correspondencia.tipoCorrespondencia,
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        correspondencia.tipoEntrega,
+                                        style: TextStyle(
+                                          color: Colors.grey.shade600,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.shade100,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    'Pendiente',
+                                    style: TextStyle(
+                                      color: Colors.orange.shade700,
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            _buildInfoRow(
+                              _mostrarRecibidas ? 'Destinatario:' : 'Remitente:', 
+                              _mostrarRecibidas ? correspondencia.datosEntrega : (correspondencia.viviendaRecepcion ?? 'No especificado')
+                            ),
+                            if (!_mostrarRecibidas)
+                              _buildInfoRow('Destinatario:', correspondencia.datosEntrega),
+                            _buildInfoRow(
+                              'Fecha de recepción:',
+                              _formatDateTime(correspondencia.fechaHoraRecepcion),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.shade100,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    'Pendiente',
-                    style: TextStyle(
-                      color: Colors.orange.shade700,
-                      fontWeight: FontWeight.w500,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _buildInfoRow(
-              _mostrarRecibidas ? 'Destinatario:' : 'Remitente:', 
-              _mostrarRecibidas ? correspondencia.datosEntrega : (correspondencia.viviendaRecepcion ?? 'No especificado')
-            ),
-            if (!_mostrarRecibidas)
-              _buildInfoRow('Destinatario:', correspondencia.datosEntrega),
-            _buildInfoRow(
-              'Fecha de recepción:',
-              _formatDateTime(correspondencia.fechaHoraRecepcion),
-            ),
-            // Observaciones no están disponibles en el modelo actual
-            
-            // Mostrar mensajes adicionales si existen (colapsable)
-            if (correspondencia.infAdicional?.isNotEmpty == true) ...[
-              const SizedBox(height: 8),
-              const Divider(),
-              const SizedBox(height: 8),
-              GestureDetector(
-                onTap: () {
-                  setCardState(() {
-                    _mensajesExpandidos[correspondencia.id] = !isExpanded;
-                  });
-                },
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      isExpanded
-                          ? 'Mensajes adicionales:'
-                          : 'Mensajes adicionales (${correspondencia.infAdicional!.length}):',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                    Icon(
-                      isExpanded ? Icons.expand_less : Icons.expand_more,
-                      color: Colors.grey.shade600,
-                    ),
-                  ],
-                ),
-              ),
-              AnimatedSize(
-                duration: const Duration(milliseconds: 400),
-                curve: Curves.easeInOut,
-                child: isExpanded
-                    ? Column(
-                        children: [
-                          const SizedBox(height: 8),
-                          ...correspondencia.infAdicional!.map((mensaje) {
-                            final mensajeTexto = mensaje['mensaje'] as String? ?? '';
-                            final usuarioId = mensaje['usuarioId'] as String? ?? '';
-                            // Buscar tanto 'timestamp' como 'fechaHora' para compatibilidad
-                            final timestamp = mensaje['timestamp'];
-                            final fechaHora = mensaje['fechaHora'];
-                            final fechaFormateada = timestamp != null 
-                                ? _formatDateTime(timestamp)
-                                : fechaHora != null
-                                    ? _formatDateTime(fechaHora)
-                                    : 'Fecha no disponible';
-                            
-                            return AnimatedContainer(
-                              duration: const Duration(milliseconds: 300),
-                              curve: Curves.easeInOut,
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.shade50,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.blue.shade200),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    mensajeTexto,
-                                    style: const TextStyle(fontSize: 14),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        fechaFormateada,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey.shade600,
-                                        ),
-                                      ),
-                                      if (usuarioId.isNotEmpty)
-                                        Text(
-                                          usuarioId == 'admin' ? 'Administrador' : 'Residente',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey.shade600,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            );
-                          }),
-                        ],
-                      )
-                    : const SizedBox.shrink(),
-              ),
-            ],
-            
-            // Campo para responder (solo visible cuando los mensajes están expandidos)
-            if (correspondencia.infAdicional?.isNotEmpty == true)
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeInOut,
-                  child: isExpanded
-                      ? Column(
-                          children: [
-                            const SizedBox(height: 16),
-                            _buildCampoRespuesta(correspondencia),
-                          ],
-                        )
-                      : const SizedBox.shrink(),
-                ),
-            
-            // Switch para solicitar aceptación (solo visible si eleccionResidente está activo)
-            StreamBuilder<CorrespondenciaConfigModel>(
-              stream: _correspondenciaService.getCorrespondenciaConfigStream(widget.condominioId),
-              builder: (context, configSnapshot) {
-                // Debug: imprimir estado del snapshot
-                print('DEBUG StreamBuilder - hasData: ${configSnapshot.hasData}');
-                print('DEBUG StreamBuilder - hasError: ${configSnapshot.hasError}');
-                if (configSnapshot.hasData) {
-                  print('DEBUG StreamBuilder - eleccionResidente: ${configSnapshot.data!.eleccionResidente}');
-                }
-                if (configSnapshot.hasError) {
-                  print('DEBUG StreamBuilder - error: ${configSnapshot.error}');
-                }
-                
-                // Manejar estados de carga y error
-                if (configSnapshot.connectionState == ConnectionState.waiting) {
-                  return const SizedBox.shrink(); // Ocultar mientras carga
-                }
-                
-                if (configSnapshot.hasError) {
-                  print('Error en stream de configuración: ${configSnapshot.error}');
-                  return const SizedBox.shrink(); // Ocultar si hay error
-                }
-                
-                // Verificar si hay datos y si eleccionResidente está activo
-                if (!configSnapshot.hasData || configSnapshot.data!.eleccionResidente != true) {
-                  return const SizedBox.shrink(); // Ocultar si eleccionResidente es false o no hay datos
-                }
-                
-                // Ocultar el switch si el tipoEntrega es 'Entre residentes' SOLO para correspondencias enviadas
-                print('DEBUG: Verificando tipoEntrega: ${correspondencia.tipoEntrega}, mostrarRecibidas: $_mostrarRecibidas');
-                if (!_mostrarRecibidas && correspondencia.tipoEntrega == 'Entre residentes') {
-                  print('DEBUG: Ocultando switch solicitar aceptación para correspondencia enviada entre residentes');
-                  return const SizedBox.shrink(); // Ocultar para correspondencias enviadas entre residentes
-                }
-                
-                return Column(
-                  children: [
-                    const SizedBox(height: 12),
+                  
+                  // SEGUNDA FILA: Mensajes adicionales
+                  if (correspondencia.infAdicional?.isNotEmpty == true) ...[
+                    const SizedBox(height: 16),
                     const Divider(),
                     const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Solicitar aceptación',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
+                    GestureDetector(
+                      onTap: () {
+                        setCardState(() {
+                          _mensajesExpandidos[correspondencia.id] = !isExpanded;
+                        });
+                      },
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            isExpanded
+                                ? 'Mensajes adicionales:'
+                                : 'Mensajes adicionales (${correspondencia.infAdicional!.length}):',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey.shade700,
+                            ),
                           ),
-                        ),
-                        Switch(
-                          value: correspondencia.solicitarAceptacion ?? false,
-                          onChanged: (value) {
-                            _updateSolicitarAceptacion(correspondencia, value);
-                          },
-                          activeColor: Colors.green.shade600,
-                        ),
-                      ],
+                          Icon(
+                            isExpanded ? Icons.expand_less : Icons.expand_more,
+                            color: Colors.grey.shade600,
+                          ),
+                        ],
+                      ),
+                    ),
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 400),
+                      curve: Curves.easeInOut,
+                      child: isExpanded
+                          ? Column(
+                              children: [
+                                const SizedBox(height: 8),
+                                ...correspondencia.infAdicional!.map((mensaje) {
+                                  final mensajeTexto = mensaje['mensaje'] as String? ?? '';
+                                  final usuarioId = mensaje['usuarioId'] as String? ?? '';
+                                  // Buscar tanto 'timestamp' como 'fechaHora' para compatibilidad
+                                  final timestamp = mensaje['timestamp'];
+                                  final fechaHora = mensaje['fechaHora'];
+                                  final fechaFormateada = timestamp != null 
+                                      ? _formatDateTime(timestamp)
+                                      : fechaHora != null
+                                          ? _formatDateTime(fechaHora)
+                                          : 'Fecha no disponible';
+                                  
+                                  return AnimatedContainer(
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeInOut,
+                                    margin: const EdgeInsets.only(bottom: 8),
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.shade50,
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: Colors.blue.shade200),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          mensajeTexto,
+                                          style: const TextStyle(fontSize: 14),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              fechaFormateada,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey.shade600,
+                                              ),
+                                            ),
+                                            if (usuarioId.isNotEmpty)
+                                              Text(
+                                                usuarioId == 'admin' ? 'Administrador' : 'Residente',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey.shade600,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }),
+                                // Campo para responder (solo visible cuando los mensajes están expandidos)
+                                const SizedBox(height: 16),
+                                _buildCampoRespuesta(correspondencia),
+                              ],
+                            )
+                          : const SizedBox.shrink(),
                     ),
                   ],
-                );
-              },
+                  
+                  // TERCERA FILA: Opción de solicitar aceptación
+                  StreamBuilder<CorrespondenciaConfigModel>(
+                    stream: _correspondenciaService.getCorrespondenciaConfigStream(widget.condominioId),
+                    builder: (context, configSnapshot) {
+                      // Debug: imprimir estado del snapshot
+                      print('DEBUG StreamBuilder - hasData: ${configSnapshot.hasData}');
+                      print('DEBUG StreamBuilder - hasError: ${configSnapshot.hasError}');
+                      if (configSnapshot.hasData) {
+                        print('DEBUG StreamBuilder - eleccionResidente: ${configSnapshot.data!.eleccionResidente}');
+                      }
+                      if (configSnapshot.hasError) {
+                        print('DEBUG StreamBuilder - error: ${configSnapshot.error}');
+                      }
+                      
+                      // Manejar estados de carga y error
+                      if (configSnapshot.connectionState == ConnectionState.waiting) {
+                        return const SizedBox.shrink(); // Ocultar mientras carga
+                      }
+                      
+                      if (configSnapshot.hasError) {
+                        print('Error en stream de configuración: ${configSnapshot.error}');
+                        return const SizedBox.shrink(); // Ocultar si hay error
+                      }
+                      
+                      // Verificar si hay datos y si eleccionResidente está activo
+                      if (!configSnapshot.hasData || configSnapshot.data!.eleccionResidente != true) {
+                        return const SizedBox.shrink(); // Ocultar si eleccionResidente es false o no hay datos
+                      }
+                      
+                      // Ocultar el switch si el tipoEntrega es 'Entre residentes' SOLO para correspondencias enviadas
+                      print('DEBUG: Verificando tipoEntrega: ${correspondencia.tipoEntrega}, mostrarRecibidas: $_mostrarRecibidas');
+                      if (!_mostrarRecibidas && correspondencia.tipoEntrega == 'Entre residentes') {
+                        print('DEBUG: Ocultando switch solicitar aceptación para correspondencia enviada entre residentes');
+                        return const SizedBox.shrink(); // Ocultar para correspondencias enviadas entre residentes
+                      }
+                      
+                      return Column(
+                        children: [
+                          const SizedBox(height: 16),
+                          const Divider(),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Solicitar aceptación',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Switch(
+                                value: correspondencia.solicitarAceptacion ?? false,
+                                onChanged: (value) {
+                                  _updateSolicitarAceptacion(correspondencia, value);
+                                },
+                                activeColor: Colors.green.shade600,
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
-      ),
-    ));
+          ),
+        );
       },
     );
   }
@@ -2061,5 +2069,97 @@ class _CorrespondenciasResidenteScreenState extends State<CorrespondenciasReside
         ),
       );
     }
+  }
+
+  Widget _buildImageCarousel(CorrespondenciaModel correspondencia) {
+    // Verificar si hay adjuntos con imágenes
+    if (correspondencia.adjuntos == null || correspondencia.adjuntos!.isEmpty) {
+      return Container(
+        width: 100,
+        height: 80,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          Icons.image_not_supported,
+          color: Colors.grey.shade400,
+          size: 30,
+        ),
+      );
+    }
+
+    // Filtrar todas las imágenes (normales, fragmentadas internas y externas)
+    final imagenes = correspondencia.adjuntos!.entries
+        .where((entry) {
+          final value = entry.value;
+          if (value is String) {
+            // Imagen en formato Base64 directo
+            return value.startsWith('data:image/');
+          } else if (value is Map<String, dynamic>) {
+            // Imagen fragmentada (interna o externa)
+            final type = value['type'] as String?;
+            return type == 'normal' || 
+                   type == 'internal_fragmented' || 
+                   type == 'external_fragmented';
+          }
+          return false;
+        })
+        .toList();
+
+    if (imagenes.isEmpty) {
+      return Container(
+        width: 100,
+        height: 80,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          Icons.attach_file,
+          color: Colors.grey.shade400,
+          size: 30,
+        ),
+      );
+    }
+
+    // Preparar las imágenes para el carrusel con la estructura correcta
+    final imagenesCarrusel = imagenes.map((entry) {
+      final value = entry.value;
+      if (value is String) {
+        // Imagen Base64 directa
+        return {
+          'type': 'base64',
+          'data': value,
+        };
+      } else if (value is Map<String, dynamic>) {
+        // Imagen fragmentada - pasar la estructura completa
+        return value;
+      }
+      return null;
+    }).where((item) => item != null).cast<Map<String, dynamic>>().toList();
+
+    return Container(
+      width: 120,
+      height: 120,
+      child: ImageCarouselWidget(
+        images: imagenesCarrusel,
+        width: 120,
+        height: 120,
+        fit: BoxFit.cover,
+        borderRadius: BorderRadius.circular(8),
+        onImageTap: (imageData) {
+          showDialog(
+            context: context,
+            builder: (context) => Dialog(
+              backgroundColor: Colors.transparent,
+              child: ImageDisplayWidget(
+                imageData: imageData,
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 }

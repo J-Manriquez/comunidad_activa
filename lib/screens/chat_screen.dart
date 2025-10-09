@@ -11,6 +11,8 @@ import '../services/mensaje_service.dart';
 import '../services/firestore_service.dart';
 import '../services/unread_messages_service.dart';
 import 'package:intl/intl.dart';
+import '../utils/storage_service.dart';
+import '../utils/image_display_widget.dart';
 
 class ChatScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -37,18 +39,20 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final FirestoreService _firestoreService = FirestoreService();
   late final UnreadMessagesService _unreadService;
   final ImagePicker _imagePicker = ImagePicker();
+  final StorageService _storageService = StorageService();
 
   Map<String, String> _nombresUsuarios = {};
   bool _isLoading = false;
   bool _isLoadingMoreMessages = false;
   bool _isUploadingImage = false;
+  double _uploadProgress = 0.0;
   List<ContenidoMensajeModel> _mensajes = [];
   DocumentSnapshot? _lastDocument;
   bool _hasMoreMessages = true;
   bool _isInitialLoad = true;
   StreamSubscription<QuerySnapshot>? _mensajesSubscription;
   Timer? _marcadoAutomaticoTimer;
-  String? _imagenSeleccionadaBase64;
+  Map<String, dynamic>? _imagenSeleccionadaData;
   FocusNode _textFieldFocusNode = FocusNode();
 
   @override
@@ -460,8 +464,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 if (mensaje.texto != null && mensaje.texto!.isNotEmpty)
                   Text(mensaje.texto!, style: const TextStyle(fontSize: 16)),
                 // Mostrar imagen si existe
-                if (mensaje.additionalData != null && mensaje.additionalData!['imagenBase64'] != null)
-                  _buildImagenMensaje(mensaje.additionalData!['imagenBase64']),
+                if (mensaje.additionalData != null && 
+                    (mensaje.additionalData!['imagenBase64'] != null || mensaje.additionalData!['imagenData'] != null))
+                  _buildImagenMensaje(
+                    mensaje.additionalData!['imagenData'] ?? mensaje.additionalData!['imagenBase64']
+                  ),
                 const SizedBox(height: 8),
                 // Información del mensaje
                 Row(
@@ -515,7 +522,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       child: Column(
         children: [
           // Vista previa de imagen seleccionada
-          if (_imagenSeleccionadaBase64 != null)
+          if (_imagenSeleccionadaData != null)
             _buildVistaPrevia(),
           Row(
             children: [
@@ -584,16 +591,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   Future<void> _enviarMensaje() async {
     final texto = _messageController.text.trim();
-    if (texto.isEmpty && _imagenSeleccionadaBase64 == null) return;
+    if (texto.isEmpty && _imagenSeleccionadaData == null) return;
 
     setState(() => _isLoading = true);
 
     try {
       // Preparar additionalData si hay imagen
       Map<String, dynamic>? additionalData;
-      if (_imagenSeleccionadaBase64 != null) {
+      if (_imagenSeleccionadaData != null) {
         additionalData = {
-          'imagenBase64': _imagenSeleccionadaBase64,
+          'imagenData': _imagenSeleccionadaData,
         };
       }
 
@@ -608,7 +615,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
       _messageController.clear();
       setState(() {
-        _imagenSeleccionadaBase64 = null;
+        _imagenSeleccionadaData = null;
       });
 
       // El listener en tiempo real se encargará de agregar el mensaje
@@ -806,11 +813,18 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       );
 
       if (image != null) {
-        final bytes = await image.readAsBytes();
-        final base64String = base64Encode(bytes);
+        final imageData = await _storageService.procesarImagenFragmentada(
+          xFile: image,
+          quality: 85,
+          onProgress: (progress) {
+            setState(() {
+              _uploadProgress = progress;
+            });
+          },
+        );
         
         setState(() {
-          _imagenSeleccionadaBase64 = base64String;
+          _imagenSeleccionadaData = imageData;
         });
       }
     } catch (e) {
@@ -827,7 +841,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   // Widget para vista previa de imagen seleccionada
   Widget _buildVistaPrevia() {
-    if (_imagenSeleccionadaBase64 == null) return const SizedBox.shrink();
+    if (_imagenSeleccionadaData == null) return const SizedBox.shrink();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -840,8 +854,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.memory(
-              base64Decode(_imagenSeleccionadaBase64!),
+            child: ImageDisplayWidget(
+              imageData: _imagenSeleccionadaData!,
               width: 60,
               height: 60,
               fit: BoxFit.cover,
@@ -858,7 +872,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             icon: const Icon(Icons.close, color: Colors.red),
             onPressed: () {
               setState(() {
-                _imagenSeleccionadaBase64 = null;
+                _imagenSeleccionadaData = null;
               });
             },
           ),
@@ -868,26 +882,33 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   // Widget para mostrar imagen en mensaje
-  Widget _buildImagenMensaje(String imagenBase64) {
+  Widget _buildImagenMensaje(dynamic imagenData) {
     return Container(
       margin: const EdgeInsets.only(top: 8),
       child: GestureDetector(
-        onTap: () => _mostrarImagenCompleta(imagenBase64),
+        onTap: () => _mostrarImagenCompleta(imagenData),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: Image.memory(
-            base64Decode(imagenBase64),
-            width: 200,
-            height: 200,
-            fit: BoxFit.cover,
-          ),
+          child: imagenData is String
+              ? Image.memory(
+                  base64Decode(imagenData),
+                  width: 200,
+                  height: 200,
+                  fit: BoxFit.cover,
+                )
+              : ImageDisplayWidget(
+                  imageData: imagenData as Map<String, dynamic>,
+                  width: 200,
+                  height: 200,
+                  fit: BoxFit.cover,
+                ),
         ),
       ),
     );
   }
 
   // Mostrar imagen en pantalla completa
-  void _mostrarImagenCompleta(String imagenBase64) {
+  void _mostrarImagenCompleta(dynamic imagenData) {
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -896,10 +917,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           children: [
             Center(
               child: InteractiveViewer(
-                child: Image.memory(
-                  base64Decode(imagenBase64),
-                  fit: BoxFit.contain,
-                ),
+                child: imagenData is String
+                    ? Image.memory(
+                        base64Decode(imagenData),
+                        fit: BoxFit.contain,
+                      )
+                    : ImageDisplayWidget(
+                        imageData: imagenData as Map<String, dynamic>,
+                        fit: BoxFit.contain,
+                      ),
               ),
             ),
             Positioned(

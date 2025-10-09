@@ -5,6 +5,8 @@ import '../../../models/user_model.dart';
 import '../../../models/publicacion_model.dart';
 import '../../../services/publicacion_service.dart';
 import '../../../utils/storage_service.dart';
+import 'package:comunidad_activa/utils/image_display_widget.dart';
+import 'package:comunidad_activa/utils/fragment_storage_service.dart';
 
 class CrearPublicacionScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -31,11 +33,12 @@ class _CrearPublicacionScreenState extends State<CrearPublicacionScreen> {
   bool _isLoading = false;
   bool get _esEdicion => widget.publicacionParaEditar != null;
   
-  // Variables para imágenes
-  String? _imagen1Base64;
-  String? _imagen2Base64;
-  String? _imagen3Base64;
+  // Variables para imágenes (ahora soportan fragmentación)
+  Map<String, dynamic>? _imagen1Data;
+  Map<String, dynamic>? _imagen2Data;
+  Map<String, dynamic>? _imagen3Data;
   bool _isUploadingImage = false;
+  double _uploadProgress = 0.0;
 
   @override
   void initState() {
@@ -53,9 +56,38 @@ class _CrearPublicacionScreenState extends State<CrearPublicacionScreen> {
     
     // Cargar imágenes existentes si las hay
     if (publicacion.additionalData != null) {
-      _imagen1Base64 = publicacion.additionalData!['imagen1'];
-      _imagen2Base64 = publicacion.additionalData!['imagen2'];
-      _imagen3Base64 = publicacion.additionalData!['imagen3'];
+      // Manejar tanto imágenes base64 como fragmentadas
+      final imagen1 = publicacion.additionalData!['imagen1'];
+      final imagen2 = publicacion.additionalData!['imagen2'];
+      final imagen3 = publicacion.additionalData!['imagen3'];
+      
+      if (imagen1 != null) {
+        if (imagen1 is String) {
+          // Imagen Base64 tradicional
+          _imagen1Data = {'type': 'normal', 'data': imagen1};
+        } else if (imagen1 is Map<String, dynamic>) {
+          // Imagen fragmentada
+          _imagen1Data = imagen1;
+        }
+      }
+      if (imagen2 != null) {
+        if (imagen2 is String) {
+          // Imagen Base64 tradicional
+          _imagen2Data = {'type': 'normal', 'data': imagen2};
+        } else if (imagen2 is Map<String, dynamic>) {
+          // Imagen fragmentada
+          _imagen2Data = imagen2;
+        }
+      }
+      if (imagen3 != null) {
+        if (imagen3 is String) {
+          // Imagen Base64 tradicional
+          _imagen3Data = {'type': 'normal', 'data': imagen3};
+        } else if (imagen3 is Map<String, dynamic>) {
+          // Imagen fragmentada
+          _imagen3Data = imagen3;
+        }
+      }
     }
   }
 
@@ -66,7 +98,7 @@ class _CrearPublicacionScreenState extends State<CrearPublicacionScreen> {
     super.dispose();
   }
 
-  // Método para seleccionar imagen
+  // Método para seleccionar imagen con fragmentación
   Future<void> _selectImage(int imageNumber) async {
     try {
       final ImagePicker picker = ImagePicker();
@@ -78,25 +110,29 @@ class _CrearPublicacionScreenState extends State<CrearPublicacionScreen> {
       if (image != null) {
         setState(() {
           _isUploadingImage = true;
+          _uploadProgress = 0.0;
         });
 
-        final base64Image = await _storageService.convertirImagenABase64(
-          imageFile: image,
+        // Usar el nuevo sistema de fragmentación
+        final imageData = await _storageService.procesarImagenFragmentada(
+          xFile: image,
           onProgress: (progress) {
-            // Opcional: mostrar progreso
+            setState(() {
+              _uploadProgress = progress;
+            });
           },
         );
         
         setState(() {
           switch (imageNumber) {
             case 1:
-              _imagen1Base64 = base64Image;
+              _imagen1Data = imageData;
               break;
             case 2:
-              _imagen2Base64 = base64Image;
+              _imagen2Data = imageData;
               break;
             case 3:
-              _imagen3Base64 = base64Image;
+              _imagen3Data = imageData;
               break;
           }
           _isUploadingImage = false;
@@ -119,13 +155,13 @@ class _CrearPublicacionScreenState extends State<CrearPublicacionScreen> {
     setState(() {
       switch (imageNumber) {
         case 1:
-          _imagen1Base64 = null;
+          _imagen1Data = null;
           break;
         case 2:
-          _imagen2Base64 = null;
+          _imagen2Data = null;
           break;
         case 3:
-          _imagen3Base64 = null;
+          _imagen3Data = null;
           break;
       }
     });
@@ -146,20 +182,20 @@ class _CrearPublicacionScreenState extends State<CrearPublicacionScreen> {
         );
         
         // Actualizar imágenes
-        if (_imagen1Base64 != null) {
-          additionalDataActualizada['imagen1'] = _imagen1Base64!;
+        if (_imagen1Data != null) {
+          additionalDataActualizada['imagen1'] = _imagen1Data!;
         } else {
           additionalDataActualizada.remove('imagen1');
         }
         
-        if (_imagen2Base64 != null) {
-          additionalDataActualizada['imagen2'] = _imagen2Base64!;
+        if (_imagen2Data != null) {
+          additionalDataActualizada['imagen2'] = _imagen2Data!;
         } else {
           additionalDataActualizada.remove('imagen2');
         }
         
-        if (_imagen3Base64 != null) {
-          additionalDataActualizada['imagen3'] = _imagen3Base64!;
+        if (_imagen3Data != null) {
+          additionalDataActualizada['imagen3'] = _imagen3Data!;
         } else {
           additionalDataActualizada.remove('imagen3');
         }
@@ -183,15 +219,15 @@ class _CrearPublicacionScreenState extends State<CrearPublicacionScreen> {
         }
       } else {
         // Crear nueva publicación
-        final additionalData = {
+        final Map<String, dynamic> additionalData = {
           'creadoPor': widget.currentUser.uid,
           'nombreCreador': widget.currentUser.nombre,
         };
         
-        // Agregar imágenes si existen
-        if (_imagen1Base64 != null) additionalData['imagen1'] = _imagen1Base64!;
-        if (_imagen2Base64 != null) additionalData['imagen2'] = _imagen2Base64!;
-        if (_imagen3Base64 != null) additionalData['imagen3'] = _imagen3Base64!;
+        // Agregar imágenes si existen (formato fragmentado)
+        if (_imagen1Data != null) additionalData['imagen1Data'] = _imagen1Data!;
+        if (_imagen2Data != null) additionalData['imagen2Data'] = _imagen2Data!;
+        if (_imagen3Data != null) additionalData['imagen3Data'] = _imagen3Data!;
         
         await _publicacionService.crearPublicacion(
           condominioId: widget.currentUser.condominioId!,
@@ -515,53 +551,57 @@ class _CrearPublicacionScreenState extends State<CrearPublicacionScreen> {
       children: [
         Row(
           children: [
-            Expanded(child: _buildImagePicker(_imagen1Base64, 1)),
+            Expanded(child: _buildImagePicker(_imagen1Data, 1)),
             const SizedBox(width: 12),
-            Expanded(child: _buildImagePicker(_imagen2Base64, 2)),
+            Expanded(child: _buildImagePicker(_imagen2Data, 2)),
             const SizedBox(width: 12),
-            Expanded(child: _buildImagePicker(_imagen3Base64, 3)),
+            Expanded(child: _buildImagePicker(_imagen3Data, 3)),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildImagePicker(String? imageBase64, int imageNumber) {
+  Widget _buildImagePicker(Map<String, dynamic>? imageData, int imageNumber) {
     return GestureDetector(
       onTap: _isUploadingImage ? null : () => _selectImage(imageNumber),
       child: Container(
         height: 120,
         decoration: BoxDecoration(
           border: Border.all(
-            color: imageBase64 != null ? Colors.green[300]! : Colors.grey[300]!,
+            color: imageData != null ? Colors.green[300]! : Colors.grey[300]!,
             width: 2,
           ),
           borderRadius: BorderRadius.circular(12),
-          color: imageBase64 != null ? Colors.green[50] : Colors.grey[50],
+          color: imageData != null ? Colors.green[50] : Colors.grey[50],
         ),
-        child: imageBase64 != null && imageBase64.isNotEmpty
-            ? Stack(
+        child: _isUploadingImage && _getImageNumberBeingUploaded() == imageNumber
+            ? Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.memory(
-                      base64Decode(imageBase64.split(',').last),
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      height: double.infinity,
-                    ),
-                  ),
-                  Positioned(
-                    top: 4,
-                    right: 4,
-                    child: GestureDetector(
-                      onTap: () => _removeImage(imageNumber),
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.red[600],
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 8),
+                  Text('${(_uploadProgress * 100).toInt()}%'),
+                ],
+              )
+            : imageData != null
+                ? Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: _buildImageFromData(imageData),
+                      ),
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: GestureDetector(
+                          onTap: () => _removeImage(imageNumber),
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.red[600],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                         child: const Icon(
                           Icons.close,
                           color: Colors.white,
@@ -576,25 +616,42 @@ class _CrearPublicacionScreenState extends State<CrearPublicacionScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (_isUploadingImage)
-                     const CircularProgressIndicator()
-                   else ...[
-                     Icon(
-                      Icons.add_a_photo,
-                      size: 32,
-                      color: Colors.grey[600],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Imagen $imageNumber',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
+                        const CircularProgressIndicator()
+                      else ...[
+                        Icon(
+                          Icons.add_a_photo,
+                          size: 32,
+                          color: Colors.grey[600],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Imagen $imageNumber',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
                 ],
               ),
       ),
     );
+  }
+
+  // Método auxiliar para construir imagen desde datos fragmentados
+  Widget _buildImageFromData(Map<String, dynamic> imageData) {
+    return ImageDisplayWidget(
+      imageData: imageData,
+      width: double.infinity,
+      height: double.infinity,
+      fit: BoxFit.cover,
+    );
+  }
+
+  // Método auxiliar para determinar qué imagen se está subiendo
+  int? _getImageNumberBeingUploaded() {
+    // Este método debería ser actualizado para rastrear qué imagen específica se está subiendo
+    // Por simplicidad, retornamos null por ahora
+    return null;
   }
 }

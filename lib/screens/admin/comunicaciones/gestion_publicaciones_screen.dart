@@ -1,8 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../models/user_model.dart';
 import '../../../models/publicacion_model.dart';
 import '../../../services/publicacion_service.dart';
+import '../../../widgets/image_carousel_widget.dart';
+import '../../../utils/image_display_widget.dart';
 import 'crear_publicacion_screen.dart';
 import '../../comunicaciones/ver_publicacion_screen.dart';
 
@@ -25,6 +28,89 @@ class _GestionPublicacionesScreenState extends State<GestionPublicacionesScreen>
   void initState() {
     super.initState();
     _corregirYCargarPublicaciones();
+  }
+
+  Widget _buildImageFromData(Map<String, dynamic> imageData) {
+    print('DEBUG - _buildImageFromData llamado con: $imageData');
+    print('DEBUG - Keys disponibles: ${imageData.keys.toList()}');
+    
+    try {
+      // Si es una imagen base64 simple
+      if (imageData.containsKey('data') && imageData['data'] is String) {
+        print('DEBUG - Procesando imagen base64 simple');
+        String base64String = imageData['data'];
+        
+        // Limpiar el string base64 si tiene prefijo data:image
+        if (base64String.startsWith('data:image/')) {
+          print('DEBUG - Detectado prefijo data:image, limpiando...');
+          int commaIndex = base64String.indexOf(',');
+          if (commaIndex != -1) {
+            base64String = base64String.substring(commaIndex + 1);
+            print('DEBUG - Base64 limpio: ${base64String.substring(0, 50)}...');
+          }
+        }
+        
+        return Image.memory(
+          base64Decode(base64String),
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) {
+            print('DEBUG - Error al cargar imagen base64: $error');
+            return Container(
+              width: 200,
+              height: 200,
+              color: Colors.grey[300],
+              child: const Icon(
+                Icons.error,
+                color: Colors.red,
+                size: 50,
+              ),
+            );
+          },
+        );
+      }
+      
+      // Si es una imagen fragmentada, usar ImageDisplayWidget
+      print('DEBUG - Procesando imagen fragmentada con ImageDisplayWidget');
+      return ImageDisplayWidget(
+        imageData: imageData,
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.contain,
+        errorWidget: Container(
+          width: 200,
+          height: 200,
+          color: Colors.grey[300],
+          child: const Icon(
+            Icons.error,
+            color: Colors.red,
+            size: 50,
+          ),
+        ),
+      );
+    } catch (e) {
+      print('DEBUG - Error al mostrar imagen: $e');
+      return Container(
+        width: 200,
+        height: 200,
+        color: Colors.grey[300],
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error,
+              color: Colors.red,
+              size: 50,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Error: $e',
+              style: const TextStyle(color: Colors.red, fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   Future<void> _corregirYCargarPublicaciones() async {
@@ -415,6 +501,146 @@ class _GestionPublicacionesScreenState extends State<GestionPublicacionesScreen>
     );
   }
 
+  Widget _buildImagenesPublicacion(Map<String, dynamic>? additionalData) {
+    // Debug: Imprimir toda la estructura de additionalData
+    print('DEBUG - additionalData completo: $additionalData');
+    print('DEBUG - additionalData keys: ${additionalData?.keys.toList()}');
+    
+    if (additionalData == null) {
+      print('DEBUG - additionalData es null');
+      return Container(
+        width: 120,
+        height: 120,
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          Icons.image_not_supported,
+          color: Colors.grey[400],
+          size: 40,
+        ),
+      );
+    }
+    
+    // Extraer imágenes del additionalData usando el formato correcto para publicaciones
+    List<Map<String, dynamic>> images = [];
+    
+    // Buscar imagen1Data, imagen2Data, imagen3Data (formato de publicaciones)
+    for (int i = 1; i <= 3; i++) {
+      final imageKey = 'imagen${i}Data';
+      print('DEBUG - Buscando clave: $imageKey');
+      
+      if (additionalData.containsKey(imageKey) && additionalData[imageKey] != null) {
+        final imageData = additionalData[imageKey];
+        print('DEBUG - Encontrada imagen $i: $imageData');
+        print('DEBUG - Tipo de imagen $i: ${imageData.runtimeType}');
+        
+        if (imageData is Map<String, dynamic>) {
+          // Imagen fragmentada (formato actual)
+          print('DEBUG - Agregando imagen fragmentada $i: ${imageData.keys}');
+          images.add(imageData);
+        } else if (imageData is String && imageData.isNotEmpty) {
+          // Imagen Base64 (compatibilidad hacia atrás)
+          print('DEBUG - Agregando imagen base64 $i');
+          images.add({'type': 'base64', 'data': imageData});
+        }
+      }
+    }
+    
+    print('DEBUG - Total imágenes encontradas: ${images.length}');
+    print('DEBUG - Imágenes finales para carrusel: $images');
+    
+    if (images.isEmpty) {
+      print('DEBUG - No se encontraron imágenes');
+      return Container(
+        width: 120,
+        height: 120,
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          Icons.image_not_supported,
+          color: Colors.grey[400],
+          size: 40,
+        ),
+      );
+    }
+
+    print('DEBUG - Creando ImageCarouselWidget con ${images.length} imágenes');
+    return Container(
+      width: 120,
+      height: 120,
+      child: ImageCarouselWidget(
+        images: images,
+        width: 120,
+        height: 120,
+        fit: BoxFit.cover,
+        borderRadius: BorderRadius.circular(8),
+        onImageTap: (imageData) {
+          print('DEBUG - onImageTap llamado con: $imageData');
+          _mostrarImagenCompleta(context, imageData);
+        },
+      ),
+    );
+  }
+
+  void _mostrarImagenCompleta(BuildContext context, Map<String, dynamic> imageData) {
+    print('DEBUG - _mostrarImagenCompleta llamado con: $imageData');
+    print('DEBUG - Tipo de imageData: ${imageData.runtimeType}');
+    print('DEBUG - Keys de imageData: ${imageData.keys.toList()}');
+    
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Stack(
+            children: [
+              Center(
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.9,
+                    maxHeight: MediaQuery.of(context).size.height * 0.9,
+                  ),
+                  child: InteractiveViewer(
+                    panEnabled: true,
+                    boundaryMargin: const EdgeInsets.all(20),
+                    minScale: 0.5,
+                    maxScale: 4.0,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: _buildImageFromData(imageData),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 40,
+                right: 40,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                    ),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+   }
+
   Widget _buildPublicacionCard(PublicacionModel publicacion) {
     return Card(
       elevation: 3,
@@ -513,102 +739,114 @@ class _GestionPublicacionesScreenState extends State<GestionPublicacionesScreen>
             ),
           ),
           
-          // Contenido
+          // Contenido con carrusel de imágenes
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Column(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  publicacion.contenido.length > 150
-                      ? '${publicacion.contenido.substring(0, 150)}...'
-                      : publicacion.contenido,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 12),
+                // Carrusel de imágenes a la izquierda
+                _buildImagenesPublicacion(publicacion.additionalData),
+                const SizedBox(width: 16),
                 
-                // Footer con fecha y acciones
-                Row(
-                  children: [
-                    Icon(
-                      Icons.schedule,
-                      size: 14,
-                      color: Colors.grey[500],
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _formatearFecha(publicacion.fechaPublicacion),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[500],
-                      ),
-                    ),
-                    if (publicacion.additionalData?['nombreCreador'] != null) ...[
-                      const SizedBox(width: 16),
-                      Icon(
-                        Icons.person,
-                        size: 14,
-                        color: Colors.grey[500],
-                      ),
-                      const SizedBox(width: 4),
+                // Contenido de la publicación a la derecha
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        publicacion.additionalData!['nombreCreador'],
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[500],
+                        publicacion.contenido.length > 150
+                            ? '${publicacion.contenido.substring(0, 150)}...'
+                            : publicacion.contenido,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          height: 1.4,
                         ),
+                      ),
+                      const SizedBox(height: 12),
+                      
+                      // Footer con fecha y acciones
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.schedule,
+                            size: 14,
+                            color: Colors.grey[500],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _formatearFecha(publicacion.fechaPublicacion),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                          if (publicacion.additionalData?['nombreCreador'] != null) ...[
+                            const SizedBox(width: 16),
+                            Icon(
+                              Icons.person,
+                              size: 14,
+                              color: Colors.grey[500],
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              publicacion.additionalData!['nombreCreador'],
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      
+                      // Botones de acción
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            onPressed: () => _verPublicacion(publicacion),
+                            icon: Icon(
+                              Icons.visibility,
+                              color: Colors.grey[600],
+                            ),
+                            tooltip: 'Ver publicación',
+                          ),
+                          IconButton(
+                            onPressed: () => _cambiarEstadoPublicacion(publicacion),
+                            icon: Icon(
+                              publicacion.estado == 'activa' 
+                                  ? Icons.visibility_off 
+                                  : Icons.check_circle,
+                              color: publicacion.estado == 'activa' 
+                                  ? Colors.orange[600] 
+                                  : Colors.green[600],
+                            ),
+                            tooltip: publicacion.estado == 'activa' 
+                                ? 'Desactivar' 
+                                : 'Activar',
+                          ),
+                          IconButton(
+                            onPressed: () => _navegarAEditarPublicacion(publicacion),
+                            icon: Icon(
+                              Icons.edit,
+                              color: Colors.blue[600],
+                            ),
+                            tooltip: 'Editar',
+                          ),
+                          IconButton(
+                            onPressed: () => _eliminarPublicacion(publicacion),
+                            icon: Icon(
+                              Icons.delete,
+                              color: Colors.red[600],
+                            ),
+                            tooltip: 'Eliminar',
+                          ),
+                        ],
                       ),
                     ],
-                    const Spacer(),
-                    
-                    // Botones de acción
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          onPressed: () => _verPublicacion(publicacion),
-                          icon: Icon(
-                            Icons.visibility,
-                            color: Colors.grey[600],
-                          ),
-                          tooltip: 'Ver publicación',
-                        ),
-                        IconButton(
-                          onPressed: () => _cambiarEstadoPublicacion(publicacion),
-                          icon: Icon(
-                            publicacion.estado == 'activa' 
-                                ? Icons.visibility_off 
-                                : Icons.check_circle,
-                            color: publicacion.estado == 'activa' 
-                                ? Colors.orange[600] 
-                                : Colors.green[600],
-                          ),
-                          tooltip: publicacion.estado == 'activa' 
-                              ? 'Desactivar' 
-                              : 'Activar',
-                        ),
-                        IconButton(
-                          onPressed: () => _navegarAEditarPublicacion(publicacion),
-                          icon: Icon(
-                            Icons.edit,
-                            color: Colors.blue[600],
-                          ),
-                          tooltip: 'Editar',
-                        ),
-                        IconButton(
-                          onPressed: () => _eliminarPublicacion(publicacion),
-                          icon: Icon(
-                            Icons.delete,
-                            color: Colors.red[600],
-                          ),
-                          tooltip: 'Eliminar',
-                        ),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),

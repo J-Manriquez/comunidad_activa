@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:comunidad_activa/utils/image_display_widget.dart';
+import 'package:comunidad_activa/widgets/image_carousel_widget.dart';
 import 'package:comunidad_activa/widgets/modal_entrega_correspondencia.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -150,6 +152,7 @@ class _CorrespondenciasActivasScreenState
     final fechaFormateada = fechaRecepcion != null
         ? DateFormat('dd/MM/yyyy HH:mm').format(fechaRecepcion)
         : correspondencia.fechaHoraRecepcion;
+    final hasImages = _tieneImagenes(correspondencia);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -159,101 +162,194 @@ class _CorrespondenciasActivasScreenState
         borderRadius: BorderRadius.circular(8),
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header con tipo y fecha
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _getTipoColor(correspondencia.tipoCorrespondencia),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      correspondencia.tipoCorrespondencia.toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    fechaFormateada,
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // Tipo de entrega
-              Row(
-                children: [
-                  Icon(
-                    _getTipoEntregaIcon(correspondencia.tipoEntrega),
-                    size: 20,
-                    color: Colors.blue.shade600,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    correspondencia.tipoEntrega,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              // Datos de entrega
-              Text(
-                'Entrega: ${correspondencia.datosEntrega}',
-                style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
-              ),
-
-              // Vivienda de recepción (si aplica)
-              if (correspondencia.viviendaRecepcion != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  'Recepción: ${correspondencia.viviendaRecepcion}',
-                  style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
-                ),
+              // Carrusel de imágenes a la izquierda (si hay imágenes)
+              if (hasImages) ...[
+                _buildImagenesCorrespondencia(correspondencia)!,
+                const SizedBox(width: 16),
               ],
-
-              // Adjuntos
-              if (correspondencia.adjuntos != null &&
-                  correspondencia.adjuntos!.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Row(
+              // Contenido de la card a la derecha
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      Icons.attach_file,
-                      size: 16,
-                      color: Colors.grey.shade600,
+                    // Header con tipo y fecha
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _getTipoColor(correspondencia.tipoCorrespondencia),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            correspondencia.tipoCorrespondencia.toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          fechaFormateada,
+                          style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(height: 12),
+
+                    // Tipo de entrega
+                    Row(
+                      children: [
+                        Icon(
+                          _getTipoEntregaIcon(correspondencia.tipoEntrega),
+                          size: 20,
+                          color: Colors.blue.shade600,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          correspondencia.tipoEntrega,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Datos de entrega
                     Text(
-                      '${correspondencia.adjuntos!.length} archivo(s) adjunto(s)',
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 12,
-                      ),
+                      'Entrega: ${correspondencia.datosEntrega}',
+                      style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
                     ),
+
+                    // Vivienda de recepción (si aplica)
+                    if (correspondencia.viviendaRecepcion != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Recepción: ${correspondencia.viviendaRecepcion}',
+                        style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                      ),
+                    ],
+
+                    // Adjuntos
+                    if (correspondencia.adjuntos != null &&
+                        correspondencia.adjuntos!.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.attach_file,
+                            size: 16,
+                            color: Colors.grey.shade600,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${correspondencia.adjuntos!.length} archivo(s) adjunto(s)',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
-              ],
+              ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Widget? _buildImagenesCorrespondencia(CorrespondenciaModel correspondencia) {
+    if (!_tieneImagenes(correspondencia)) return null;
+
+    print('DEBUG: Construyendo imágenes para correspondencia ${correspondencia.id}');
+    print('DEBUG: Adjuntos disponibles: ${correspondencia.adjuntos.keys.toList()}');
+
+    List<Map<String, dynamic>> imagenesData = [];
+
+    // Procesar adjuntos de correspondencia
+    correspondencia.adjuntos.forEach((key, value) {
+      print('DEBUG: Procesando adjunto $key');
+      
+      if (value is String) {
+        // Imagen normal en Base64
+        print('DEBUG: Imagen normal encontrada');
+        imagenesData.add({
+          'type': 'normal',
+          'data': value,
+        });
+      } else if (value is Map<String, dynamic>) {
+        print('DEBUG: Imagen fragmentada encontrada: ${value.keys.toList()}');
+        
+        // Verificar si es fragmentación interna
+        if (value.containsKey('type') && value['type'] == 'internal_fragmented') {
+          print('DEBUG: Procesando imagen fragmentada interna');
+          imagenesData.add(value);
+        }
+        // Verificar si es fragmentación externa
+        else if (value.containsKey('type') && value['type'] == 'external_fragmented') {
+          print('DEBUG: Procesando imagen fragmentada externa');
+          imagenesData.add(value);
+        }
+        // Fallback para estructuras de mapa desconocidas
+        else {
+          print('DEBUG: Estructura de mapa desconocida, intentando extraer base64');
+          final possibleBase64 = value.values.firstWhere(
+            (v) => v is String && v.length > 100,
+            orElse: () => null,
+          );
+          if (possibleBase64 != null) {
+            imagenesData.add({
+              'type': 'normal',
+              'data': possibleBase64,
+            });
+            print('DEBUG: Base64 extraído de estructura desconocida');
+          }
+        }
+      }
+    });
+
+    print('DEBUG: Total de imágenes procesadas: ${imagenesData.length}');
+
+    if (imagenesData.isEmpty) return null;
+
+    return Container(
+      height: 100,
+      width: 120,
+      child: ImageCarouselWidget(
+        images: imagenesData,
+        height: 100,
+        width: 120,
+        onImageTap: (imageData) {
+          showDialog(
+            context: context,
+            builder: (context) => Dialog(
+              backgroundColor: Colors.transparent,
+              child: ImageDisplayWidget(
+                imageData: imageData,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  bool _tieneImagenes(CorrespondenciaModel correspondencia) {
+    return correspondencia.adjuntos.isNotEmpty;
   }
 
   Color _getTipoColor(String tipo) {
@@ -502,8 +598,73 @@ class _DetalleCorrespondenciaModalState extends State<_DetalleCorrespondenciaMod
       spacing: 8,
       runSpacing: 8,
       children: widget.correspondencia.adjuntos.entries.map((entry) {
+        final value = entry.value;
+        String? base64Data;
+        
+        // Manejar diferentes tipos de adjuntos
+        if (value is String) {
+          // Imagen en formato Base64 directo
+          if (value.startsWith('data:image/')) {
+            // Extraer solo la parte base64, sin el prefijo data:image/...;base64,
+            final base64Index = value.indexOf(',');
+            if (base64Index != -1 && base64Index < value.length - 1) {
+              base64Data = value.substring(base64Index + 1);
+            }
+          } else {
+            // Asumir que es base64 puro
+            base64Data = value;
+          }
+        } else if (value is Map<String, dynamic>) {
+          // Imagen fragmentada o con estructura compleja
+          final type = value['type'] as String?;
+          if (type == 'normal') {
+            final data = value['data'] as String?;
+            if (data != null) {
+              if (data.startsWith('data:image/')) {
+                final base64Index = data.indexOf(',');
+                if (base64Index != -1 && base64Index < data.length - 1) {
+                  base64Data = data.substring(base64Index + 1);
+                }
+              } else {
+                base64Data = data;
+              }
+            }
+          } else if (type == 'internal_fragmented') {
+            final fragments = value['fragments'] as List<dynamic>?;
+            if (fragments != null && fragments.isNotEmpty) {
+              String combinedBase64 = '';
+              for (var fragment in fragments) {
+                if (fragment is String) {
+                  combinedBase64 += fragment;
+                }
+              }
+              if (combinedBase64.isNotEmpty) {
+                base64Data = combinedBase64;
+              }
+            }
+          }
+          // Para external_fragmented, podríamos mostrar un placeholder
+        }
+        
+        // Si no tenemos datos válidos, mostrar placeholder
+        if (base64Data == null || base64Data.isEmpty) {
+          return Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade300),
+              color: Colors.grey.shade200,
+            ),
+            child: const Icon(
+              Icons.image_not_supported,
+              color: Colors.grey,
+            ),
+          );
+        }
+        
         return GestureDetector(
-          onTap: () => _mostrarImagenCompleta(entry.value),
+          onTap: () => _mostrarImagenCompleta(base64Data!),
           child: Container(
             width: 100,
             height: 100,
@@ -514,7 +675,7 @@ class _DetalleCorrespondenciaModalState extends State<_DetalleCorrespondenciaMod
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.memory(
-                base64Decode(entry.value),
+                base64Decode(base64Data),
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
@@ -660,6 +821,19 @@ class _DetalleCorrespondenciaModalState extends State<_DetalleCorrespondenciaMod
                   child: Image.memory(
                     base64Decode(base64Image),
                     fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: Colors.grey.shade200,
+                        child: const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.error, size: 48, color: Colors.grey),
+                            SizedBox(height: 8),
+                            Text('Error al cargar la imagen'),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
@@ -669,6 +843,8 @@ class _DetalleCorrespondenciaModalState extends State<_DetalleCorrespondenciaMod
       ),
     );
   }
+             
+  
 
   Future<void> _guardarNuevoMensaje() async {
     final mensaje = _nuevoMensajeController.text.trim();

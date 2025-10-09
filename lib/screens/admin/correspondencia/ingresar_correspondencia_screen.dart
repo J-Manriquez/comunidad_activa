@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../models/correspondencia_config_model.dart';
 import '../../../services/correspondencia_service.dart';
+import '../../../utils/storage_service.dart';
 import '../../../widgets/seleccion_vivienda_residente_modal.dart';
 import 'package:intl/intl.dart';
 
@@ -229,11 +231,37 @@ class _IngresarCorrespondenciaScreenState
     });
 
     try {
-      // Convertir imágenes a base64
+      // Procesar imágenes con fragmentación
       Map<String, dynamic> adjuntos = {};
+      final storageService = StorageService();
+      
       for (int i = 0; i < _imagenes.length; i++) {
-        final base64Image = await _fileToBase64(_imagenes[i]);
-        adjuntos['imagen_$i'] = base64Image;
+        try {
+          // Usar fragmentación de imágenes para evitar límites de Firestore
+          final imageData = await storageService.procesarImagenFragmentada(
+            xFile: _imagenes[i],
+            onProgress: (progress) {
+              // Opcional: mostrar progreso de procesamiento
+              print('Procesando imagen ${i + 1}/${_imagenes.length}: ${(progress * 100).toInt()}%');
+            },
+          );
+          
+          // Si es fragmentación externa, guardar fragmentos en Firestore
+          if (imageData['type'] == 'external_fragmented') {
+            await _guardarFragmentosExternos(imageData);
+            // Remover los fragmentos del objeto principal para evitar duplicación
+            final cleanImageData = Map<String, dynamic>.from(imageData);
+            cleanImageData.remove('fragments');
+            adjuntos['imagen_$i'] = cleanImageData;
+          } else {
+            adjuntos['imagen_$i'] = imageData;
+          }
+          
+          print('Imagen $i procesada: tipo=${imageData['type']}');
+        } catch (e) {
+          print('Error al procesar imagen $i: $e');
+          throw Exception('Error al procesar imagen ${i + 1}: $e');
+        }
       }
 
       // Crear el documento de correspondencia
@@ -814,5 +842,33 @@ class _IngresarCorrespondenciaScreenState
             )
           : null,
     );
+  }
+
+  // Función para guardar fragmentos externos en Firestore
+  Future<void> _guardarFragmentosExternos(Map<String, dynamic> imageData) async {
+    if (imageData['type'] != 'external_fragmented' || imageData['fragments'] == null) {
+      return;
+    }
+
+    final fragments = imageData['fragments'] as List<Map<String, dynamic>>;
+    final fragmentId = imageData['fragmentId'] as String;
+
+    for (final fragment in fragments) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('image_fragments')
+            .doc('${fragmentId}_${fragment['index']}')
+            .set({
+          'fragmentId': fragmentId,
+          'index': fragment['index'],
+          'data': fragment['data'],
+          'totalFragments': fragments.length,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      } catch (e) {
+        print('Error al guardar fragmento ${fragment['index']}: $e');
+        throw Exception('Error al guardar fragmento de imagen: $e');
+      }
+    }
   }
 }

@@ -6,6 +6,8 @@ import '../../models/reserva_model.dart';
 import '../../models/residente_model.dart';
 import '../../services/espacios_comunes_service.dart';
 import '../../services/firestore_service.dart';
+import '../../utils/image_display_widget.dart';
+import '../../widgets/image_carousel_widget.dart';
 
 class SolicitarEspacioScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -586,31 +588,32 @@ class _SolicitarEspacioScreenState extends State<SolicitarEspacioScreen> {
   }
 
   Widget _buildEspacioImage(EspacioComunModel espacio) {
-    if (espacio.additionalData != null &&
-        espacio.additionalData!['imagenes'] != null &&
-        (espacio.additionalData!['imagenes'] as List).isNotEmpty) {
-      final imageUrl = (espacio.additionalData!['imagenes'] as List).first;
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.network(
-          imageUrl,
-          fit: BoxFit.cover,
-          width: 80,
-          height: 80,
-          errorBuilder: (context, error, stackTrace) {
-            return const Icon(
-              Icons.business,
-              size: 40,
-              color: Colors.grey,
-            );
-          },
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          },
-        ),
+    // Recopilar todas las imágenes disponibles
+    List<Map<String, dynamic>> images = [];
+    
+    if (espacio.additionalData != null) {
+      // Buscar imagen1Data, imagen2Data y imagen3Data
+      for (int i = 1; i <= 3; i++) {
+        final imageKey = 'imagen${i}Data';
+        if (espacio.additionalData![imageKey] != null) {
+          Map<String, dynamic> imageData = espacio.additionalData![imageKey];
+          
+          // Debug: Imprimir la estructura de imageData
+          print('DEBUG - $imageKey structure: $imageData');
+          print('DEBUG - $imageKey type: ${imageData['type']}');
+          print('DEBUG - $imageKey keys: ${imageData.keys.toList()}');
+          
+          // Validar y corregir la estructura de imageData si es necesario
+          Map<String, dynamic> validImageData = _validateImageData(imageData);
+          images.add(validImageData);
+        }
+      }
+    }
+    
+    if (images.isNotEmpty) {
+      return ImageCarouselWidget(
+        images: images,
+        onImageTap: (imageData) => _mostrarImagenCompleta(imageData),
       );
     } else {
       return const Icon(
@@ -639,10 +642,10 @@ class _SolicitarEspacioScreenState extends State<SolicitarEspacioScreen> {
           padding: const EdgeInsets.all(12.0),
           child: Row(
             children: [
-              // Imagen del espacio
+              // Imagen del espacio - Aumentado el tamaño para mejor proporción
               Container(
-                width: 80,
-                height: 80,
+                width: 120,
+                height: 100,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
                   color: Colors.grey.shade200,
@@ -902,5 +905,128 @@ class _SolicitarEspacioScreenState extends State<SolicitarEspacioScreen> {
 
     widgets.add(const SizedBox(height: 16));
     return widgets;
+  }
+
+  void _mostrarImagenCompleta(Map<String, dynamic> imageData) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Stack(
+            children: [
+              // Fondo semi-transparente
+              GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: Container(
+                  color: Colors.black54,
+                  width: double.infinity,
+                  height: double.infinity,
+                ),
+              ),
+              // Imagen en pantalla completa
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: ImageDisplayWidget(
+                      imageData: imageData,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+              ),
+              // Botón de cerrar
+              Positioned(
+                top: 40,
+                right: 40,
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Valida y corrige la estructura de imageData si es necesario
+  Map<String, dynamic> _validateImageData(Map<String, dynamic> imageData) {
+    // Debug: Imprimir información detallada
+    print('DEBUG - Validating imageData: $imageData');
+    
+    // Verificar si tiene el campo 'type'
+    if (!imageData.containsKey('type')) {
+      print('DEBUG - Missing type field, attempting to infer...');
+      
+      // Intentar inferir el tipo basado en la estructura
+      if (imageData.containsKey('data') && imageData['data'] is String) {
+        print('DEBUG - Found data field with String, assuming normal type');
+        return {
+          'type': 'normal',
+          'data': imageData['data'],
+        };
+      } else if (imageData.containsKey('fragments') && imageData['fragments'] is List) {
+        print('DEBUG - Found fragments field, assuming internal_fragmented type');
+        return {
+          'type': 'internal_fragmented',
+          'fragments': imageData['fragments'],
+          'total_fragments': imageData['total_fragments'] ?? (imageData['fragments'] as List).length,
+          'original_type': imageData['original_type'] ?? 'jpeg',
+        };
+      } else if (imageData.containsKey('fragment_id')) {
+        print('DEBUG - Found fragment_id field, assuming external_fragmented type');
+        return {
+          'type': 'external_fragmented',
+          'fragment_id': imageData['fragment_id'],
+          'total_fragments': imageData['total_fragments'] ?? 1,
+          'original_type': imageData['original_type'] ?? 'jpeg',
+        };
+      } else {
+        print('DEBUG - Cannot infer type, defaulting to normal with error handling');
+        return {
+          'type': 'normal',
+          'data': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=', // Imagen placeholder muy pequeña
+        };
+      }
+    }
+    
+    // Si ya tiene type, verificar que sea válido
+    final type = imageData['type'] as String?;
+    if (type == null || !['normal', 'internal_fragmented', 'external_fragmented'].contains(type)) {
+      print('DEBUG - Invalid type: $type, defaulting to normal');
+      return {
+        'type': 'normal',
+        'data': imageData['data'] ?? 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=',
+      };
+    }
+    
+    print('DEBUG - imageData is valid with type: $type');
+    return imageData;
   }
 }

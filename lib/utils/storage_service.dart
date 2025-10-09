@@ -11,9 +11,12 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:universal_html/html.dart' as html;
 import 'package:http/http.dart' as http;
 
-
-
 class StorageService {
+  // Tamaño máximo por fragmento (800KB)
+  static const int maxFragmentSize = 800 * 1024;
+  
+  // Tamaño límite para usar fragmentación (500KB)
+  static const int fragmentationThreshold = 500 * 1024;
   // Convertir imagen a Base64
   Future<String> convertirImagenABase64({
     required dynamic imageFile,
@@ -292,6 +295,156 @@ class StorageService {
     } catch (e) {
       print('Error al descargar imagen: $e');
       return null;
+    }
+  }
+
+  // NUEVAS FUNCIONALIDADES V2 - FRAGMENTACIÓN
+  
+  /// Procesa una imagen y la fragmenta si es necesario
+  Future<Map<String, dynamic>> procesarImagenFragmentada({
+    html.File? webFile,
+    XFile? xFile,
+    File? file,
+    Uint8List? bytes,
+    int? quality,
+    Function(double)? onProgress,
+  }) async {
+    try {
+      // Convertir a Base64 primero
+      final base64Image = await convertirImagenABase64(
+        imageFile: webFile ?? xFile ?? file ?? bytes,
+        onProgress: onProgress,
+      );
+      
+      onProgress?.call(0.3);
+      
+      // Extraer solo los datos Base64 (sin el prefijo data:image/...)
+      final base64Data = base64Image.split(',').last;
+      final imageBytes = base64Decode(base64Data);
+      
+      onProgress?.call(0.3);
+      
+      // Si la imagen es pequeña, no fragmentar
+      if (imageBytes.length <= fragmentationThreshold) {
+        onProgress?.call(1.0);
+        return {
+          'type': 'normal',
+          'data': base64Image,
+        };
+      }
+      
+      onProgress?.call(0.5);
+      
+      // Fragmentar la imagen
+      final fragments = _fragmentarBase64(base64Data);
+      
+      onProgress?.call(0.8);
+      
+      if (fragments.length <= 10) {
+        // Fragmentación interna (hasta 10 fragmentos)
+        onProgress?.call(1.0);
+        return {
+          'type': 'internal_fragmented',
+          'fragments': fragments,
+          'total_fragments': fragments.length,
+          'original_type': _extractImageType(base64Image),
+        };
+      } else {
+        // Fragmentación externa (más de 10 fragmentos)
+        final fragmentId = _generateFragmentId();
+        onProgress?.call(1.0);
+        return {
+          'type': 'external_fragmented',
+          'fragment_id': fragmentId,
+          'total_fragments': fragments.length,
+          'original_type': _extractImageType(base64Image),
+          'fragments': fragments, // Para almacenar externamente
+        };
+      }
+    } catch (e) {
+      throw Exception('Error al procesar imagen fragmentada: $e');
+    }
+  }
+  
+  /// Fragmenta una cadena Base64 en partes más pequeñas
+  List<String> _fragmentarBase64(String base64Data) {
+    final fragments = <String>[];
+    final totalLength = base64Data.length;
+    
+    for (int i = 0; i < totalLength; i += maxFragmentSize) {
+      final end = Math.min(i + maxFragmentSize, totalLength);
+      fragments.add(base64Data.substring(i, end));
+    }
+    
+    return fragments;
+  }
+  
+  /// Genera un ID único para fragmentos externos
+  String _generateFragmentId() {
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final random = Math.Random().nextInt(999999);
+    return '${timestamp}_$random';
+  }
+  
+  /// Extrae el tipo de imagen del data URL
+  String _extractImageType(String dataUrl) {
+    final match = RegExp(r'data:image/([^;]+)').firstMatch(dataUrl);
+    return match?.group(1) ?? 'jpeg';
+  }
+  
+  /// Verifica si una imagen está fragmentada
+  static bool esImagenFragmentada(Map<String, dynamic> imageData) {
+    final type = imageData['type'] as String?;
+    return type == 'internal_fragmented' || type == 'external_fragmented';
+  }
+  
+  /// Obtiene la imagen completa desde datos fragmentados
+  static String obtenerImagenCompleta(Map<String, dynamic> imageData) {
+    final type = imageData['type'] as String;
+    
+    switch (type) {
+      case 'normal':
+        return imageData['data'] as String;
+      
+      case 'internal_fragmented':
+        final fragments = List<String>.from(imageData['fragments']);
+        final originalType = imageData['original_type'] as String;
+        return reconstruirImagenBase64(fragments, originalType);
+      
+      case 'external_fragmented':
+        throw Exception('Las imágenes fragmentadas externamente requieren carga asíncrona');
+      
+      default:
+        throw Exception('Tipo de imagen no reconocido: $type');
+    }
+  }
+  
+  /// Reconstruye una imagen Base64 desde fragmentos
+  static String reconstruirImagenBase64(List<String> fragments, String imageType) {
+    final base64Data = fragments.join('');
+    return 'data:image/$imageType;base64,$base64Data';
+  }
+  
+  /// Obtiene el tamaño estimado de una imagen fragmentada
+  static int obtenerTamanoEstimado(Map<String, dynamic> imageData) {
+    final type = imageData['type'] as String;
+    
+    switch (type) {
+      case 'normal':
+        final data = imageData['data'] as String;
+        final base64Data = data.split(',').last;
+        return base64Decode(base64Data).length;
+      
+      case 'internal_fragmented':
+        final fragments = List<String>.from(imageData['fragments']);
+        return fragments.fold(0, (sum, fragment) => sum + fragment.length);
+      
+      case 'external_fragmented':
+        final totalFragments = imageData['total_fragments'] as int;
+        return totalFragments * maxFragmentSize; // Estimación
+      
+      default:
+        return 0;
     }
   }
 }

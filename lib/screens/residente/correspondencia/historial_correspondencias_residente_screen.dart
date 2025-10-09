@@ -7,6 +7,8 @@ import '../../../services/firestore_service.dart';
 import '../../../services/correspondencia_service.dart';
 import '../../../models/residente_model.dart';
 import '../../../models/correspondencia_config_model.dart';
+import '../../../widgets/image_carousel_widget.dart';
+import '../../../utils/image_display_widget.dart';
 
 class HistorialCorrespondenciasResidenteScreen extends StatefulWidget {
   final String condominioId;
@@ -423,79 +425,96 @@ class _HistorialCorrespondenciasResidenteScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Primera fila: Carrusel de imágenes a la izquierda y contenido a la derecha
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    _getCorrespondenciaIcon(
-                      correspondencia.tipoCorrespondencia,
-                    ),
-                    color: Colors.green.shade600,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 12),
+                  // Carrusel de imágenes (120x120)
+                  _buildImageCarousel(correspondencia),
+                  const SizedBox(width: 16),
+                  // Contenido de la correspondencia
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          correspondencia.tipoCorrespondencia,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Row(
+                          children: [
+                            Icon(
+                              _getCorrespondenciaIcon(
+                                correspondencia.tipoCorrespondencia,
+                              ),
+                              color: Colors.green.shade600,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    correspondencia.tipoCorrespondencia,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    correspondencia.tipoEntrega,
+                                    style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade100,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                'Entregada',
+                                style: TextStyle(
+                                  color: Colors.green.shade700,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        Text(
-                          correspondencia.tipoEntrega,
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 14,
-                          ),
+                        const SizedBox(height: 12),
+                        _buildInfoRow(
+                          _mostrarRecibidas ? 'Destinatario:' : 'Remitente:',
+                          _mostrarRecibidas
+                              ? correspondencia.datosEntrega
+                              : (correspondencia.viviendaRecepcion ?? 'No especificado'),
                         ),
+                        if (!_mostrarRecibidas)
+                          _buildInfoRow('Destinatario:', correspondencia.datosEntrega),
+                        _buildInfoRow(
+                          'Fecha de recepción:',
+                          _formatDateTime(correspondencia.fechaHoraRecepcion),
+                        ),
+                        if (correspondencia.fechaHoraEntrega != null)
+                          _buildInfoRow(
+                            'Fecha de entrega:',
+                            _formatDateTime(correspondencia.fechaHoraEntrega!),
+                          ),
                       ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade100,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      'Entregada',
-                      style: TextStyle(
-                        color: Colors.green.shade700,
-                        fontWeight: FontWeight.w500,
-                        fontSize: 12,
-                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              _buildInfoRow(
-                _mostrarRecibidas ? 'Destinatario:' : 'Remitente:',
-                _mostrarRecibidas
-                    ? correspondencia.datosEntrega
-                    : (correspondencia.viviendaRecepcion ?? 'No especificado'),
-              ),
-              if (!_mostrarRecibidas)
-                _buildInfoRow('Destinatario:', correspondencia.datosEntrega),
-              _buildInfoRow(
-                'Fecha de recepción:',
-                _formatDateTime(correspondencia.fechaHoraRecepcion),
-              ),
-              if (correspondencia.fechaHoraEntrega != null)
-                _buildInfoRow(
-                  'Fecha de entrega:',
-                  _formatDateTime(correspondencia.fechaHoraEntrega!),
-                ),
 
               // Mostrar mensajes adicionales si existen
               if (correspondencia.infAdicional?.isNotEmpty == true) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 const Divider(),
                 const SizedBox(height: 8),
                 Text(
@@ -1436,5 +1455,116 @@ class _HistorialCorrespondenciasResidenteScreenState
     String hora = '${parsedDate.hour.toString().padLeft(2, '0')}:${parsedDate.minute.toString().padLeft(2, '0')}:${parsedDate.second.toString().padLeft(2, '0')}';
     
     return {'fecha': fecha, 'hora': hora};
+  }
+
+  Widget _buildImageCarousel(CorrespondenciaModel correspondencia) {
+    // Verificar si hay adjuntos
+    if (correspondencia.adjuntos == null || correspondencia.adjuntos!.isEmpty) {
+      return Container(
+        width: 120,
+        height: 120,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          Icons.image_not_supported,
+          color: Colors.grey.shade400,
+          size: 40,
+        ),
+      );
+    }
+
+    // Filtrar todas las imágenes (normales, fragmentadas internas y externas)
+    final imagenes = correspondencia.adjuntos!.entries
+        .where((entry) {
+          final value = entry.value;
+          if (value is String) {
+            // Imagen en formato Base64 directo
+            return value.startsWith('data:image/');
+          } else if (value is Map<String, dynamic>) {
+            // Imagen fragmentada (interna o externa)
+            final type = value['type'] as String?;
+            return type == 'normal' || 
+                   type == 'internal_fragmented' || 
+                   type == 'external_fragmented';
+          }
+          return false;
+        })
+        .map((entry) {
+          final value = entry.value;
+          if (value is String) {
+            // Convertir String a Map para compatibilidad
+            return <String, dynamic>{
+              'data': value,
+              'type': 'base64',
+            };
+          } else if (value is Map<String, dynamic>) {
+            // Ya es un Map, devolverlo tal como está
+            return value;
+          }
+          return <String, dynamic>{};
+        })
+        .toList();
+
+    if (imagenes.isEmpty) {
+      return Container(
+        width: 120,
+        height: 120,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          Icons.image_not_supported,
+          color: Colors.grey.shade400,
+          size: 40,
+        ),
+      );
+    }
+
+    return Container(
+      width: 120,
+      height: 120,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: GestureDetector(
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (context) => Dialog(
+                backgroundColor: Colors.transparent,
+                child: ImageDisplayWidget(
+                  imageData: imagenes.first,
+                  width: MediaQuery.of(context).size.width * 0.9,
+                  height: MediaQuery.of(context).size.height * 0.7,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            );
+          },
+          child: ImageCarouselWidget(
+            images: imagenes,
+            width: 120,
+            height: 120,
+            borderRadius: BorderRadius.circular(8),
+            onImageTap: (imageData) {
+              showDialog(
+                context: context,
+                builder: (context) => Dialog(
+                  backgroundColor: Colors.transparent,
+                  child: ImageDisplayWidget(
+                    imageData: imageData,
+                    width: MediaQuery.of(context).size.width * 0.9,
+                    height: MediaQuery.of(context).size.height * 0.7,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
   }
 }

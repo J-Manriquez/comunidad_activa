@@ -442,10 +442,53 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
                 itemCount: widget.correspondencia.adjuntos.length,
                 itemBuilder: (context, index) {
                   final key = widget.correspondencia.adjuntos.keys.elementAt(index);
-                  final imageData = widget.correspondencia.adjuntos[key];
+                  final adjunto = widget.correspondencia.adjuntos[key];
+                  
+                  // Extraer datos Base64 según el tipo de adjunto
+                  String base64Data = '';
+                  
+                  if (adjunto is String) {
+                    // Imagen directa en Base64
+                    if (adjunto.startsWith('data:image/')) {
+                      // Extraer solo la parte Base64 después de la coma
+                      final commaIndex = adjunto.indexOf(',');
+                      base64Data = commaIndex != -1 ? adjunto.substring(commaIndex + 1) : adjunto;
+                    } else {
+                      base64Data = adjunto;
+                    }
+                  } else if (adjunto is Map<String, dynamic>) {
+                    // Imagen fragmentada
+                    if (adjunto['type'] == 'normal' && adjunto['data'] != null) {
+                      String imageData = adjunto['data'];
+                      if (imageData.startsWith('data:image/')) {
+                        final commaIndex = imageData.indexOf(',');
+                        base64Data = commaIndex != -1 ? imageData.substring(commaIndex + 1) : imageData;
+                      } else {
+                        base64Data = imageData;
+                      }
+                    } else if (adjunto['type'] == 'internal_fragmented' && adjunto['fragments'] != null) {
+                      // Combinar fragmentos
+                      List<dynamic> fragments = adjunto['fragments'];
+                      base64Data = fragments.join('');
+                    }
+                  }
+                  
+                  // Si no se pudo extraer datos válidos, mostrar placeholder
+                  if (base64Data.isEmpty) {
+                    return Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      width: 100,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.grey.shade200,
+                      ),
+                      child: const Icon(Icons.image_not_supported),
+                    );
+                  }
                   
                   return GestureDetector(
-                    onTap: () => _mostrarImagenCompleta(imageData),
+                    onTap: () => _mostrarImagenCompleta(base64Data),
                     child: Container(
                       margin: const EdgeInsets.only(right: 8),
                       width: 100,
@@ -456,7 +499,7 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: Image.memory(
-                          base64Decode(imageData),
+                          base64Decode(base64Data),
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
                             return Container(
@@ -837,6 +880,13 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
   }
 
   void _mostrarImagenCompleta(String imageData) {
+    // Extraer Base64 puro si tiene prefijo
+    String base64Data = imageData;
+    if (imageData.startsWith('data:image/')) {
+      final commaIndex = imageData.indexOf(',');
+      base64Data = commaIndex != -1 ? imageData.substring(commaIndex + 1) : imageData;
+    }
+    
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -847,8 +897,28 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
               Center(
                 child: InteractiveViewer(
                   child: Image.memory(
-                    base64Decode(imageData),
+                    base64Decode(base64Data),
                     fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: Colors.grey.shade800,
+                        child: const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              color: Colors.white,
+                              size: 48,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'Error al cargar la imagen',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
