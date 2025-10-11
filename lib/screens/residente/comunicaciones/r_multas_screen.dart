@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'historial_multas_screen.dart';
 import '../../../utils/image_display_widget.dart';
 import '../../../widgets/image_carousel_widget.dart';
+import '../../../utils/image_fullscreen_helper.dart';
 
 class MultasResidenteScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -529,7 +530,7 @@ class _MultasResidenteScreenState extends State<MultasResidenteScreen> {
          height: 100,
          fit: BoxFit.cover,
          borderRadius: BorderRadius.circular(8),
-         onImageTap: (imageData) => _mostrarImagenCompleta(imageData),
+         onImageTap: (imageData) => ImageFullscreenHelper.showFullscreenImage(context, imageData),
        );
      } else {
       return const Icon(
@@ -540,74 +541,6 @@ class _MultasResidenteScreenState extends State<MultasResidenteScreen> {
     }
   }
 
-  
-  void _mostrarImagenCompleta(Map<String, dynamic> imageData) {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          child: Stack(
-            children: [
-              // Fondo semi-transparente
-              GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
-                child: Container(
-                  color: Colors.black54,
-                  width: double.infinity,
-                  height: double.infinity,
-                ),
-              ),
-              // Imagen en pantalla completa
-              Center(
-                child: Container(
-                  margin: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 10,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: ImageDisplayWidget(
-                      imageData: imageData,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
-              ),
-              // Botón de cerrar
-              Positioned(
-                top: 40,
-                right: 40,
-                child: GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Icon(
-                      Icons.close,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
   // Nuevo método para abrir el modal de detalle
   Future<void> _abrirModalDetalle(MultaModel multa) async {
     // Marcar como leída automáticamente si no ha sido leída
@@ -1065,7 +998,7 @@ class _MultaDetalleModal extends StatelessWidget {
                 width: 120,
                 margin: EdgeInsets.only(right: index < imagenes.length - 1 ? 12 : 0),
                 child: GestureDetector(
-                  onTap: () => _mostrarImagenCompleta(context, imagenes[index]),
+                  onTap: () => ImageFullscreenHelper.showFullscreenImage(context, imagenes[index]),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: ImageDisplayWidget(
@@ -1073,6 +1006,7 @@ class _MultaDetalleModal extends StatelessWidget {
                       width: 120,
                       height: 120,
                       fit: BoxFit.cover,
+                      onTap: () => ImageFullscreenHelper.showFullscreenImage(context, imagenes[index]),
                     ),
                   ),
                 ),
@@ -1081,74 +1015,6 @@ class _MultaDetalleModal extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-  
-  void _mostrarImagenCompleta(BuildContext context, Map<String, dynamic> imageData) {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          child: Stack(
-            children: [
-              // Fondo semi-transparente
-              GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
-                child: Container(
-                  color: Colors.black54,
-                  width: double.infinity,
-                  height: double.infinity,
-                ),
-              ),
-              // Imagen en pantalla completa
-              Center(
-                child: Container(
-                  margin: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 10,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: ImageDisplayWidget(
-                      imageData: imageData,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
-              ),
-              // Botón de cerrar
-              Positioned(
-                top: 40,
-                right: 40,
-                child: GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Icon(
-                      Icons.close,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 

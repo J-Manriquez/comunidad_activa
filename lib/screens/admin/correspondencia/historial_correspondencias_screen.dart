@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import '../../../models/correspondencia_config_model.dart';
 import '../../../models/user_model.dart';
 import '../../../services/correspondencia_service.dart';
+import '../../../widgets/image_carousel_widget.dart';
+// import '../../../widgets/image_fullscreen_helper.dart';
 
 class HistorialCorrespondenciasScreen extends StatefulWidget {
   final String condominioId;
@@ -540,45 +542,7 @@ class _DetalleCorrespondenciaModal extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      ...correspondencia.adjuntos!.entries.map((entry) {
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey.shade300),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.image,
-                                color: Colors.grey.shade600,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  entry.key,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                              if (entry.value != null && entry.value.toString().isNotEmpty)
-                                IconButton(
-                                  onPressed: () => _mostrarImagen(context, entry.value.toString()),
-                                  icon: Icon(
-                                    Icons.visibility,
-                                    color: Colors.blue.shade600,
-                                  ),
-                                  tooltip: 'Ver imagen',
-                                ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
+                      _buildAdjuntosCarousel(correspondencia.adjuntos!),
                     ],
                     
                     // Información adicional
@@ -781,7 +745,26 @@ class _DetalleCorrespondenciaModal extends StatelessWidget {
     }
   }
 
-  void _mostrarImagen(BuildContext context, String base64Image) {
+  void _mostrarImagen(BuildContext context, String imageData) {
+    // Limpiar los datos de imagen antes de decodificar
+    String cleanBase64 = imageData;
+    
+    // Si es un Map convertido a String, necesitamos extraer los datos correctamente
+    if (imageData.startsWith('{') && imageData.contains('data:image/')) {
+      // Buscar el patrón de base64 en el string
+      final regex = RegExp(r'data:image/[^;]+;base64,([A-Za-z0-9+/=]+)');
+      final match = regex.firstMatch(imageData);
+      if (match != null) {
+        cleanBase64 = match.group(1) ?? '';
+      }
+    } else if (imageData.startsWith('data:image/')) {
+      // Extraer solo la parte base64
+      final base64Index = imageData.indexOf(',');
+      if (base64Index != -1 && base64Index < imageData.length - 1) {
+        cleanBase64 = imageData.substring(base64Index + 1);
+      }
+    }
+    
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -807,8 +790,22 @@ class _DetalleCorrespondenciaModal extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   child: Image.memory(
-                    base64Decode(base64Image),
+                    base64Decode(cleanBase64),
                     fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: Colors.grey.shade200,
+                        child: const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.error, color: Colors.red),
+                              Text('Error al cargar imagen'),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
@@ -816,6 +813,60 @@ class _DetalleCorrespondenciaModal extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildAdjuntosCarousel(Map<String, dynamic> adjuntos) {
+    List<Map<String, dynamic>> imagenes = [];
+    
+    // Convertir los adjuntos al formato esperado por ImageCarouselWidget
+    adjuntos.forEach((key, value) {
+      if (value != null && value.toString().isNotEmpty) {
+        // Limpiar los datos de imagen
+        String cleanBase64 = value.toString();
+        
+        // Si es un Map convertido a String, extraer los datos correctamente
+        if (cleanBase64.startsWith('{') && cleanBase64.contains('data:image/')) {
+          // Buscar el patrón de base64 en el string
+          final regex = RegExp(r'data:image/[^;]+;base64,([A-Za-z0-9+/=]+)');
+          final match = regex.firstMatch(cleanBase64);
+          if (match != null) {
+            cleanBase64 = match.group(1) ?? '';
+          }
+        } else if (cleanBase64.startsWith('data:image/')) {
+          // Extraer solo la parte base64
+          final base64Index = cleanBase64.indexOf(',');
+          if (base64Index != -1 && base64Index < cleanBase64.length - 1) {
+            cleanBase64 = cleanBase64.substring(base64Index + 1);
+          }
+        }
+        
+        // Validar que sea una cadena base64 válida
+        if (cleanBase64.isNotEmpty && RegExp(r'^[A-Za-z0-9+/]*={0,2}$').hasMatch(cleanBase64)) {
+          imagenes.add({
+            'type': 'normal',
+            'data': cleanBase64,
+          });
+        }
+      }
+    });
+    
+    if (imagenes.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        child: const Text(
+          'No hay imágenes válidas para mostrar',
+          style: TextStyle(color: Colors.grey),
+        ),
+      );
+    }
+    
+    return ImageCarouselWidget(
+      images: imagenes,
+      height: 200,
+      onImageTap: (imageData) {
+        // ImageFullscreenHelper.showFullscreenImage(context, imageData);
+      },
     );
   }
 }

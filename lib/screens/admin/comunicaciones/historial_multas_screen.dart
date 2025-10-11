@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'dart:convert';
 import '../../../utils/storage_service.dart';
 import '../../../utils/image_display_widget.dart';
+import '../../../utils/image_fullscreen_helper.dart';
 
 class HistorialMultasScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -234,49 +235,34 @@ class _HistorialMultasScreenState extends State<HistorialMultasScreen> {
      }
    }
 
-  void _mostrarImagenCompleta(String imagenBase64) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Stack(
-          children: [
-            Center(
-              child: InteractiveViewer(
-                child: Image.memory(
-                  base64Decode(imagenBase64),
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-            Positioned(
-              top: 40,
-              right: 20,
-              child: IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(
-                  Icons.close,
-                  color: Colors.white,
-                  size: 30,
-                ),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.black54,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildImagenesEvidenciaModal(Map<String, dynamic> additionalData) {
-    List<String> imagenes = [];
+    List<Map<String, dynamic>> imagenes = [];
     
-    // Extraer imágenes del additionalData
-    if (additionalData['imagen1'] != null) imagenes.add(additionalData['imagen1']);
-    if (additionalData['imagen2'] != null) imagenes.add(additionalData['imagen2']);
-    if (additionalData['imagen3'] != null) imagenes.add(additionalData['imagen3']);
+    // Extraer imágenes del additionalData, manejando tanto strings como objetos
+    if (additionalData['imagen1'] != null) {
+      final imagen1 = additionalData['imagen1'];
+      if (imagen1 is String) {
+        imagenes.add({'type': 'normal', 'data': imagen1});
+      } else if (imagen1 is Map<String, dynamic>) {
+        imagenes.add(imagen1);
+      }
+    }
+    if (additionalData['imagen2'] != null) {
+      final imagen2 = additionalData['imagen2'];
+      if (imagen2 is String) {
+        imagenes.add({'type': 'normal', 'data': imagen2});
+      } else if (imagen2 is Map<String, dynamic>) {
+        imagenes.add(imagen2);
+      }
+    }
+    if (additionalData['imagen3'] != null) {
+      final imagen3 = additionalData['imagen3'];
+      if (imagen3 is String) {
+        imagenes.add({'type': 'normal', 'data': imagen3});
+      } else if (imagen3 is Map<String, dynamic>) {
+        imagenes.add(imagen3);
+      }
+    }
     
     if (imagenes.isEmpty) return const SizedBox.shrink();
     
@@ -305,15 +291,16 @@ class _HistorialMultasScreenState extends State<HistorialMultasScreen> {
             scrollDirection: Axis.horizontal,
             itemCount: imagenes.length,
             itemBuilder: (context, index) {
+              final imagenData = imagenes[index];
               return Container(
                 width: 120,
                 margin: EdgeInsets.only(right: index < imagenes.length - 1 ? 12 : 0),
                 child: GestureDetector(
-                  onTap: () => _mostrarImagenCompleta(imagenes[index]),
+                  onTap: () => ImageFullscreenHelper.showFullscreenImage(context, imagenData),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.memory(
-                      base64Decode(imagenes[index]),
+                    child: ImageDisplayWidget(
+                      imageData: imagenData,
                       fit: BoxFit.cover,
                       width: 120,
                       height: 120,
@@ -856,7 +843,7 @@ class _MultaDetalleModalAdmin extends StatelessWidget {
                 width: 80,
                 margin: EdgeInsets.only(right: index < imagenes.length - 1 ? 8 : 0),
                 child: GestureDetector(
-                  onTap: () => _mostrarImagenCompleta(imagenInfo, context),
+                  onTap: () => ImageFullscreenHelper.showFullscreenImage(context, imagenInfo),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(6),
                     child: imagenInfo['type'] == 'base64'
@@ -879,47 +866,6 @@ class _MultaDetalleModalAdmin extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-  
-  void _mostrarImagenCompleta(Map<String, dynamic> imagenInfo, BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Stack(
-          children: [
-            Center(
-              child: InteractiveViewer(
-                child: imagenInfo['type'] == 'base64'
-                    ? Image.memory(
-                        base64Decode(imagenInfo['data']),
-                        fit: BoxFit.contain,
-                      )
-                    : ImageDisplayWidget(
-                        imageData: imagenInfo['data'],
-                        fit: BoxFit.contain,
-                      ),
-              ),
-            ),
-            Positioned(
-              top: 40,
-              right: 20,
-              child: IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(
-                  Icons.close,
-                  color: Colors.white,
-                  size: 30,
-                ),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.black54,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

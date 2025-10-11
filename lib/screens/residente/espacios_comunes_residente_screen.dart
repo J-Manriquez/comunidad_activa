@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../models/user_model.dart';
 import '../../models/reserva_model.dart';
 import '../../services/espacios_comunes_service.dart';
+import '../../widgets/image_carousel_widget.dart';
+import '../../utils/image_fullscreen_helper.dart';
 import 'solicitar_espacio_screen.dart';
 import 'revisiones_espacios_residente_screen.dart';
 
@@ -522,101 +524,246 @@ class _EspaciosComunesResidenteScreenState
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.all(12.0),
+        child: Row(
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    solicitud.nombreEspacio!,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: statusColor),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+            // Imagen del espacio - Lado izquierdo
+            Container(
+              width: 120,
+              height: 100,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.grey.shade200,
+              ),
+              child: FutureBuilder<List<Map<String, dynamic>>>(
+                future: _obtenerImagenesEspacioComun(solicitud.espacioId!),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  
+                  if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                    return ImageCarouselWidget(
+                      images: snapshot.data!,
+                      onImageTap: (imageData) {
+                        ImageFullscreenHelper.showFullscreenImage(
+                          context,
+                          imageData,
+                        );
+                      },
+                    );
+                  }
+                  
+                  // Si no hay imágenes, mostrar placeholder
+                  return const Icon(
+                    Icons.business,
+                    size: 40,
+                    color: Colors.grey,
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Información del espacio - Lado derecho
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Icon(
-                        statusIcon,
-                        size: 16,
-                        color: statusColor,
+                      Expanded(
+                        child: Text(
+                          solicitud.nombreEspacio!,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: statusColor),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              statusIcon,
+                              size: 16,
+                              color: statusColor,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              statusText,
+                              style: TextStyle(
+                                color: statusColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.calendar_today,
+                        size: 14,
+                        color: Colors.grey,
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        statusText,
-                        style: TextStyle(
-                          color: statusColor,
-                          fontWeight: FontWeight.bold,
+                        'Fecha: ${solicitud.fechaUso!.day}/${solicitud.fechaUso!.month}/${solicitud.fechaUso!.year}',
+                        style: const TextStyle(
+                          color: Colors.grey,
                           fontSize: 12,
                         ),
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(
-                  Icons.calendar_today,
-                  size: 16,
-                  color: Colors.grey,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  'Fecha: ${solicitud.fechaUso!.day}/${solicitud.fechaUso!.month}/${solicitud.fechaUso!.year}',
-                  style: const TextStyle(color: Colors.grey),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(
-                  Icons.access_time,
-                  size: 16,
-                  color: Colors.grey,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  'Hora: ${solicitud.horaInicio} - ${solicitud.horaFin}',
-                  style: const TextStyle(color: Colors.grey),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(
-                  Icons.schedule,
-                  size: 16,
-                  color: Colors.grey,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  'Solicitado: ${solicitud.fechaSolicitud!.day}/${solicitud.fechaSolicitud!.month}/${solicitud.fechaSolicitud!.year}',
-                  style: const TextStyle(color: Colors.grey),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.access_time,
+                        size: 14,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Hora: ${solicitud.horaInicio} - ${solicitud.horaFin}',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.schedule,
+                        size: 14,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Solicitado: ${solicitud.fechaSolicitud!.day}/${solicitud.fechaSolicitud!.month}/${solicitud.fechaSolicitud!.year}',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  // Método para obtener las imágenes del espacio común
+  Future<List<Map<String, dynamic>>> _obtenerImagenesEspacioComun(String espacioId) async {
+    try {
+      final espacioComun = await EspaciosComunesService().obtenerEspacioComunPorId(
+        widget.currentUser.condominioId!,
+        espacioId,
+      );
+      
+      // Recopilar todas las imágenes disponibles
+      List<Map<String, dynamic>> images = [];
+      
+      if (espacioComun?.additionalData != null) {
+        // Buscar imagen1Data, imagen2Data y imagen3Data
+        for (int i = 1; i <= 3; i++) {
+          final imageKey = 'imagen${i}Data';
+          if (espacioComun!.additionalData![imageKey] != null) {
+            Map<String, dynamic> imageData = espacioComun.additionalData![imageKey];
+            
+            // Debug: Imprimir la estructura de imageData
+            print('DEBUG - $imageKey structure: $imageData');
+            print('DEBUG - $imageKey type: ${imageData['type']}');
+            print('DEBUG - $imageKey keys: ${imageData.keys.toList()}');
+            
+            // Validar y corregir la estructura de imageData si es necesario
+            Map<String, dynamic> validImageData = _validateImageData(imageData);
+            images.add(validImageData);
+          }
+        }
+      }
+      
+      return images;
+    } catch (e) {
+      print('Error al obtener imágenes del espacio común: $e');
+      return [];
+    }
+  }
+
+  /// Valida y corrige la estructura de imageData si es necesario
+  Map<String, dynamic> _validateImageData(Map<String, dynamic> imageData) {
+    // Debug: Imprimir información detallada
+    print('DEBUG - Validating imageData: $imageData');
+    
+    // Verificar si tiene el campo 'type'
+    if (!imageData.containsKey('type')) {
+      print('DEBUG - Missing type field, attempting to infer...');
+      
+      // Intentar inferir el tipo basado en la estructura
+      if (imageData.containsKey('data') && imageData['data'] is String) {
+        print('DEBUG - Found data field with String, assuming normal type');
+        return {
+          'type': 'normal',
+          'data': imageData['data'],
+        };
+      } else if (imageData.containsKey('fragments') && imageData['fragments'] is List) {
+        print('DEBUG - Found fragments field, assuming internal_fragmented type');
+        return {
+          'type': 'internal_fragmented',
+          'fragments': imageData['fragments'],
+          'total_fragments': imageData['total_fragments'] ?? (imageData['fragments'] as List).length,
+          'original_type': imageData['original_type'] ?? 'jpeg',
+        };
+      } else if (imageData.containsKey('fragment_id')) {
+        print('DEBUG - Found fragment_id field, assuming external_fragmented type');
+        return {
+          'type': 'external_fragmented',
+          'fragment_id': imageData['fragment_id'],
+          'total_fragments': imageData['total_fragments'] ?? 1,
+          'original_type': imageData['original_type'] ?? 'jpeg',
+        };
+      } else {
+        print('DEBUG - Cannot infer type, defaulting to normal with error handling');
+        return {
+          'type': 'normal',
+          'data': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=', // Imagen placeholder muy pequeña
+        };
+      }
+    }
+    
+    // Si ya tiene type, verificar que sea válido
+    final type = imageData['type'] as String?;
+    if (type == null || !['normal', 'internal_fragmented', 'external_fragmented'].contains(type)) {
+      print('DEBUG - Invalid type: $type, defaulting to normal');
+      return {
+        'type': 'normal',
+        'data': imageData['data'] ?? 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=',
+      };
+    }
+    
+    print('DEBUG - imageData is valid with type: $type');
+    return imageData;
   }
 }

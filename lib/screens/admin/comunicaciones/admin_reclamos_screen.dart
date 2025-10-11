@@ -8,6 +8,7 @@ import 'dart:typed_data';
 import '../../../utils/storage_service.dart';
 import '../../../utils/image_display_widget.dart';
 import '../../../widgets/image_carousel_widget.dart';
+import '../../../utils/image_fullscreen_helper.dart';
 
 class AdminReclamosScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -933,62 +934,6 @@ class _ReclamoDetalleDialogState extends State<_ReclamoDetalleDialog> {
           ),
         ),
       ],
-    );
-  }
-
-  void _mostrarImagenCompleta(BuildContext context, Map<String, dynamic> imagenInfo) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.black,
-          child: Stack(
-            children: [
-              Center(
-                child: InteractiveViewer(
-                  panEnabled: true,
-                  boundaryMargin: const EdgeInsets.all(20),
-                  minScale: 0.5,
-                  maxScale: 4.0,
-                  child: imagenInfo['type'] == 'base64'
-                      ? Image.memory(
-                          base64Decode(imagenInfo['data']),
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: Colors.grey[800],
-                              child: const Center(
-                                child: Icon(
-                                  Icons.error,
-                                  color: Colors.white,
-                                  size: 50,
-                                ),
-                              ),
-                            );
-                          },
-                        )
-                      : ImageDisplayWidget(
-                          imageData: imagenInfo['data'],
-                          fit: BoxFit.contain,
-                        ),
-                ),
-              ),
-              Positioned(
-                top: 40,
-                right: 20,
-                child: IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(
-                    Icons.close,
-                    color: Colors.white,
-                    size: 30,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 

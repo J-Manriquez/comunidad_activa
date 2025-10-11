@@ -9,6 +9,7 @@ import '../../../models/residente_model.dart';
 import '../../../models/correspondencia_config_model.dart';
 import '../../../widgets/image_carousel_widget.dart';
 import '../../../utils/image_display_widget.dart';
+import '../../../utils/image_fullscreen_helper.dart';
 
 class HistorialCorrespondenciasResidenteScreen extends StatefulWidget {
   final String condominioId;
@@ -677,9 +678,7 @@ class _HistorialCorrespondenciasResidenteScreenState
                           const SizedBox(height: 20),
                           _buildModalSection(
                             'Adjuntos',
-                            correspondencia.adjuntos.entries.map((entry) {
-                              return _buildAdjuntoItem(entry.key, entry.value);
-                            }).toList(),
+                            [_buildAdjuntosCarousel(correspondencia.adjuntos)],
                           ),
                         ],
 
@@ -1565,6 +1564,89 @@ class _HistorialCorrespondenciasResidenteScreenState
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildAdjuntosCarousel(Map<String, dynamic> adjuntos) {
+    // Convertir adjuntos a formato compatible con ImageCarouselWidget
+    List<Map<String, dynamic>> images = [];
+    
+    for (var entry in adjuntos.entries) {
+      final value = entry.value;
+      
+      if (value is String) {
+        // Imagen en formato Base64 directo
+        String cleanBase64 = value;
+        
+        if (value.startsWith('data:image/')) {
+          // Extraer solo la parte base64, sin el prefijo data:image/...;base64,
+          final base64Index = value.indexOf(',');
+          if (base64Index != -1 && base64Index < value.length - 1) {
+            cleanBase64 = value.substring(base64Index + 1);
+          }
+        }
+        
+        // Verificar que sea base64 válido
+        if (cleanBase64.isNotEmpty && 
+            (cleanBase64.startsWith('/9j/') || cleanBase64.startsWith('iVBOR') || cleanBase64.length > 100)) {
+          images.add({
+            'type': 'normal',
+            'data': cleanBase64,
+            'name': entry.key,
+          });
+        }
+      } else if (value is Map<String, dynamic>) {
+        // Imagen fragmentada o con estructura compleja
+        final type = value['type'] as String?;
+        if (type == 'normal') {
+          final data = value['data'] as String?;
+          if (data != null) {
+            String cleanBase64 = data;
+            if (data.startsWith('data:image/')) {
+              final base64Index = data.indexOf(',');
+              if (base64Index != -1 && base64Index < data.length - 1) {
+                cleanBase64 = data.substring(base64Index + 1);
+              }
+            }
+            images.add({
+              'type': 'normal',
+              'data': cleanBase64,
+              'name': entry.key,
+            });
+          }
+        } else if (type == 'internal_fragmented' || type == 'external_fragmented' || type == 'fragmented') {
+          // Para imágenes fragmentadas, asegurar que los datos estén limpios
+          final imageData = Map<String, dynamic>.from(value);
+          imageData['name'] = entry.key;
+          
+          // Si tiene datos directos, limpiarlos también
+          if (imageData.containsKey('data') && imageData['data'] is String) {
+            String data = imageData['data'];
+            if (data.startsWith('data:image/')) {
+              final base64Index = data.indexOf(',');
+              if (base64Index != -1 && base64Index < data.length - 1) {
+                imageData['data'] = data.substring(base64Index + 1);
+              }
+            }
+          }
+          
+          images.add(imageData);
+        }
+      }
+    }
+
+    if (images.isEmpty) {
+      return const Text('No hay imágenes adjuntas');
+    }
+
+    return ImageCarouselWidget(
+      images: images,
+      width: double.infinity,
+      height: 200,
+      fit: BoxFit.cover,
+      onImageTap: (imageData) {
+        ImageFullscreenHelper.showFullscreenImage(context, imageData);
+      },
     );
   }
 }

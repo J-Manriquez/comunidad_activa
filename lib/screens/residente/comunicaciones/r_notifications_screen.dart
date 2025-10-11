@@ -12,6 +12,7 @@ import '../../../models/notification_model.dart';
 import '../../../services/notification_service.dart';
 import '../../../services/firestore_service.dart';
 import '../../../services/auth_service.dart';
+import '../../../utils/image_fullscreen_helper.dart';
 
 class ResidenteNotificationsScreen extends StatefulWidget {
   final String condominioId;
@@ -1396,7 +1397,10 @@ Future<void> _responderConfirmacionEntrega(
       runSpacing: 8,
       children: adjuntos.entries.map((entry) {
         return GestureDetector(
-          onTap: () => _mostrarImagenCompleta(entry.value),
+          onTap: () => ImageFullscreenHelper.showFullscreenImage(
+            context, 
+            {'type': 'normal', 'data': entry.value}
+          ),
           child: Container(
             width: 120,
             height: 120,
@@ -1434,65 +1438,6 @@ Future<void> _responderConfirmacionEntrega(
           ),
         );
       }).toList(),
-    );
-  }
-
-  void _mostrarImagenCompleta(String base64Image) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        child: Container(
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.95,
-            maxHeight: MediaQuery.of(context).size.height * 0.95,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AppBar(
-                title: const Text('Imagen de correspondencia'),
-                automaticallyImplyLeading: false,
-                actions: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-              Expanded(
-                child: InteractiveViewer(
-                  child: Image.memory(
-                    base64Decode(base64Image),
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.error_outline,
-                              size: 64,
-                              color: Colors.grey.shade600,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Error al cargar la imagen',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 

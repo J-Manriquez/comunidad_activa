@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../models/correspondencia_config_model.dart';
 import '../../../services/correspondencia_service.dart';
 import '../../../utils/storage_service.dart';
+import '../../../utils/image_fullscreen_helper.dart';
 import '../../../widgets/seleccion_vivienda_residente_modal.dart';
 import 'package:intl/intl.dart';
 
@@ -688,36 +689,53 @@ class _IngresarCorrespondenciaScreenState
                       margin: const EdgeInsets.only(right: 8),
                       child: Stack(
                         children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: kIsWeb
-                                ? FutureBuilder<Uint8List>(
-                                    future: _imagenes[index].readAsBytes(),
-                                    builder: (context, snapshot) {
-                                      if (snapshot.hasData) {
-                                        return Image.memory(
-                                          snapshot.data!,
+                          GestureDetector(
+                            onTap: () async {
+                              // Convertir la imagen a base64 para mostrarla en pantalla completa
+                              Uint8List imageBytes;
+                              if (kIsWeb) {
+                                imageBytes = await _imagenes[index].readAsBytes();
+                              } else {
+                                imageBytes = await File(_imagenes[index].path).readAsBytes();
+                              }
+                              final base64String = base64Encode(imageBytes);
+                              
+                              ImageFullscreenHelper.showFullscreenImage(
+                                context,
+                                {'type': 'normal', 'data': base64String},
+                              );
+                            },
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: kIsWeb
+                                  ? FutureBuilder<Uint8List>(
+                                      future: _imagenes[index].readAsBytes(),
+                                      builder: (context, snapshot) {
+                                        if (snapshot.hasData) {
+                                          return Image.memory(
+                                            snapshot.data!,
+                                            width: 100,
+                                            height: 100,
+                                            fit: BoxFit.cover,
+                                          );
+                                        }
+                                        return Container(
                                           width: 100,
                                           height: 100,
-                                          fit: BoxFit.cover,
+                                          color: Colors.grey.shade300,
+                                          child: const Center(
+                                            child: CircularProgressIndicator(),
+                                          ),
                                         );
-                                      }
-                                      return Container(
-                                        width: 100,
-                                        height: 100,
-                                        color: Colors.grey.shade300,
-                                        child: const Center(
-                                          child: CircularProgressIndicator(),
-                                        ),
-                                      );
-                                    },
-                                  )
-                                : Image.file(
-                                    File(_imagenes[index].path),
-                                    width: 100,
-                                    height: 100,
-                                    fit: BoxFit.cover,
-                                  ),
+                                      },
+                                    )
+                                  : Image.file(
+                                      File(_imagenes[index].path),
+                                      width: 100,
+                                      height: 100,
+                                      fit: BoxFit.cover,
+                                    ),
+                            ),
                           ),
                           Positioned(
                             top: 4,

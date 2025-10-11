@@ -8,6 +8,7 @@ import '../../services/espacios_comunes_service.dart';
 import '../../services/firestore_service.dart';
 import '../../utils/image_display_widget.dart';
 import '../../widgets/image_carousel_widget.dart';
+import '../../utils/image_fullscreen_helper.dart';
 
 class SolicitarEspacioScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -613,7 +614,7 @@ class _SolicitarEspacioScreenState extends State<SolicitarEspacioScreen> {
     if (images.isNotEmpty) {
       return ImageCarouselWidget(
         images: images,
-        onImageTap: (imageData) => _mostrarImagenCompleta(imageData),
+        onImageTap: (imageData) => ImageFullscreenHelper.showFullscreenImage(context, imageData),
       );
     } else {
       return const Icon(
@@ -905,74 +906,6 @@ class _SolicitarEspacioScreenState extends State<SolicitarEspacioScreen> {
 
     widgets.add(const SizedBox(height: 16));
     return widgets;
-  }
-
-  void _mostrarImagenCompleta(Map<String, dynamic> imageData) {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          child: Stack(
-            children: [
-              // Fondo semi-transparente
-              GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
-                child: Container(
-                  color: Colors.black54,
-                  width: double.infinity,
-                  height: double.infinity,
-                ),
-              ),
-              // Imagen en pantalla completa
-              Center(
-                child: Container(
-                  margin: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 10,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: ImageDisplayWidget(
-                      imageData: imageData,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
-              ),
-              // Botón de cerrar
-              Positioned(
-                top: 40,
-                right: 40,
-                child: GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Icon(
-                      Icons.close,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
   }
 
   /// Valida y corrige la estructura de imageData si es necesario

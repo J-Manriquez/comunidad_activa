@@ -4,6 +4,7 @@ import '../../../models/user_model.dart';
 import '../../../models/publicacion_model.dart';
 import '../../../services/publicacion_service.dart';
 import '../../../widgets/image_carousel_widget.dart';
+import '../../../utils/image_fullscreen_helper.dart';
 import '../../comunicaciones/ver_publicacion_screen.dart';
 
 class PublicacionesResidenteScreen extends StatefulWidget {
@@ -235,21 +236,8 @@ class _PublicacionesResidenteScreenState extends State<PublicacionesResidenteScr
         fit: BoxFit.cover,
         borderRadius: BorderRadius.circular(8),
         onImageTap: (imageData) {
-          _mostrarImagenCompleta(publicacion, imageData);
+          ImageFullscreenHelper.showFullscreenImage(context, imageData);
         },
-      ),
-    );
-  }
-
-  void _mostrarImagenCompleta(PublicacionModel publicacion, Map<String, dynamic> imageData) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => VerPublicacionScreen(
-          publicacion: publicacion,
-          currentUser: widget.currentUser,
-          esAdministrador: false,
-        ),
       ),
     );
   }

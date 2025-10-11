@@ -9,6 +9,7 @@ import 'dart:typed_data';
 import '../../../utils/storage_service.dart';
 import '../../../utils/image_display_widget.dart';
 import '../../../widgets/image_carousel_widget.dart';
+import '../../../utils/image_fullscreen_helper.dart';
 
 class ReclamosResidenteScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -634,77 +635,9 @@ class _ReclamosResidenteScreenState extends State<ReclamosResidenteScreen> {
         fit: BoxFit.cover,
         borderRadius: BorderRadius.circular(8),
         onImageTap: (imageData) {
-          print('🖼️ _buildImagenesReclamo - Imagen tocada, mostrando completa');
-          _mostrarImagenCompleta(context, imageData);
+          ImageFullscreenHelper.showFullscreenImage(context, imageData);
         },
       ),
-    );
-  }
-  void _mostrarImagenCompleta(BuildContext context, Map<String, dynamic> imageData) {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          child: Stack(
-            children: [
-              // Fondo semi-transparente
-              GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
-                child: Container(
-                  color: Colors.black54,
-                  width: double.infinity,
-                  height: double.infinity,
-                ),
-              ),
-              // Imagen en pantalla completa
-              Center(
-                child: Container(
-                  margin: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 10,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: ImageDisplayWidget(
-                      imageData: imageData,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
-              ),
-              // Botón de cerrar
-              Positioned(
-                top: 40,
-                right: 40,
-                child: GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Icon(
-                      Icons.close,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }
@@ -942,10 +875,10 @@ class _ReclamoDetalleDialog extends StatelessWidget {
         final imagenData = additionalData[imagenKey];
         if (imagenData is String && imagenData.isNotEmpty) {
           // Imagen tradicional Base64
-          imagenes.add({'type': 'base64', 'data': imagenData});
+          imagenes.add({'type': 'normal', 'data': imagenData});
         } else if (imagenData is Map<String, dynamic>) {
-          // Imagen fragmentada
-          imagenes.add({'type': 'fragmented', 'data': imagenData});
+          // Imagen fragmentada - usar el formato correcto
+          imagenes.add(imagenData);
         }
       }
     }
@@ -970,11 +903,11 @@ class _ReclamoDetalleDialog extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             itemCount: imagenes.length,
             itemBuilder: (context, index) {
-              final imagenInfo = imagenes[index];
+              final imagenData = imagenes[index];
               return Container(
                 margin: const EdgeInsets.only(right: 12),
                 child: GestureDetector(
-                  onTap: () => _mostrarImagenCompleta(context, imagenInfo),
+                  onTap: () => ImageFullscreenHelper.showFullscreenImage(context, imagenData),
                   child: Container(
                     width: 120,
                     height: 120,
@@ -984,26 +917,12 @@ class _ReclamoDetalleDialog extends StatelessWidget {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: imagenInfo['type'] == 'base64'
-                          ? Image.memory(
-                              base64Decode(imagenInfo['data']),
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  color: Colors.grey[200],
-                                  child: const Icon(
-                                    Icons.error,
-                                    color: Colors.grey,
-                                  ),
-                                );
-                              },
-                            )
-                          : ImageDisplayWidget(
-                              imageData: imagenInfo['data'],
-                              width: 120,
-                              height: 120,
-                              fit: BoxFit.cover,
-                            ),
+                      child: ImageDisplayWidget(
+                        imageData: imagenData,
+                        width: 120,
+                        height: 120,
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
                 ),
@@ -1021,76 +940,6 @@ class _ReclamoDetalleDialog extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-
-  void _mostrarImagenCompleta(BuildContext context, Map<String, dynamic> imageData) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.black,
-          child: Stack(
-            children: [
-              Center(
-                child: InteractiveViewer(
-                  panEnabled: true,
-                  boundaryMargin: const EdgeInsets.all(20),
-                  minScale: 0.5,
-                  maxScale: 4.0,
-                  child: _buildImageFromData(imageData),
-                ),
-              ),
-              Positioned(
-                top: 40,
-                right: 20,
-                child: IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(
-                    Icons.close,
-                    color: Colors.white,
-                    size: 30,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildImageFromData(Map<String, dynamic> imageData) {
-    // Si es una imagen Base64 simple
-    if (imageData.containsKey('base64')) {
-      final base64String = imageData['base64'] as String;
-      // Limpiar el prefijo data:image si existe
-      final cleanBase64 = base64String.contains(',') 
-          ? base64String.split(',').last 
-          : base64String;
-      
-      return Image.memory(
-        base64Decode(cleanBase64),
-        fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) {
-          return Container(
-            color: Colors.grey[800],
-            child: const Center(
-              child: Icon(
-                Icons.error,
-                color: Colors.white,
-                size: 50,
-              ),
-            ),
-          );
-        },
-      );
-    }
-    
-    // Si es una imagen fragmentada, usar ImageDisplayWidget
-    return ImageDisplayWidget(
-      imageData: imageData,
-      fit: BoxFit.contain,
     );
   }
 }

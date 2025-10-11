@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/image_display_widget.dart';
+import '../utils/image_fullscreen_helper.dart';
 
 class ImageCarouselWidget extends StatefulWidget {
   final List<Map<String, dynamic>> images;
@@ -281,6 +282,9 @@ class _ImageCarouselWidgetState extends State<ImageCarouselWidget> {
         width: widget.width,
         height: widget.height,
         fit: widget.fit,
+        onTap: widget.onImageTap != null 
+            ? () => ImageFullscreenHelper.showFullscreenImage(context, imageData)
+            : null,
         errorWidget: Container(
           width: widget.width,
           height: widget.height,

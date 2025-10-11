@@ -5,6 +5,7 @@ import '../../../models/user_model.dart';
 import '../../../services/espacios_comunes_service.dart';
 import '../../../widgets/image_carousel_widget.dart';
 import 'crear_editar_espacio_screen.dart';
+import '../../../utils/image_fullscreen_helper.dart';
 
 class ListaEspaciosComunesScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -203,6 +204,7 @@ class _ListaEspaciosComunesScreenState extends State<ListaEspaciosComunesScreen>
                 height: 100,
                 fit: BoxFit.cover,
                 borderRadius: BorderRadius.circular(8),
+                onImageTap: (imageData) => ImageFullscreenHelper.showFullscreenImage(context, imageData),
               ),
             ),
             const SizedBox(width: 16),

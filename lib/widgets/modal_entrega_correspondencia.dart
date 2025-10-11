@@ -9,6 +9,7 @@ import 'package:signature/signature.dart';
 import '../models/correspondencia_config_model.dart';
 import '../services/correspondencia_service.dart';
 import '../services/notification_service.dart';
+import '../utils/image_fullscreen_helper.dart';
 
 class ModalEntregaCorrespondencia extends StatefulWidget {
   final String condominioId;
@@ -488,7 +489,7 @@ class _ModalEntregaCorrespondenciaState extends State<ModalEntregaCorrespondenci
                   }
                   
                   return GestureDetector(
-                    onTap: () => _mostrarImagenCompleta(base64Data),
+                    onTap: () => ImageFullscreenHelper.showFullscreenImage(context, {'type': 'normal', 'data': base64Data}),
                     child: Container(
                       margin: const EdgeInsets.only(right: 8),
                       width: 100,

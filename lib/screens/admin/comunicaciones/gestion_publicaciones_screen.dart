@@ -8,6 +8,7 @@ import '../../../widgets/image_carousel_widget.dart';
 import '../../../utils/image_display_widget.dart';
 import 'crear_publicacion_screen.dart';
 import '../../comunicaciones/ver_publicacion_screen.dart';
+import '../../../utils/image_fullscreen_helper.dart';
 
 class GestionPublicacionesScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -580,66 +581,11 @@ class _GestionPublicacionesScreenState extends State<GestionPublicacionesScreen>
         borderRadius: BorderRadius.circular(8),
         onImageTap: (imageData) {
           print('DEBUG - onImageTap llamado con: $imageData');
-          _mostrarImagenCompleta(context, imageData);
+          ImageFullscreenHelper.showFullscreenImage(context, imageData);
         },
       ),
     );
   }
-
-  void _mostrarImagenCompleta(BuildContext context, Map<String, dynamic> imageData) {
-    print('DEBUG - _mostrarImagenCompleta llamado con: $imageData');
-    print('DEBUG - Tipo de imageData: ${imageData.runtimeType}');
-    print('DEBUG - Keys de imageData: ${imageData.keys.toList()}');
-    
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          child: Stack(
-            children: [
-              Center(
-                child: Container(
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.9,
-                    maxHeight: MediaQuery.of(context).size.height * 0.9,
-                  ),
-                  child: InteractiveViewer(
-                    panEnabled: true,
-                    boundaryMargin: const EdgeInsets.all(20),
-                    minScale: 0.5,
-                    maxScale: 4.0,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: _buildImageFromData(imageData),
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 40,
-                right: 40,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.close,
-                      color: Colors.white,
-                    ),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-   }
 
   Widget _buildPublicacionCard(PublicacionModel publicacion) {
     return Card(

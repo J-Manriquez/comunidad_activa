@@ -6,6 +6,7 @@ import '../../models/publicacion_model.dart';
 import '../../services/publicacion_service.dart';
 import '../../utils/profile_image.dart';
 import '../../utils/image_display_widget.dart';
+import '../../utils/image_fullscreen_helper.dart';
 
 class VerPublicacionScreen extends StatefulWidget {
   final PublicacionModel publicacion;
@@ -85,39 +86,6 @@ class _VerPublicacionScreenState extends State<VerPublicacionScreen> {
     }
     
     return imagenes;
-  }
-
-  void _mostrarImagenCompleta(Map<String, dynamic> imagenData, int index) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.black,
-        child: Stack(
-          children: [
-            Center(
-              child: InteractiveViewer(
-                child: ImageDisplayWidget(
-                  imageData: imagenData,
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-            Positioned(
-              top: 40,
-              right: 20,
-              child: IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(
-                  Icons.close,
-                  color: Colors.white,
-                  size: 30,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   @override
@@ -325,7 +293,7 @@ class _VerPublicacionScreenState extends State<VerPublicacionScreen> {
       itemBuilder: (context, index) {
         final imagenData = imagenes[index];
         return GestureDetector(
-          onTap: () => _mostrarImagenCompleta(imagenData, index),
+          onTap: () => ImageFullscreenHelper.showFullscreenImage(context, imagenData),
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),

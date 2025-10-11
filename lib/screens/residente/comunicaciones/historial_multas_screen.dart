@@ -5,6 +5,7 @@ import '../../../models/multa_model.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 import '../../../utils/image_display_widget.dart';
+import '../../../utils/image_fullscreen_helper.dart';
 
 class HistorialMultasScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -660,7 +661,7 @@ class _MultaDetalleModal extends StatelessWidget {
                 width: 80,
                 margin: EdgeInsets.only(right: index < imagenes.length - 1 ? 8 : 0),
                 child: GestureDetector(
-                  onTap: () => _mostrarImagenCompleta(imagenes[index], context),
+                  onTap: () => ImageFullscreenHelper.showFullscreenImage(context, imagenes[index]),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(6),
                     child: ImageDisplayWidget(
@@ -668,6 +669,7 @@ class _MultaDetalleModal extends StatelessWidget {
                       width: 80,
                       height: 80,
                       fit: BoxFit.cover,
+                      onTap: () => ImageFullscreenHelper.showFullscreenImage(context, imagenes[index]),
                     ),
                   ),
                 ),
@@ -676,42 +678,6 @@ class _MultaDetalleModal extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-  
-  void _mostrarImagenCompleta(Map<String, dynamic> imagenData, BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Stack(
-          children: [
-            Center(
-              child: InteractiveViewer(
-                child: ImageDisplayWidget(
-                  imageData: imagenData,
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-            Positioned(
-              top: 40,
-              right: 20,
-              child: IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(
-                  Icons.close,
-                  color: Colors.white,
-                  size: 30,
-                ),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.black54,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

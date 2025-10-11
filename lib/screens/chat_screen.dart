@@ -13,6 +13,7 @@ import '../services/unread_messages_service.dart';
 import 'package:intl/intl.dart';
 import '../utils/storage_service.dart';
 import '../utils/image_display_widget.dart';
+import '../utils/image_fullscreen_helper.dart';
 
 class ChatScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -859,6 +860,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               width: 60,
               height: 60,
               fit: BoxFit.cover,
+              onTap: () => ImageFullscreenHelper.showFullscreenImage(
+                context,
+                _imagenSeleccionadaData!,
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -885,64 +890,33 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   Widget _buildImagenMensaje(dynamic imagenData) {
     return Container(
       margin: const EdgeInsets.only(top: 8),
-      child: GestureDetector(
-        onTap: () => _mostrarImagenCompleta(imagenData),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: imagenData is String
-              ? Image.memory(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: imagenData is String
+            ? GestureDetector(
+                onTap: () => ImageFullscreenHelper.showFullscreenImage(
+                  context,
+                  {'type': 'base64', 'data': imagenData},
+                ),
+                child: Image.memory(
                   base64Decode(imagenData),
                   width: 200,
                   height: 200,
                   fit: BoxFit.cover,
-                )
-              : ImageDisplayWidget(
-                  imageData: imagenData as Map<String, dynamic>,
-                  width: 200,
-                  height: 200,
-                  fit: BoxFit.cover,
                 ),
-        ),
+              )
+            : ImageDisplayWidget(
+                imageData: imagenData as Map<String, dynamic>,
+                width: 200,
+                height: 200,
+                fit: BoxFit.cover,
+                onTap: () => ImageFullscreenHelper.showFullscreenImage(
+                  context,
+                  imagenData as Map<String, dynamic>,
+                ),
+              ),
       ),
     );
   }
 
-  // Mostrar imagen en pantalla completa
-  void _mostrarImagenCompleta(dynamic imagenData) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.black,
-        child: Stack(
-          children: [
-            Center(
-              child: InteractiveViewer(
-                child: imagenData is String
-                    ? Image.memory(
-                        base64Decode(imagenData),
-                        fit: BoxFit.contain,
-                      )
-                    : ImageDisplayWidget(
-                        imageData: imagenData as Map<String, dynamic>,
-                        fit: BoxFit.contain,
-                      ),
-              ),
-            ),
-            Positioned(
-              top: 40,
-              right: 20,
-              child: IconButton(
-                icon: const Icon(
-                  Icons.close,
-                  color: Colors.white,
-                  size: 30,
-                ),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

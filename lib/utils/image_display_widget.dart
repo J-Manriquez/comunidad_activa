@@ -14,6 +14,7 @@ class ImageDisplayWidget extends StatefulWidget {
   final Widget? placeholder;
   final Widget? errorWidget;
   final BorderRadius? borderRadius;
+  final VoidCallback? onTap;
 
   const ImageDisplayWidget({
     Key? key,
@@ -24,6 +25,7 @@ class ImageDisplayWidget extends StatefulWidget {
     this.placeholder,
     this.errorWidget,
     this.borderRadius,
+    this.onTap,
   }) : super(key: key);
 
   @override
@@ -39,22 +41,81 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
   Widget build(BuildContext context) {
     final type = widget.imageData['type'] as String;
     
+    Widget imageWidget;
+    
     switch (type) {
       case 'normal':
       case 'internal_fragmented':
-        // Usar ProfileImage para imágenes normales y fragmentadas internamente
-        return ProfileImage(
-          imageData: widget.imageData,
-          width: widget.width ?? 100,
-          height: widget.height ?? 100,
-          fit: widget.fit,
-        );
+      case 'fragmented':
+        // Para imágenes normales y fragmentadas internamente, usar Image.memory directamente
+        // en lugar de ProfileImage para mantener las proporciones originales
+        imageWidget = _buildNormalImage();
+        break;
       
       case 'external_fragmented':
-        return _buildExternalFragmentedImage();
+        imageWidget = _buildExternalFragmentedImage();
+        break;
       
       default:
-        return _buildErrorWidget('Tipo de imagen no reconocido: $type');
+        imageWidget = _buildErrorWidget('Tipo de imagen no reconocido: $type');
+    }
+    
+    // Si hay onTap, envolver en GestureDetector
+    if (widget.onTap != null) {
+      return GestureDetector(
+        onTap: widget.onTap,
+        child: imageWidget,
+      );
+    }
+    
+    return imageWidget;
+  }
+  
+  Widget _buildNormalImage() {
+    try {
+      String imageToProcess;
+      
+      if (StorageService.esImagenFragmentada(widget.imageData)) {
+        imageToProcess = StorageService.obtenerImagenCompleta(widget.imageData);
+      } else {
+        // Verificar si 'data' es un String o un Map
+        final data = widget.imageData['data'];
+        if (data is String) {
+          imageToProcess = data;
+        } else if (data is Map<String, dynamic>) {
+          // Si es un Map, intentar obtener la imagen completa
+          imageToProcess = StorageService.obtenerImagenCompleta(data);
+        } else {
+          imageToProcess = '';
+        }
+      }
+
+      if (imageToProcess.isEmpty) {
+        return _buildErrorWidget('Imagen vacía');
+      }
+
+      // Limpiar el base64
+      String cleanBase64 = imageToProcess.trim();
+      if (cleanBase64.contains(',')) {
+        cleanBase64 = cleanBase64.split(',').last;
+      }
+
+      final bytes = base64Decode(cleanBase64);
+      
+      return ClipRRect(
+        borderRadius: widget.borderRadius ?? BorderRadius.circular(8),
+        child: Image.memory(
+          bytes,
+          width: widget.width,
+          height: widget.height,
+          fit: widget.fit,
+          errorBuilder: (context, error, stackTrace) {
+            return _buildErrorWidget('Error al mostrar imagen');
+          },
+        ),
+      );
+    } catch (e) {
+      return _buildErrorWidget('Error al procesar imagen: $e');
     }
   }
   
@@ -155,7 +216,7 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
       final cleanBase64 = base64Image.split(',').last;
       final bytes = base64Decode(cleanBase64);
       
-      return ClipRRect(
+      Widget imageWidget = ClipRRect(
         borderRadius: widget.borderRadius ?? BorderRadius.circular(8),
         child: Image.memory(
           bytes,
@@ -167,6 +228,16 @@ class _ImageDisplayWidgetState extends State<ImageDisplayWidget> {
           },
         ),
       );
+      
+      // Si hay onTap, envolver en GestureDetector
+      if (widget.onTap != null) {
+        return GestureDetector(
+          onTap: widget.onTap,
+          child: imageWidget,
+        );
+      }
+      
+      return imageWidget;
     } catch (e) {
       return _buildErrorWidget('Error al decodificar imagen: $e');
     }

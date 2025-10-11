@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 import '../../../models/correspondencia_config_model.dart';
 import '../../../models/user_model.dart';
 import '../../../services/correspondencia_service.dart';
+import '../../../utils/image_fullscreen_helper.dart';
+import '../../../widgets/image_carousel_widget.dart';
 
 // CorrespondenciaModel está definido en correspondencia_config_model.dart
 // por lo que ya está importado
@@ -185,7 +187,9 @@ class _CorrespondenciasActivasScreenState
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: _getTipoColor(correspondencia.tipoCorrespondencia),
+                            color: _getTipoColor(
+                              correspondencia.tipoCorrespondencia,
+                            ),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Text(
@@ -199,7 +203,10 @@ class _CorrespondenciasActivasScreenState
                         ),
                         Text(
                           fechaFormateada,
-                          style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),
@@ -228,7 +235,10 @@ class _CorrespondenciasActivasScreenState
                     // Datos de entrega
                     Text(
                       'Entrega: ${correspondencia.datosEntrega}',
-                      style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontSize: 14,
+                      ),
                     ),
 
                     // Vivienda de recepción (si aplica)
@@ -236,7 +246,10 @@ class _CorrespondenciasActivasScreenState
                       const SizedBox(height: 4),
                       Text(
                         'Recepción: ${correspondencia.viviendaRecepcion}',
-                        style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: 14,
+                        ),
                       ),
                     ],
 
@@ -275,47 +288,49 @@ class _CorrespondenciasActivasScreenState
   Widget? _buildImagenesCorrespondencia(CorrespondenciaModel correspondencia) {
     if (!_tieneImagenes(correspondencia)) return null;
 
-    print('DEBUG: Construyendo imágenes para correspondencia ${correspondencia.id}');
-    print('DEBUG: Adjuntos disponibles: ${correspondencia.adjuntos.keys.toList()}');
+    print(
+      'DEBUG: Construyendo imágenes para correspondencia ${correspondencia.id}',
+    );
+    print(
+      'DEBUG: Adjuntos disponibles: ${correspondencia.adjuntos.keys.toList()}',
+    );
 
     List<Map<String, dynamic>> imagenesData = [];
 
     // Procesar adjuntos de correspondencia
     correspondencia.adjuntos.forEach((key, value) {
       print('DEBUG: Procesando adjunto $key');
-      
+
       if (value is String) {
         // Imagen normal en Base64
         print('DEBUG: Imagen normal encontrada');
-        imagenesData.add({
-          'type': 'normal',
-          'data': value,
-        });
+        imagenesData.add({'type': 'normal', 'data': value});
       } else if (value is Map<String, dynamic>) {
         print('DEBUG: Imagen fragmentada encontrada: ${value.keys.toList()}');
-        
+
         // Verificar si es fragmentación interna
-        if (value.containsKey('type') && value['type'] == 'internal_fragmented') {
+        if (value.containsKey('type') &&
+            value['type'] == 'internal_fragmented') {
           print('DEBUG: Procesando imagen fragmentada interna');
           imagenesData.add(value);
         }
         // Verificar si es fragmentación externa
-        else if (value.containsKey('type') && value['type'] == 'external_fragmented') {
+        else if (value.containsKey('type') &&
+            value['type'] == 'external_fragmented') {
           print('DEBUG: Procesando imagen fragmentada externa');
           imagenesData.add(value);
         }
         // Fallback para estructuras de mapa desconocidas
         else {
-          print('DEBUG: Estructura de mapa desconocida, intentando extraer base64');
+          print(
+            'DEBUG: Estructura de mapa desconocida, intentando extraer base64',
+          );
           final possibleBase64 = value.values.firstWhere(
             (v) => v is String && v.length > 100,
             orElse: () => null,
           );
           if (possibleBase64 != null) {
-            imagenesData.add({
-              'type': 'normal',
-              'data': possibleBase64,
-            });
+            imagenesData.add({'type': 'normal', 'data': possibleBase64});
             print('DEBUG: Base64 extraído de estructura desconocida');
           }
         }
@@ -334,15 +349,7 @@ class _CorrespondenciasActivasScreenState
         height: 100,
         width: 120,
         onImageTap: (imageData) {
-          showDialog(
-            context: context,
-            builder: (context) => Dialog(
-              backgroundColor: Colors.transparent,
-              child: ImageDisplayWidget(
-                imageData: imageData,
-              ),
-            ),
-          );
+          ImageFullscreenHelper.showFullscreenImage(context, imageData);
         },
       ),
     );
@@ -441,12 +448,15 @@ class _DetalleCorrespondenciaModal extends StatefulWidget {
   });
 
   @override
-  State<_DetalleCorrespondenciaModal> createState() => _DetalleCorrespondenciaModalState();
+  State<_DetalleCorrespondenciaModal> createState() =>
+      _DetalleCorrespondenciaModalState();
 }
 
-class _DetalleCorrespondenciaModalState extends State<_DetalleCorrespondenciaModal> {
+class _DetalleCorrespondenciaModalState
+    extends State<_DetalleCorrespondenciaModal> {
   final TextEditingController _nuevoMensajeController = TextEditingController();
-  final CorrespondenciaService _correspondenciaService = CorrespondenciaService();
+  final CorrespondenciaService _correspondenciaService =
+      CorrespondenciaService();
   bool _guardandoMensaje = false;
   bool _enviarNotificacion = false;
 
@@ -483,50 +493,71 @@ class _DetalleCorrespondenciaModalState extends State<_DetalleCorrespondenciaMod
               ],
             ),
             const Divider(),
-            
+
             // Content
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildDetalleRow('Tipo:', widget.correspondencia.tipoCorrespondencia),
-                    _buildDetalleRow('Tipo de entrega:', widget.correspondencia.tipoEntrega),
-                    _buildDetalleRow('Datos de entrega:', widget.correspondencia.datosEntrega),
+                    _buildDetalleRow(
+                      'Tipo:',
+                      widget.correspondencia.tipoCorrespondencia,
+                    ),
+                    _buildDetalleRow(
+                      'Tipo de entrega:',
+                      widget.correspondencia.tipoEntrega,
+                    ),
+                    _buildDetalleRow(
+                      'Datos de entrega:',
+                      widget.correspondencia.datosEntrega,
+                    ),
                     if (widget.correspondencia.viviendaRecepcion != null)
-                      _buildDetalleRow('Vivienda de recepción:', widget.correspondencia.viviendaRecepcion!),
-                    _buildDetalleRow('Fecha de recepción:', _formatearFecha(widget.correspondencia.fechaHoraRecepcion)),
+                      _buildDetalleRow(
+                        'Vivienda de recepción:',
+                        widget.correspondencia.viviendaRecepcion!,
+                      ),
+                    _buildDetalleRow(
+                      'Fecha de recepción:',
+                      _formatearFecha(
+                        widget.correspondencia.fechaHoraRecepcion,
+                      ),
+                    ),
                     if (widget.correspondencia.fechaHoraEntrega != null)
-                      _buildDetalleRow('Fecha de entrega:', _formatearFecha(widget.correspondencia.fechaHoraEntrega!)),
-                    
+                      _buildDetalleRow(
+                        'Fecha de entrega:',
+                        _formatearFecha(
+                          widget.correspondencia.fechaHoraEntrega!,
+                        ),
+                      ),
+
                     const SizedBox(height: 16),
-                    
+
                     // Adjuntos
                     if (widget.correspondencia.adjuntos.isNotEmpty) ...[
                       Text(
                         'Adjuntos:',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 8),
                       _buildAdjuntos(),
                       const SizedBox(height: 16),
                     ],
-                    
+
                     // Mensajes adicionales existentes
-                    if (widget.correspondencia.infAdicional != null && widget.correspondencia.infAdicional!.isNotEmpty) ...[
+                    if (widget.correspondencia.infAdicional != null &&
+                        widget.correspondencia.infAdicional!.isNotEmpty) ...[
                       Text(
                         'Mensajes adicionales:',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 8),
                       _buildMensajesExistentes(),
                       const SizedBox(height: 16),
                     ],
-                    
+
                     // Campo para nuevo mensaje
                     Text(
                       'Añadir nuevo mensaje:',
@@ -540,7 +571,7 @@ class _DetalleCorrespondenciaModalState extends State<_DetalleCorrespondenciaMod
                 ),
               ),
             ),
-            
+
             // Actions
             const SizedBox(height: 16),
             Row(
@@ -585,121 +616,92 @@ class _DetalleCorrespondenciaModalState extends State<_DetalleCorrespondenciaMod
               style: const TextStyle(fontWeight: FontWeight.w500),
             ),
           ),
-          Expanded(
-            child: Text(value),
-          ),
+          Expanded(child: Text(value)),
         ],
       ),
     );
   }
 
   Widget _buildAdjuntos() {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: widget.correspondencia.adjuntos.entries.map((entry) {
-        final value = entry.value;
-        String? base64Data;
-        
-        // Manejar diferentes tipos de adjuntos
-        if (value is String) {
-          // Imagen en formato Base64 directo
-          if (value.startsWith('data:image/')) {
-            // Extraer solo la parte base64, sin el prefijo data:image/...;base64,
-            final base64Index = value.indexOf(',');
-            if (base64Index != -1 && base64Index < value.length - 1) {
-              base64Data = value.substring(base64Index + 1);
-            }
-          } else {
-            // Asumir que es base64 puro
-            base64Data = value;
+    // Convertir adjuntos a formato compatible con ImageCarouselWidget
+    List<Map<String, dynamic>> images = [];
+    
+    for (var entry in widget.correspondencia.adjuntos.entries) {
+      final value = entry.value;
+      
+      if (value is String) {
+        // Imagen en formato Base64 directo
+        if (value.startsWith('data:image/')) {
+          // Extraer solo la parte base64, sin el prefijo data:image/...;base64,
+          final base64Index = value.indexOf(',');
+          if (base64Index != -1 && base64Index < value.length - 1) {
+            final base64Data = value.substring(base64Index + 1);
+            images.add({
+              'type': 'normal',
+              'data': base64Data,
+              'name': entry.key,
+            });
           }
-        } else if (value is Map<String, dynamic>) {
-          // Imagen fragmentada o con estructura compleja
-          final type = value['type'] as String?;
-          if (type == 'normal') {
-            final data = value['data'] as String?;
-            if (data != null) {
-              if (data.startsWith('data:image/')) {
-                final base64Index = data.indexOf(',');
-                if (base64Index != -1 && base64Index < data.length - 1) {
-                  base64Data = data.substring(base64Index + 1);
-                }
-              } else {
-                base64Data = data;
+        } else if (value.isNotEmpty) {
+          // Asumir que es base64 puro
+          images.add({
+            'type': 'normal',
+            'data': value,
+            'name': entry.key,
+          });
+        }
+      } else if (value is Map<String, dynamic>) {
+        // Imagen fragmentada o con estructura compleja
+        final type = value['type'] as String?;
+        if (type == 'normal') {
+          final data = value['data'] as String?;
+          if (data != null) {
+            String base64Data = data;
+            if (data.startsWith('data:image/')) {
+              final base64Index = data.indexOf(',');
+              if (base64Index != -1 && base64Index < data.length - 1) {
+                base64Data = data.substring(base64Index + 1);
               }
             }
-          } else if (type == 'internal_fragmented') {
-            final fragments = value['fragments'] as List<dynamic>?;
-            if (fragments != null && fragments.isNotEmpty) {
-              String combinedBase64 = '';
-              for (var fragment in fragments) {
-                if (fragment is String) {
-                  combinedBase64 += fragment;
-                }
-              }
-              if (combinedBase64.isNotEmpty) {
-                base64Data = combinedBase64;
-              }
-            }
+            images.add({
+              'type': 'normal',
+              'data': base64Data,
+              'name': entry.key,
+            });
           }
-          // Para external_fragmented, podríamos mostrar un placeholder
+        } else if (type == 'internal_fragmented' || type == 'external_fragmented' || type == 'fragmented') {
+          // Agregar imagen fragmentada directamente
+          final imageData = Map<String, dynamic>.from(value);
+          imageData['name'] = entry.key;
+          images.add(imageData);
         }
-        
-        // Si no tenemos datos válidos, mostrar placeholder
-        if (base64Data == null || base64Data.isEmpty) {
-          return Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade300),
-              color: Colors.grey.shade200,
-            ),
-            child: const Icon(
-              Icons.image_not_supported,
-              color: Colors.grey,
-            ),
-          );
-        }
-        
-        return GestureDetector(
-          onTap: () => _mostrarImagenCompleta(base64Data!),
-          child: Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade300),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.memory(
-                base64Decode(base64Data),
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: Colors.grey.shade200,
-                    child: const Icon(Icons.error),
-                  );
-                },
-              ),
-            ),
-          ),
-        );
-      }).toList(),
+      }
+    }
+
+    if (images.isEmpty) {
+      return const Text('No hay imágenes adjuntas');
+    }
+
+    return ImageCarouselWidget(
+      images: images,
+      width: double.infinity,
+      height: 200,
+      fit: BoxFit.cover,
+      onImageTap: (imageData) {
+        ImageFullscreenHelper.showFullscreenImage(context, imageData);
+      },
     );
   }
 
   Widget _buildMensajesExistentes() {
     final mensajes = widget.correspondencia.infAdicional!;
-    
+
     return Column(
       children: mensajes.map((mensaje) {
         final texto = mensaje['mensaje'] ?? '';
         final fechaHora = mensaje['fechaHora'] ?? '';
         final usuarioId = mensaje['usuarioId'] ?? '';
-        
+
         return Container(
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.all(12),
@@ -711,10 +713,7 @@ class _DetalleCorrespondenciaModalState extends State<_DetalleCorrespondenciaMod
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                texto,
-                style: const TextStyle(fontSize: 14),
-              ),
+              Text(texto, style: const TextStyle(fontSize: 14)),
               const SizedBox(height: 8),
               Text(
                 'Por: $usuarioId - ${_formatearFecha(fechaHora)}',
@@ -794,58 +793,6 @@ class _DetalleCorrespondenciaModalState extends State<_DetalleCorrespondenciaMod
     }
   }
 
-  void _mostrarImagenCompleta(String base64Image) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        child: Container(
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.9,
-            maxHeight: MediaQuery.of(context).size.height * 0.9,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AppBar(
-                title: const Text('Imagen adjunta'),
-                automaticallyImplyLeading: false,
-                actions: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-              Expanded(
-                child: InteractiveViewer(
-                  child: Image.memory(
-                    base64Decode(base64Image),
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: Colors.grey.shade200,
-                        child: const Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.error, size: 48, color: Colors.grey),
-                            SizedBox(height: 8),
-                            Text('Error al cargar la imagen'),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-             
-  
-
   Future<void> _guardarNuevoMensaje() async {
     final mensaje = _nuevoMensajeController.text.trim();
     if (mensaje.isEmpty) return;
@@ -857,11 +804,13 @@ class _DetalleCorrespondenciaModalState extends State<_DetalleCorrespondenciaMod
     try {
       final now = DateTime.now();
       final fechaHora = now.toIso8601String();
-      
+
       final nuevoMensaje = {
         'mensaje': mensaje,
         'fechaHora': fechaHora,
-        'usuarioId': widget.currentUser.tipoUsuario == UserType.administrador ? 'admin' : widget.currentUser.uid,
+        'usuarioId': widget.currentUser.tipoUsuario == UserType.administrador
+            ? 'admin'
+            : widget.currentUser.uid,
       };
 
       // Obtener la lista actual de mensajes o crear una nueva
@@ -875,7 +824,8 @@ class _DetalleCorrespondenciaModalState extends State<_DetalleCorrespondenciaMod
       );
 
       // Enviar notificación si está marcado el checkbox
-      if (_enviarNotificacion && widget.correspondencia.residenteIdEntrega != null) {
+      if (_enviarNotificacion &&
+          widget.correspondencia.residenteIdEntrega != null) {
         await _correspondenciaService.enviarNotificacionMensajeAdicional(
           widget.condominioId,
           widget.correspondencia.residenteIdEntrega!,
@@ -890,13 +840,15 @@ class _DetalleCorrespondenciaModalState extends State<_DetalleCorrespondenciaMod
         _enviarNotificacion = false;
       });
       widget.onCorrespondenciaActualizada();
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_enviarNotificacion 
-              ? 'Mensaje guardado y notificación enviada exitosamente'
-              : 'Mensaje guardado exitosamente'),
+            content: Text(
+              _enviarNotificacion
+                  ? 'Mensaje guardado y notificación enviada exitosamente'
+                  : 'Mensaje guardado exitosamente',
+            ),
             backgroundColor: Colors.green,
           ),
         );
