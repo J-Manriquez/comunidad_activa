@@ -4,6 +4,20 @@ ESTRUCTURA DE DATOS DE FIREBASE - COMUNIDAD ACTIVA
 cada vez que un adimistrador se registra crea una nueva colección principal: 
 
 {condominioId} (Collection - formato: nombre_condominio_XXX) (ya creado)
+    ├──── visitasBloqueadas (Document)
+    │        ├── ListaVisitasBloqueadas (Collection)
+    │        │        ├── {id} (mapa)
+    │        │        │   ├── id: String
+    │        │        │   ├── nombreVisitante: String
+    │        │        │   ├── rutVisitante: String
+    │        │        │   ├── viviendaBloqueo: String
+    │        │        │   ├── motivoBloqueo: String
+    │        │        │   ├── fechaBloqueo: Timestamp
+    │        │        │   ├── bloqueadoPor: String
+    │        │        │   ├── estado: String ("activo", "expirado", etc.)
+    │        │        │   └── additionalData: Map<String, dynamic> (nullable) imagenesBase64
+    │        │        └── ...
+
     ├──── correspondencia (Document)
     │       ├── tiempoMaximoRetencion: String - cantidad de dias o indefinido
     │       ├── fotoObligatoria: Boolean - no guardar una correspondencia sin una foto de ella
@@ -66,8 +80,7 @@ cada vez que un adimistrador se registra crea una nueva colección principal:
     │             │   ├── respuestaSolicitud: String (mensaje)
     │             │   └── nroEstSolicitado: Integer
     │             └── ...
-    │ 
-
+    │
     ├──── espaciosComunes (Document)
     │        ├── espaciosComunes (Subcollection)
     │        │    ├── {id} (Document)

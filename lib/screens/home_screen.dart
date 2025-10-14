@@ -1,14 +1,18 @@
 import 'package:comunidad_activa/screens/admin/comunicaciones/admin_reclamos_screen.dart';
 import 'package:comunidad_activa/screens/admin/correspondencia/correspondencias_screen.dart';
 import 'package:comunidad_activa/screens/admin/settings_screen.dart';
+import 'admin/bloqueo_visitas_screen.dart';
 import 'package:comunidad_activa/screens/residente/comunicaciones/r_reclamos_screen.dart';
 import 'package:comunidad_activa/screens/residente/gastos_comunes_residente_screen.dart';
 import 'package:comunidad_activa/screens/residente/residente_screen.dart';
+import 'package:comunidad_activa/screens/residente/visitas_bloqueadas_residente_screen.dart';
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../models/residente_bloqueado_model.dart';
 import '../services/auth_service.dart';
 import '../services/bloqueo_service.dart';
+import '../services/bloqueo_visitas_service.dart';
+import '../services/firestore_service.dart';
 import '../services/estacionamiento_service.dart';
 import 'cuenta/welcome_screen.dart';
 import '../models/user_model.dart';
@@ -40,12 +44,17 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final EstacionamientoService _estacionamientoService = EstacionamientoService();
+  final BloqueoVisitasService _bloqueoVisitasService = BloqueoVisitasService();
+  final FirestoreService _firestoreService = FirestoreService();
   bool _estacionamientosActivos = false;
+  int _visitasBloqueadasCount = 0;
+  Stream<int>? _visitasBloqueadasStream;
 
   @override
   void initState() {
     super.initState();
     _verificarEstacionamientos();
+    _inicializarStreamVisitasBloqueadas();
   }
 
   Future<void> _verificarEstacionamientos() async {
@@ -57,6 +66,112 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _estacionamientosActivos = activos;
         });
+      }
+    }
+  }
+
+  Future<void> _inicializarStreamVisitasBloqueadas() async {
+    final authService = AuthService();
+    final user = await authService.getCurrentUserData();
+    
+    if (user != null && 
+        user.condominioId != null && 
+        user.tipoUsuario == UserType.residente) {
+      try {
+        // Obtener la descripción de la vivienda del residente actual
+        final residenteActual = await _firestoreService.getResidenteData(user.uid);
+
+        if (residenteActual != null) {
+          // Construir la descripción de la vivienda
+          String descripcion = '';
+          
+          if (residenteActual.descripcionVivienda != null && 
+              residenteActual.descripcionVivienda!.isNotEmpty) {
+            descripcion = residenteActual.descripcionVivienda!;
+          } else {
+            // Construir desde los campos individuales
+            final tipoVivienda = residenteActual.tipoVivienda ?? '';
+            final numeroVivienda = residenteActual.numeroVivienda ?? '';
+            final etiquetaEdificio = residenteActual.etiquetaEdificio ?? '';
+            final numeroDepartamento = residenteActual.numeroDepartamento ?? '';
+
+            if (tipoVivienda.toLowerCase() == 'casa') {
+              descripcion = 'Casa $numeroVivienda';
+            } else if (tipoVivienda.toLowerCase() == 'departamento') {
+              if (etiquetaEdificio.isNotEmpty && numeroDepartamento.isNotEmpty) {
+                descripcion = 'Departamento $etiquetaEdificio-$numeroDepartamento';
+              } else if (numeroVivienda.isNotEmpty) {
+                descripcion = 'Departamento $numeroVivienda';
+              }
+            }
+          }
+
+          if (descripcion.isNotEmpty && mounted) {
+            setState(() {
+              _visitasBloqueadasStream = _bloqueoVisitasService.streamVisitasBloqueadasCountPorVivienda(
+                condominioId: user.condominioId!,
+                descripcionVivienda: descripcion,
+              );
+            });
+          }
+        }
+      } catch (e) {
+        print('❌ Error al inicializar stream de visitas bloqueadas: $e');
+      }
+    }
+  }
+
+  Future<void> _verificarVisitasBloqueadas() async {
+    final authService = AuthService();
+    final user = await authService.getCurrentUserData();
+    
+    if (user != null && 
+        user.condominioId != null && 
+        user.tipoUsuario == UserType.residente) {
+      try {
+        // Obtener la descripción de la vivienda del residente actual
+        final residenteActual = await _firestoreService.getResidenteData(user.uid);
+
+        if (residenteActual != null) {
+          // Construir la descripción de la vivienda
+          String descripcion = '';
+          
+          if (residenteActual.descripcionVivienda != null && 
+              residenteActual.descripcionVivienda!.isNotEmpty) {
+            descripcion = residenteActual.descripcionVivienda!;
+          } else {
+            // Construir desde los campos individuales
+            final tipoVivienda = residenteActual.tipoVivienda ?? '';
+            final numeroVivienda = residenteActual.numeroVivienda ?? '';
+            final etiquetaEdificio = residenteActual.etiquetaEdificio ?? '';
+            final numeroDepartamento = residenteActual.numeroDepartamento ?? '';
+
+            if (tipoVivienda.toLowerCase() == 'casa') {
+              descripcion = 'Casa $numeroVivienda';
+            } else if (tipoVivienda.toLowerCase() == 'departamento') {
+              if (etiquetaEdificio.isNotEmpty && numeroDepartamento.isNotEmpty) {
+                descripcion = 'Departamento $etiquetaEdificio-$numeroDepartamento';
+              } else if (numeroVivienda.isNotEmpty) {
+                descripcion = 'Departamento $numeroVivienda';
+              }
+            }
+          }
+
+          if (descripcion.isNotEmpty) {
+            final visitasBloqueadas = await _bloqueoVisitasService.obtenerVisitasBloqueadasPorVivienda(
+              condominioId: user.condominioId!,
+              descripcionVivienda: descripcion,
+            );
+
+            if (mounted) {
+              setState(() {
+                _visitasBloqueadasCount = visitasBloqueadas.length;
+              });
+            }
+          }
+        }
+      } catch (e) {
+        print('❌ Error al verificar visitas bloqueadas: $e');
       }
     }
   }
@@ -467,6 +582,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
+            // Nueva opción para administradores - Bloqueo de Visitas
+            ListTile(
+              leading: const Icon(Icons.block),
+              title: const Text('Bloqueo de Visitas'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        BloqueoVisitasScreen(currentUser: user),
+                  ),
+                );
+              },
+            ),
             // Nueva opción para administradores - Correspondencias
             ListTile(
               leading: const Icon(Icons.mail),
@@ -612,6 +742,29 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   },
                 ),
+            // Nueva opción para residentes - Visitas Bloqueadas (solo si hay más de 1)
+            StreamBuilder<int>(
+              stream: _visitasBloqueadasStream,
+              builder: (context, snapshot) {
+                final count = snapshot.data ?? 0;
+                if (count > 0) {
+                  return ListTile(
+                    leading: const Icon(Icons.block),
+                    title: const Text('Visitas Bloqueadas'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => VisitasBloqueadasResidenteScreen(currentUser: user),
+                        ),
+                      );
+                    },
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.settings),
               title: const Text('Configuración'),

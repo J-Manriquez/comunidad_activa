@@ -705,5 +705,77 @@ class FirestoreService {
       print('Error al actualizar estado de vivienda: $e');
       return false;
     }
-}
+  }
+
+  // Obtener residentes por descripción completa de vivienda (para notificaciones de bloqueo)
+  Future<List<ResidenteModel>> getResidentesByViviendaDescripcion(
+    String condominioId,
+    String descripcionVivienda,
+  ) async {
+    try {
+      print('🔍 Buscando residentes para vivienda: $descripcionVivienda');
+      
+      final querySnapshot = await _firestore
+          .collection(condominioId)
+          .doc('usuarios')
+          .collection('residentes')
+          .get();
+
+      List<ResidenteModel> residentesEncontrados = [];
+
+      for (var doc in querySnapshot.docs) {
+        if (doc.id == '_placeholder') continue;
+        
+        try {
+          final residente = ResidenteModel.fromFirestore(doc);
+          
+          // Obtener la descripción de vivienda del residente
+          String descripcionResidente = '';
+          
+          if (residente.descripcionVivienda != null && 
+              residente.descripcionVivienda!.isNotEmpty) {
+            descripcionResidente = residente.descripcionVivienda!;
+          } else {
+            // Construir descripción desde campos individuales
+            if (residente.tipoVivienda?.isNotEmpty == true) {
+              descripcionResidente += residente.tipoVivienda!;
+            }
+            
+            if (residente.numeroVivienda?.isNotEmpty == true) {
+              if (descripcionResidente.isNotEmpty) descripcionResidente += ' ';
+              descripcionResidente += residente.numeroVivienda!;
+            }
+            
+            if (residente.etiquetaEdificio?.isNotEmpty == true) {
+              if (descripcionResidente.isNotEmpty) descripcionResidente += ', ';
+              descripcionResidente += residente.etiquetaEdificio!;
+            }
+            
+            if (residente.numeroDepartamento?.isNotEmpty == true) {
+              if (descripcionResidente.isNotEmpty) descripcionResidente += ' ';
+              descripcionResidente += residente.numeroDepartamento!;
+            }
+          }
+          
+          // Comparar descripciones (normalizar para comparación)
+          String descripcionNormalizada = descripcionVivienda.toLowerCase().trim();
+          String residenteNormalizada = descripcionResidente.toLowerCase().trim();
+          
+          if (residenteNormalizada == descripcionNormalizada) {
+            residentesEncontrados.add(residente);
+            print('✅ Residente encontrado: ${residente.nombre} - ${descripcionResidente}');
+          }
+        } catch (e) {
+          print('❌ Error al procesar residente ${doc.id}: $e');
+        }
+      }
+      
+      print('📊 Total de residentes encontrados: ${residentesEncontrados.length}');
+      return residentesEncontrados;
+    } catch (e) {
+      print('❌ Error al obtener residentes por descripción de vivienda: $e');
+      return [];
+    }
+  }
+
 }

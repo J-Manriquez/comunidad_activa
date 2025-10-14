@@ -5,6 +5,7 @@ import 'package:comunidad_activa/screens/chat_screen.dart';
 import 'package:comunidad_activa/screens/residente/comunicaciones/r_multas_screen.dart';
 import 'package:comunidad_activa/screens/residente/comunicaciones/r_reclamos_screen.dart';
 import 'package:comunidad_activa/screens/residente/r_seleccion_vivienda_screen.dart';
+import 'package:comunidad_activa/screens/residente/visitas_bloqueadas_residente_screen.dart';
 import 'package:comunidad_activa/services/mensaje_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -230,7 +231,26 @@ class _ResidenteNotificationsScreenState
           ),
         );
       }
-    }else {
+    } else if (notification.notificationType == 'bloqueo_visita') {
+    // Navegar a la pantalla de visitas bloqueadas del residente
+    final visitaBloqueadaId = notification.additionalData?['visitaBloqueadaId'];
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => VisitasBloqueadasResidenteScreen(
+          currentUser: UserModel(
+            uid: userId,
+            condominioId: widget.condominioId,
+            email: residente!.email,
+            nombre: residente.nombre,
+            tipoUsuario: UserType.residente,
+          ),
+          visitaIdToOpen: visitaBloqueadaId, // Pasar el ID de la visita bloqueada a abrir
+        ),
+      ),
+    );
+  } else {
     // Para otros tipos de notificaciones, mostrar el diálogo normal
     _showNotificationDetails(notification, userId);
   }
@@ -272,6 +292,11 @@ class _ResidenteNotificationsScreenState
         typeColor = Colors.orange;
         typeIcon = Icons.local_shipping;
         typeText = 'Confirmación de Entrega';
+        break;
+      case 'residente_bloqueado':
+        typeColor = Colors.red.shade700;
+        typeIcon = Icons.block;
+        typeText = 'Visita Bloqueada';
         break;
       default:
         typeColor = Colors.blue;
@@ -1034,6 +1059,9 @@ Future<void> _responderConfirmacionEntrega(
         case 'mensaje_adicional_correspondencia':
           _showMensajeAdicionalNotificationDialog(notification);
           break;
+        case 'bloqueo_visita':
+          _showBloqueoVisitaNotificationDialog(notification);
+          break;
         default:
           _showGeneralNotificationDialog(notification);
           break;
@@ -1166,7 +1194,7 @@ Future<void> _responderConfirmacionEntrega(
     //                     ],
     //                   ),
     //                 ),
-    //               ),
+    //               ],
     //             ],
     //           ],
     //         ),
@@ -1674,6 +1702,156 @@ Future<void> _responderConfirmacionEntrega(
         ),
       );
     }
+  }
+
+  void _showBloqueoVisitaNotificationDialog(NotificationModel notification) {
+    final additionalData = notification.additionalData ?? {};
+    final nombreVisitante = additionalData['nombreVisitante'] ?? 'No especificado';
+    final rutVisitante = additionalData['rutVisitante'] ?? 'No especificado';
+    final viviendaBloqueo = additionalData['viviendaBloqueo'] ?? 'No especificada';
+    final motivoBloqueo = additionalData['motivoBloqueo'] ?? 'No especificado';
+    final fechaBloqueo = additionalData['fechaBloqueo'] ?? '';
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.9,
+            constraints: const BoxConstraints(maxHeight: 600),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(16),
+                      topRight: Radius.circular(16),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.block,
+                        color: Colors.red.shade600,
+                        size: 28,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Bloqueo de Visita',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red.shade700,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                
+                // Content
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildDetailRow('Visitante', nombreVisitante),
+                        _buildDetailRow('RUT', rutVisitante),
+                        _buildDetailRow('Vivienda afectada', viviendaBloqueo),
+                        _buildDetailRow('Fecha de notificación', '${notification.date} - ${notification.time}'),
+                        if (fechaBloqueo.isNotEmpty)
+                          _buildDetailRow('Fecha de bloqueo', _formatearFechaNotificacion(fechaBloqueo)),
+                        
+                        const SizedBox(height: 20),
+                        const Divider(),
+                        const SizedBox(height: 16),
+                        
+                        Text(
+                          'Motivo del bloqueo:',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.red.shade200),
+                          ),
+                          child: Text(
+                            motivoBloqueo,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 20),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.orange.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.info_outline,
+                                color: Colors.orange.shade600,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              const Expanded(
+                                child: Text(
+                                  'Este visitante ha sido bloqueado y no podrá acceder a la vivienda indicada.',
+                                  style: TextStyle(fontSize: 14),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                // Actions
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Cerrar'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   String _formatearFechaNotificacion(String fechaHora) {
