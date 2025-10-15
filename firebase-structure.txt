@@ -4,6 +4,27 @@ ESTRUCTURA DE DATOS DE FIREBASE - COMUNIDAD ACTIVA
 cada vez que un adimistrador se registra crea una nueva colección principal: 
 
 {condominioId} (Collection - formato: nombre_condominio_XXX) (ya creado)
+    ├──── controlAcceso (Document) 
+    │        ├── camposAdicionales: map   
+    │        ├── camposActivos: map
+    │        └── controlDiario (Collection) 
+    │               ├── {id} (Document)  
+    │               │   ├── id: String 
+    │               │   ├── nombre: String 
+    │               │   ├── rut: String 
+    │               │   ├── fecha: Timestamp 
+    │               │   ├── hora: String 
+    │               │   ├── tipoIngreso: String 
+    │               │   ├── tipoTransporte: String 
+    │               │   ├── tipoAuto: String 
+    │               │   ├── color: String 
+    │               │   ├── vivienda: String 
+    │               │   ├── usaEstacionamiento: Boolean 
+    │               │   ├── additionalData: map
+    │               │   │       └── ...
+    │               │   └── ...
+    │               └── ...
+
     ├──── visitasBloqueadas (Document)
     │        ├── ListaVisitasBloqueadas (Collection)
     │        │        ├── {id} (mapa)

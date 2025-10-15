@@ -2,6 +2,7 @@ import 'package:comunidad_activa/screens/admin/comunicaciones/admin_reclamos_scr
 import 'package:comunidad_activa/screens/admin/correspondencia/correspondencias_screen.dart';
 import 'package:comunidad_activa/screens/admin/settings_screen.dart';
 import 'admin/bloqueo_visitas_screen.dart';
+import 'admin/controlAcceso/control_acceso_screen.dart';
 import 'package:comunidad_activa/screens/residente/comunicaciones/r_reclamos_screen.dart';
 import 'package:comunidad_activa/screens/residente/gastos_comunes_residente_screen.dart';
 import 'package:comunidad_activa/screens/residente/residente_screen.dart';
@@ -628,6 +629,21 @@ class _HomeScreenState extends State<HomeScreen> {
                    );
                  },
                ),
+            // Nueva opción para administradores - Control de Acceso
+            ListTile(
+              leading: const Icon(Icons.security),
+              title: const Text('Control de Acceso'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        ControlAccesoScreen(currentUser: user),
+                  ),
+                );
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.settings),
               title: const Text('Configuraciones'),
