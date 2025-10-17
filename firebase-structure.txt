@@ -7,6 +7,24 @@ cada vez que un adimistrador se registra crea una nueva colección principal:
     ├──── controlAcceso (Document) 
     │        ├── camposAdicionales: map   
     │        ├── camposActivos: map
+    │        ├── usaEstacionamientoVisitas: boolean
+    │        ├── accesosPredeterminados (Collection) 
+    │        │       ├── {id} (Document)  
+    │        │       │   ├── id: String 
+    │        │       │   ├── nombre: String 
+    │        │       │   ├── rut: String 
+    │        │       │   ├── fecha: Timestamp 
+    │        │       │   ├── hora: String 
+    │        │       │   ├── tipoIngreso: String 
+    │        │       │   ├── tipoTransporte: String 
+    │        │       │   ├── tipoAuto: String 
+    │        │       │   ├── color: String 
+    │        │       │   ├── vivienda: String 
+    │        │       │   ├── usaEstacionamiento: Boolean 
+    │        │       │   ├── additionalData: map
+    │        │       │   │       └── ...
+    │        │       │   └── ...
+    │        │       └── ...
     │        └── controlDiario (Collection) 
     │               ├── {id} (Document)  
     │               │   ├── id: String 

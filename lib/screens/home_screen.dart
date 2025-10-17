@@ -35,6 +35,7 @@ import 'admin/comunicaciones/crear_publicacion_screen.dart';
 import 'admin/comunicaciones/gestion_publicaciones_screen.dart';
 import 'admin/espaciosComunes/espacios_comunes_screen.dart';
 import 'residente/espacios_comunes_residente_screen.dart';
+import 'registro_acceso_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -758,6 +759,20 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   },
                 ),
+            // Nueva opción para residentes - Registro de Acceso
+            ListTile(
+              leading: const Icon(Icons.login),
+              title: const Text('Registro de Acceso'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const RegistroAccesoScreen(),
+                  ),
+                );
+              },
+            ),
             // Nueva opción para residentes - Visitas Bloqueadas (solo si hay más de 1)
             StreamBuilder<int>(
               stream: _visitasBloqueadasStream,

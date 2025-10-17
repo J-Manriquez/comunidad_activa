@@ -20,6 +20,14 @@ class ControlAccesoService {
         .collection('controlDiario');
   }
 
+  // Obtener referencia a la colección accesosPredeterminados
+  CollectionReference _getAccesosPredeterminadosRef(String condominioId) {
+    return _firestore
+        .collection(condominioId)
+        .doc('controlAcceso')
+        .collection('accesosPredeterminados');
+  }
+
   // ==================== GESTIÓN DEL DOCUMENTO CONTROL ACCESO ====================
 
   /// Obtener la configuración de control de acceso
@@ -64,6 +72,7 @@ class ControlAccesoService {
           'vivienda': true,
           'usaEstacionamiento': true,
         },
+        usaEstacionamientoVisitas: false,
       );
 
       await _getControlAccesoRef(condominioId).set(defaultConfig.toFirestore());
@@ -134,6 +143,19 @@ class ControlAccesoService {
     }
   }
 
+  /// Actualizar configuración de uso de estacionamiento para visitas
+  Future<bool> updateUsaEstacionamientoVisitas(String condominioId, bool usaEstacionamientoVisitas) async {
+    try {
+      await _getControlAccesoRef(condominioId).update({
+        'usaEstacionamientoVisitas': usaEstacionamientoVisitas,
+      });
+      return true;
+    } catch (e) {
+      print('Error al actualizar configuración de estacionamiento para visitas: $e');
+      return false;
+    }
+  }
+
   /// Actualizar campos activos
   Future<bool> updateCamposActivos(String condominioId, Map<String, dynamic> camposActivos) async {
     try {
@@ -144,6 +166,86 @@ class ControlAccesoService {
     } catch (e) {
       print('Error al actualizar campos activos: $e');
       return false;
+    }
+  }
+
+  // ==================== GESTIÓN DE ACCESOS PREDETERMINADOS ====================
+
+  /// Obtener accesos predeterminados de un residente
+  Future<List<AccesoPredeterminado>> getAccesosPredeterminados(String condominioId, String uidResidente) async {
+    try {
+      QuerySnapshot snapshot = await _getAccesosPredeterminadosRef(condominioId)
+          .where('uidResidente', isEqualTo: uidResidente)
+          .limit(3) // Máximo 3 accesos predeterminados
+          .get();
+
+      List<AccesoPredeterminado> accesos = snapshot.docs
+          .map((doc) => AccesoPredeterminado.fromFirestore(doc))
+          .toList();
+
+      // Ordenar por fecha en el cliente para evitar índice compuesto
+      accesos.sort((a, b) => b.fecha.compareTo(a.fecha));
+
+      return accesos;
+    } catch (e) {
+      print('Error al obtener accesos predeterminados: $e');
+      return [];
+    }
+  }
+
+  /// Crear un nuevo acceso predeterminado
+  Future<String?> createAccesoPredeterminado(String condominioId, AccesoPredeterminado acceso) async {
+    try {
+      // Verificar que no exceda el límite de 3 accesos predeterminados
+      List<AccesoPredeterminado> accesosExistentes = await getAccesosPredeterminados(condominioId, acceso.uidResidente);
+      
+      if (accesosExistentes.length >= 3) {
+        throw Exception('No se pueden crear más de 3 accesos predeterminados por residente');
+      }
+
+      DocumentReference docRef = await _getAccesosPredeterminadosRef(condominioId).add(acceso.toFirestore());
+      return docRef.id;
+    } catch (e) {
+      print('Error al crear acceso predeterminado: $e');
+      return null;
+    }
+  }
+
+  /// Actualizar un acceso predeterminado existente
+  Future<bool> updateAccesoPredeterminado(String condominioId, String accesoId, AccesoPredeterminado acceso) async {
+    try {
+      await _getAccesosPredeterminadosRef(condominioId).doc(accesoId).update(acceso.toFirestore());
+      return true;
+    } catch (e) {
+      print('Error al actualizar acceso predeterminado: $e');
+      return false;
+    }
+  }
+
+  /// Eliminar un acceso predeterminado
+  Future<bool> deleteAccesoPredeterminado(String condominioId, String accesoId) async {
+    try {
+      await _getAccesosPredeterminadosRef(condominioId).doc(accesoId).delete();
+      return true;
+    } catch (e) {
+      print('Error al eliminar acceso predeterminado: $e');
+      return false;
+    }
+  }
+
+  /// Registrar acceso desde un acceso predeterminado
+  Future<String?> registrarAccesoDesdePredeterminado(String condominioId, AccesoPredeterminado accesoPredeterminado) async {
+    try {
+      // Convertir el acceso predeterminado a un registro de control diario
+      ControlDiario controlDiario = accesoPredeterminado.toControlDiario();
+      
+      // Guardar en control diario
+      String? registroId = await addControlDiario(condominioId, controlDiario);
+      
+      return registroId;
+    } catch (e) {
+      print('Error al registrar acceso desde predeterminado: $e');
+      return null;
     }
   }
 

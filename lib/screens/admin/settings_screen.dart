@@ -4,6 +4,8 @@ import '../../models/condominio_model.dart';
 import '../../services/firestore_service.dart';
 import '../../services/mensaje_service.dart';
 import '../../services/estacionamiento_service.dart';
+import '../../services/control_acceso_service.dart';
+import 'dart:async';
 
 class SettingsScreen extends StatefulWidget {
   final String condominioId;
@@ -18,12 +20,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final MensajeService _mensajeService = MensajeService();
   final EstacionamientoService _estacionamientoService = EstacionamientoService();
+  final ControlAccesoService _controlAccesoService = ControlAccesoService();
   CondominioModel? _condominio;
   bool _isLoading = true;
   bool _comunicacionEntreResidentes = false;
   bool _cobrarMultasConGastos = false;
   bool _cobrarEspaciosConGastos = false;
   bool _estacionamientosActivos = false;
+  bool _usaEstacionamientoVisitas = false;
+  bool _estVisitas = false; // Nueva variable para observar estVisitas
+  StreamSubscription<bool>? _estVisitasSubscription; // Suscripción al stream
 
   @override
   void initState() {
@@ -31,6 +37,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadCondominioData();
     _loadMensajeSettings();
     _loadEstacionamientoSettings();
+    _loadControlAccesoSettings();
+    _initEstVisitasStream(); // Inicializar el stream de estVisitas
+  }
+
+  @override
+  void dispose() {
+    _estVisitasSubscription?.cancel(); // Cancelar la suscripción al stream
+    super.dispose();
+  }
+
+  void _initEstVisitasStream() {
+    _estVisitasSubscription = _estacionamientoService
+        .observarEstVisitas(widget.condominioId)
+        .listen((estVisitas) {
+      if (mounted) {
+        setState(() {
+          _estVisitas = estVisitas;
+        });
+      }
+    });
   }
 
   Future<void> _loadMensajeSettings() async {
@@ -50,16 +76,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadEstacionamientoSettings() async {
     try {
-      final configuracion = await _estacionamientoService
-          .obtenerConfiguracion(widget.condominioId);
-      
+      final configuracion = await _estacionamientoService.obtenerConfiguracion(widget.condominioId);
       if (mounted) {
         setState(() {
-          _estacionamientosActivos = configuracion?['activo'] ?? false;
+          _estacionamientosActivos = configuracion['activo'] ?? false;
         });
       }
     } catch (e) {
-      print('Error al cargar configuración de estacionamientos: $e');
+      // Error al cargar configuración de estacionamientos
+    }
+  }
+
+  Future<void> _loadControlAccesoSettings() async {
+    try {
+      final controlAcceso = await _controlAccesoService.getControlAcceso(widget.condominioId);
+      if (mounted) {
+        setState(() {
+          _usaEstacionamientoVisitas = controlAcceso?.usaEstacionamientoVisitas ?? false;
+        });
+      }
+    } catch (e) {
+      // Error al cargar configuración de control de acceso
     }
   }
 
@@ -170,37 +207,74 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _toggleEstacionamientos(bool value) async {
-    try {
-      await _estacionamientoService.cambiarEstadoActivo(
-        widget.condominioId,
-        value,
-      );
-      
-      if (mounted) {
+  Future<void> _toggleEstacionamientos(bool? value) async {
+    if (value != null) {
+      try {
+        await _estacionamientoService.actualizarConfiguracion(
+          widget.condominioId,
+          {'activo': value},
+        );
         setState(() {
           _estacionamientosActivos = value;
         });
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              value 
-                  ? 'Gestión de estacionamientos activada'
-                  : 'Gestión de estacionamientos desactivada',
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                value 
+                    ? 'Gestión de estacionamientos activada'
+                    : 'Gestión de estacionamientos desactivada',
+              ),
+              backgroundColor: Colors.green,
             ),
-            backgroundColor: value ? Colors.green : Colors.orange,
-          ),
-        );
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error al actualizar configuración: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al actualizar configuración: $e'),
-            backgroundColor: Colors.red,
-          ),
+    }
+  }
+
+  Future<void> _toggleUsaEstacionamientoVisitas(bool? value) async {
+    if (value != null) {
+      try {
+        await _controlAccesoService.updateUsaEstacionamientoVisitas(
+          widget.condominioId,
+          value,
         );
+        setState(() {
+          _usaEstacionamientoVisitas = value;
+        });
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                value 
+                    ? 'Estacionamiento para visitas activado'
+                    : 'Estacionamiento para visitas desactivado',
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error al actualizar configuración: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -336,6 +410,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
               activeColor: Colors.indigo,
             ),
           ),
+          // Solo mostrar el switch de estacionamiento para visitas cuando estVisitas sea true
+          if (_estVisitas) ...[
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.directions_car, color: Colors.teal),
+              title: const Text('Estacionamiento para visitas de libre acceso'),
+              subtitle: Text(
+                _usaEstacionamientoVisitas
+                    ? 'Los residentes pueden usar estacionamientos para visitas sin solicitarlo previamente'
+                    : 'Los residentes no pueden solicitar estacionamiento para visitas ',
+              ),
+              trailing: Switch(
+                value: _usaEstacionamientoVisitas,
+                onChanged: _toggleUsaEstacionamientoVisitas,
+                activeColor: Colors.teal,
+              ),
+            ),
+          ],
         ],
       ),
     );

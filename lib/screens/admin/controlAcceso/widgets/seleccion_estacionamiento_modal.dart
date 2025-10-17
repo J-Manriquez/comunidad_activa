@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../../../models/estacionamiento_model.dart';
 import '../../../../services/estacionamiento_service.dart';
+import '../../../../services/control_acceso_service.dart';
 
 class SeleccionEstacionamientoModal extends StatefulWidget {
   final String condominioId;
   final Function(String estacionamiento) onSeleccion;
   final String titulo;
   final String? viviendaSeleccionada; // Nueva propiedad para la vivienda seleccionada
+  final bool esResidente; // Nueva propiedad para identificar si es un residente
 
   const SeleccionEstacionamientoModal({
     super.key,
@@ -14,6 +16,7 @@ class SeleccionEstacionamientoModal extends StatefulWidget {
     required this.onSeleccion,
     this.titulo = 'Seleccionar Estacionamiento',
     this.viviendaSeleccionada, // Parámetro opcional
+    this.esResidente = false, // Por defecto es administrador
   });
 
   @override
@@ -24,11 +27,14 @@ class SeleccionEstacionamientoModal extends StatefulWidget {
 class _SeleccionEstacionamientoModalState
     extends State<SeleccionEstacionamientoModal> {
   final EstacionamientoService _estacionamientoService = EstacionamientoService();
+  final ControlAccesoService _controlAccesoService = ControlAccesoService();
   List<EstacionamientoModel> _estacionamientos = [];
   List<EstacionamientoModel> _estacionamientosFiltrados = [];
   bool _isLoading = true;
   String _filtroSeleccionado = 'todos';
   final TextEditingController _searchController = TextEditingController();
+  bool _usaEstacionamientoVisitas = false;
+  bool _estVisitasConfig = false;
 
   @override
   void initState() {
@@ -38,6 +44,7 @@ class _SeleccionEstacionamientoModalState
       _filtroSeleccionado = 'vivienda';
     }
     _loadEstacionamientosData();
+    _loadControlAccesoConfig();
   }
 
   @override
@@ -77,6 +84,29 @@ class _SeleccionEstacionamientoModalState
     }
   }
 
+  Future<void> _loadControlAccesoConfig() async {
+    try {
+      // Cargar configuración de control de acceso
+      final config = await _controlAccesoService.getControlAcceso(widget.condominioId);
+      if (mounted && config != null) {
+        setState(() {
+          _usaEstacionamientoVisitas = config.usaEstacionamientoVisitas;
+        });
+      }
+      
+      // Cargar configuración de estacionamientos para obtener estVisitas
+      final estacionamientoConfig = await _estacionamientoService.obtenerConfiguracion(widget.condominioId);
+      if (mounted) {
+        setState(() {
+          _estVisitasConfig = estacionamientoConfig['estVisitas'] ?? false;
+        });
+      }
+    } catch (e) {
+      // Si hay error, mantener los valores por defecto (false)
+      print('Error al cargar configuración: $e');
+    }
+  }
+
   void _filtrarEstacionamientos() {
     setState(() {
       List<EstacionamientoModel> filtrados = _estacionamientos;
@@ -88,7 +118,6 @@ class _SeleccionEstacionamientoModalState
         filtrados = filtrados.where((e) => e.estVisita).toList();
       } else if (_filtroSeleccionado == 'vivienda' && widget.viviendaSeleccionada != null) {
         // Filtrar estacionamientos de la vivienda seleccionada
-        // Incluir estacionamientos asignados a la vivienda y los prestados a ella
         filtrados = filtrados.where((e) {
           // Estacionamientos asignados directamente a la vivienda
           bool esDeVivienda = e.viviendaAsignada == widget.viviendaSeleccionada;
@@ -96,7 +125,15 @@ class _SeleccionEstacionamientoModalState
           // Estacionamientos prestados a la vivienda (campo viviendaPrestamo)
           bool esPrestadoAVivienda = e.viviendaPrestamo == widget.viviendaSeleccionada;
           
-          return esDeVivienda || esPrestadoAVivienda;
+          // Excluir estacionamientos que la vivienda ha prestado a otros
+          // (es decir, estacionamientos donde viviendaAsignada es la vivienda seleccionada
+          // pero viviendaPrestamo es diferente y prestado es true)
+          bool haPrestadoAOtros = e.viviendaAsignada == widget.viviendaSeleccionada && 
+                                  e.prestado == true && 
+                                  e.viviendaPrestamo != null && 
+                                  e.viviendaPrestamo != widget.viviendaSeleccionada;
+          
+          return (esDeVivienda || esPrestadoAVivienda) && !haPrestadoAOtros;
         }).toList();
       }
 
@@ -118,6 +155,76 @@ class _SeleccionEstacionamientoModalState
         ? 'de visitas ${estacionamiento.nroEstacionamiento}'
         : estacionamiento.nroEstacionamiento;
     widget.onSeleccion(nombreEstacionamiento);
+  }
+
+  List<ButtonSegment<String>> _buildSegments() {
+    List<ButtonSegment<String>> segments = [];
+
+    if (widget.esResidente) {
+      // Lógica para residentes
+      // Siempre mostrar opción "Vivienda" si hay vivienda seleccionada
+      if (widget.viviendaSeleccionada != null) {
+        segments.add(
+          const ButtonSegment(
+            value: 'vivienda',
+            label: Text('Vivienda'),
+            icon: Icon(Icons.home_outlined, size: 16),
+          ),
+        );
+      }
+      
+      // Mostrar opción "Visitas" solo si estVisitas es true, usaEstacionamientoVisitas es true y hay estacionamientos de visitas
+      if (_estVisitasConfig && _usaEstacionamientoVisitas && _estacionamientos.any((e) => e.estVisita)) {
+        segments.add(
+          const ButtonSegment(
+            value: 'visitas',
+            label: Text('Visitas'),
+            icon: Icon(Icons.people, size: 16),
+          ),
+        );
+      }
+    } else {
+      // Lógica para administradores (comportamiento original)
+      // Mostrar opción "Vivienda" solo si hay vivienda seleccionada
+      if (widget.viviendaSeleccionada != null) {
+        segments.add(
+          const ButtonSegment(
+            value: 'vivienda',
+            label: Text('Vivienda'),
+            icon: Icon(Icons.home_outlined, size: 16),
+          ),
+        );
+      } else {
+        segments.add(
+          const ButtonSegment(
+            value: 'todos',
+            label: Text('Todos'),
+            icon: Icon(Icons.all_inclusive, size: 16),
+          ),
+        );
+      }
+      
+      segments.add(
+        const ButtonSegment(
+          value: 'residentes',
+          label: Text('Residentes'),
+          icon: Icon(Icons.home, size: 16),
+        ),
+      );
+      
+      // Mostrar opción "Visitas" solo si estVisitas es true y hay estacionamientos de visitas
+      if (_estVisitasConfig && _estacionamientos.any((e) => e.estVisita)) {
+        segments.add(
+          const ButtonSegment(
+            value: 'visitas',
+            label: Text('Visitas'),
+            icon: Icon(Icons.people, size: 16),
+          ),
+        );
+      }
+    }
+
+    return segments;
   }
 
   Widget _buildEstacionamientoCard(EstacionamientoModel estacionamiento) {
@@ -278,33 +385,7 @@ class _SeleccionEstacionamientoModalState
                     children: [
                       Expanded(
                         child: SegmentedButton<String>(
-                          segments: [
-                            // Mostrar opción "Vivienda" solo si hay vivienda seleccionada
-                            if (widget.viviendaSeleccionada != null)
-                              const ButtonSegment(
-                                value: 'vivienda',
-                                label: Text('Vivienda'),
-                                icon: Icon(Icons.home_outlined, size: 16),
-                              )
-                            else
-                              const ButtonSegment(
-                                value: 'todos',
-                                label: Text('Todos'),
-                                icon: Icon(Icons.all_inclusive, size: 16),
-                              ),
-                            const ButtonSegment(
-                              value: 'residentes',
-                              label: Text('Residentes'),
-                              icon: Icon(Icons.home, size: 16),
-                            ),
-                            // Mostrar opción "Visitas" solo si hay estacionamientos de visitas
-                            if (_estacionamientos.any((e) => e.estVisita))
-                              const ButtonSegment(
-                                value: 'visitas',
-                                label: Text('Visitas'),
-                                icon: Icon(Icons.people, size: 16),
-                              ),
-                          ],
+                          segments: _buildSegments(),
                           selected: {_filtroSeleccionado},
                           onSelectionChanged: (Set<String> selection) {
                             setState(() {

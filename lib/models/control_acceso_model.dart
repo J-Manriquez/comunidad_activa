@@ -4,10 +4,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class ControlAcceso {
   final Map<String, dynamic> camposAdicionales;
   final Map<String, dynamic> camposActivos;
+  final bool usaEstacionamientoVisitas;
 
   ControlAcceso({
     required this.camposAdicionales,
     required this.camposActivos,
+    this.usaEstacionamientoVisitas = false,
   });
 
   factory ControlAcceso.fromFirestore(DocumentSnapshot doc) {
@@ -15,6 +17,7 @@ class ControlAcceso {
     return ControlAcceso(
       camposAdicionales: data['camposAdicionales'] ?? {},
       camposActivos: data['camposActivos'] ?? {},
+      usaEstacionamientoVisitas: data['usaEstacionamientoVisitas'] ?? false,
     );
   }
 
@@ -22,16 +25,19 @@ class ControlAcceso {
     return {
       'camposAdicionales': camposAdicionales,
       'camposActivos': camposActivos,
+      'usaEstacionamientoVisitas': usaEstacionamientoVisitas,
     };
   }
 
   ControlAcceso copyWith({
     Map<String, dynamic>? camposAdicionales,
     Map<String, dynamic>? camposActivos,
+    bool? usaEstacionamientoVisitas,
   }) {
     return ControlAcceso(
       camposAdicionales: camposAdicionales ?? this.camposAdicionales,
       camposActivos: camposActivos ?? this.camposActivos,
+      usaEstacionamientoVisitas: usaEstacionamientoVisitas ?? this.usaEstacionamientoVisitas,
     );
   }
 }
@@ -157,6 +163,139 @@ class ControlDiario {
   }
 }
 
+// Modelo para los documentos de la colección accesosPredeterminados
+class AccesoPredeterminado {
+  final String id;
+  final String nombreAcceso;
+  final String nombre;
+  final String rut;
+  final String uidResidente; // Nuevo campo para almacenar el uid del residente
+  final Timestamp fecha;
+  final String hora;
+  final String tipoIngreso;
+  final String tipoTransporte;
+  final String tipoAuto;
+  final String color;
+  final String vivienda;
+  final String patente;
+  final bool usaEstacionamiento;
+  final Map<String, dynamic> additionalData;
+
+  AccesoPredeterminado({
+    required this.id,
+    required this.nombreAcceso,
+    required this.nombre,
+    required this.rut,
+    required this.uidResidente,
+    required this.fecha,
+    required this.hora,
+    required this.tipoIngreso,
+    required this.tipoTransporte,
+    required this.tipoAuto,
+    required this.color,
+    required this.vivienda,
+    required this.patente,
+    required this.usaEstacionamiento,
+    required this.additionalData,
+  });
+
+  factory AccesoPredeterminado.fromFirestore(DocumentSnapshot doc) {
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    return AccesoPredeterminado(
+      id: doc.id,
+      nombreAcceso: data['nombreAcceso'] ?? '',
+      nombre: data['nombre'] ?? '',
+      rut: data['rut'] ?? '',
+      uidResidente: data['uidResidente'] ?? '',
+      fecha: data['fecha'] ?? Timestamp.now(),
+      hora: data['hora'] ?? '',
+      tipoIngreso: data['tipoIngreso'] ?? '',
+      tipoTransporte: data['tipoTransporte'] ?? '',
+      tipoAuto: data['tipoAuto'] ?? '',
+      color: data['color'] ?? '',
+      vivienda: data['vivienda'] ?? '',
+      patente: data['patente'] ?? '',
+      usaEstacionamiento: data['usaEstacionamiento'] ?? false,
+      additionalData: data['additionalData'] ?? {},
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'id': id,
+      'nombreAcceso': nombreAcceso,
+      'nombre': nombre,
+      'rut': rut,
+      'uidResidente': uidResidente,
+      'fecha': fecha,
+      'hora': hora,
+      'tipoIngreso': tipoIngreso,
+      'tipoTransporte': tipoTransporte,
+      'tipoAuto': tipoAuto,
+      'color': color,
+      'vivienda': vivienda,
+      'patente': patente,
+      'usaEstacionamiento': usaEstacionamiento,
+      'additionalData': additionalData,
+    };
+  }
+
+  AccesoPredeterminado copyWith({
+    String? id,
+    String? nombreAcceso,
+    String? nombre,
+    String? rut,
+    String? uidResidente,
+    Timestamp? fecha,
+    String? hora,
+    String? tipoIngreso,
+    String? tipoTransporte,
+    String? tipoAuto,
+    String? color,
+    String? vivienda,
+    String? patente,
+    bool? usaEstacionamiento,
+    Map<String, dynamic>? additionalData,
+  }) {
+    return AccesoPredeterminado(
+      id: id ?? this.id,
+      nombreAcceso: nombreAcceso ?? this.nombreAcceso,
+      nombre: nombre ?? this.nombre,
+      rut: rut ?? this.rut,
+      uidResidente: uidResidente ?? this.uidResidente,
+      fecha: fecha ?? this.fecha,
+      hora: hora ?? this.hora,
+      tipoIngreso: tipoIngreso ?? this.tipoIngreso,
+      tipoTransporte: tipoTransporte ?? this.tipoTransporte,
+      tipoAuto: tipoAuto ?? this.tipoAuto,
+      color: color ?? this.color,
+      vivienda: vivienda ?? this.vivienda,
+      patente: patente ?? this.patente,
+      usaEstacionamiento: usaEstacionamiento ?? this.usaEstacionamiento,
+      additionalData: additionalData ?? this.additionalData,
+    );
+  }
+
+  // Método para convertir a ControlDiario
+  ControlDiario toControlDiario() {
+    return ControlDiario(
+      id: '', // Se asignará automáticamente al guardar
+      nombre: nombre,
+      rut: rut,
+      fecha: Timestamp.now(), // Usar fecha actual para el registro
+      hora: DateTime.now().toString().substring(11, 16), // Hora actual
+      tipoIngreso: tipoIngreso,
+      tipoTransporte: tipoTransporte,
+      tipoAuto: tipoAuto,
+      color: color,
+      vivienda: vivienda,
+      usaEstacionamiento: usaEstacionamiento ? 'true' : '',
+      patente: patente,
+      additionalData: additionalData,
+    );
+  }
+}
+
 // Modelo para filtros de búsqueda en el historial
 class FiltroControlAcceso {
   final DateTime? fechaInicio;
@@ -213,9 +352,6 @@ class FiltroControlAcceso {
 enum TipoIngreso {
   residente,
   visita,
-  trabajador,
-  delivery,
-  emergencia,
 }
 
 enum TipoTransporte {
@@ -236,12 +372,6 @@ extension TipoIngresoExtension on TipoIngreso {
         return 'Residente';
       case TipoIngreso.visita:
         return 'Visita';
-      case TipoIngreso.trabajador:
-        return 'Trabajador';
-      case TipoIngreso.delivery:
-        return 'Delivery';
-      case TipoIngreso.emergencia:
-        return 'Emergencia';
     }
   }
 

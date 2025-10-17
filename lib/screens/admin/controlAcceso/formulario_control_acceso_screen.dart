@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../models/user_model.dart';
+import '../../../models/residente_model.dart';
 import '../../../models/control_acceso_model.dart';
 import '../../../services/control_acceso_service.dart';
 import '../../../widgets/seleccion_vivienda_bloqueo_modal.dart';
 import 'widgets/seleccion_estacionamiento_modal.dart';
 
 class FormularioControlAccesoScreen extends StatefulWidget {
-  final UserModel currentUser;
+  final ResidenteModel currentUser;
+  final bool esDesdeRegistroAcceso;
 
   const FormularioControlAccesoScreen({
     Key? key,
     required this.currentUser,
+    this.esDesdeRegistroAcceso = false,
   }) : super(key: key);
 
   @override
@@ -112,6 +114,11 @@ class _FormularioControlAccesoScreenState extends State<FormularioControlAccesoS
           // Inicializar controladores para campos adicionales
           for (String campo in _camposAdicionales.keys) {
             _camposAdicionalesControllers[campo] = TextEditingController();
+          }
+          
+          // Auto-completar vivienda si viene desde registro de acceso
+          if (widget.esDesdeRegistroAcceso) {
+            _viviendaController.text = widget.currentUser.descripcionVivienda ?? '';
           }
           
           _isLoading = false;
@@ -269,6 +276,7 @@ class _FormularioControlAccesoScreenState extends State<FormularioControlAccesoS
         condominioId: widget.currentUser.condominioId!,
         titulo: 'Seleccionar Estacionamiento',
         viviendaSeleccionada: _viviendaController.text.trim().isEmpty ? null : _viviendaController.text.trim(), // Pasar la vivienda seleccionada
+        esResidente: widget.esDesdeRegistroAcceso, // Aplicar condiciones de residente si viene desde registro de acceso
         onSeleccion: (estacionamiento) {
           Navigator.of(context).pop(estacionamiento);
         },
@@ -648,6 +656,27 @@ class _FormularioControlAccesoScreenState extends State<FormularioControlAccesoS
   }
 
   Widget _buildCampoVivienda() {
+    // Si viene desde registro de acceso, deshabilitar la selección
+    if (widget.esDesdeRegistroAcceso) {
+      return TextFormField(
+        controller: _viviendaController,
+        enabled: false, // Campo deshabilitado
+        decoration: const InputDecoration(
+          labelText: 'Vivienda *',
+          border: OutlineInputBorder(),
+          prefixIcon: Icon(Icons.home),
+          hintText: 'Vivienda asignada automáticamente',
+        ),
+        validator: (value) {
+          if (value == null || value.trim().isEmpty) {
+            return 'La vivienda es obligatoria';
+          }
+          return null;
+        },
+      );
+    }
+    
+    // Comportamiento normal para otros casos
     return GestureDetector(
       onTap: _mostrarSeleccionVivienda,
       child: AbsorbPointer(

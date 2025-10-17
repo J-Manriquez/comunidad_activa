@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'residente_model.dart';
 
 enum UserType { administrador, residente, trabajador }
 
@@ -47,5 +48,19 @@ class UserModel {
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return UserModel.fromMap(data);
+  }
+
+  // Método para convertir UserModel a ResidenteModel
+  ResidenteModel toResidenteModel() {
+    return ResidenteModel(
+      uid: uid,
+      nombre: nombre,
+      email: email,
+      condominioId: condominioId ?? '',
+      codigo: '', // Valor por defecto ya que UserModel no tiene código
+      esComite: esComite ?? false,
+      fechaRegistro: DateTime.now().toIso8601String(),
+      permitirMsjsResidentes: true, // Valor por defecto
+    );
   }
 }

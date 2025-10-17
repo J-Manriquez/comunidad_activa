@@ -756,4 +756,18 @@ class EstacionamientoService {
       return false;
     }
   }
+
+  // Stream para observar cambios en el campo estVisitas
+  Stream<bool> observarEstVisitas(String condominioId) {
+    return _firestore
+        .collection(condominioId)
+        .doc('estacionamiento')
+        .snapshots()
+        .map((snapshot) {
+      if (snapshot.exists && snapshot.data() != null) {
+        return snapshot.data()!['estVisitas'] ?? false;
+      }
+      return false;
+    });
+  }
 }

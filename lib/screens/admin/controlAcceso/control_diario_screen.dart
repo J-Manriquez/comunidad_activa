@@ -69,7 +69,7 @@ class _ControlDiarioScreenState extends State<ControlDiarioScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => FormularioControlAccesoScreen(
-          currentUser: widget.currentUser,
+          currentUser: widget.currentUser.toResidenteModel(),
         ),
       ),
     );
