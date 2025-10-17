@@ -33,11 +33,22 @@ class _CorrespondenciasActivasScreenState
   final CorrespondenciaService _correspondenciaService =
       CorrespondenciaService();
   CorrespondenciaConfigModel? _config;
+  
+  // Variables para la funcionalidad de búsqueda
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _cargarConfiguracion();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _cargarConfiguracion() async {
@@ -59,9 +70,41 @@ class _CorrespondenciasActivasScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Correspondencias Activas'),
+        title: _isSearching 
+          ? TextField(
+              controller: _searchController,
+              autofocus: true,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                hintText: 'Buscar por vivienda...',
+                hintStyle: TextStyle(color: Colors.white70),
+                border: InputBorder.none,
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value.toLowerCase();
+                });
+              },
+            )
+          : const Text('Correspondencias Activas'),
         backgroundColor: Colors.green.shade600,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: Icon(_isSearching ? Icons.close : Icons.search),
+            onPressed: () {
+              setState(() {
+                if (_isSearching) {
+                  _isSearching = false;
+                  _searchController.clear();
+                  _searchQuery = '';
+                } else {
+                  _isSearching = true;
+                }
+              });
+            },
+          ),
+        ],
       ),
       body: StreamBuilder<List<CorrespondenciaModel>>(
         stream: _correspondenciaService.getCorrespondencias(
@@ -101,12 +144,25 @@ class _CorrespondenciasActivasScreenState
           final correspondencias = snapshot.data ?? [];
 
           // Filtrar solo correspondencias activas (sin fecha de entrega)
-          final correspondenciasActivas = correspondencias
+          var correspondenciasActivas = correspondencias
               .where(
                 (c) =>
                     c.fechaHoraEntrega == null || c.fechaHoraEntrega!.isEmpty,
               )
               .toList();
+
+          // Aplicar filtro de búsqueda si hay una consulta
+          if (_searchQuery.isNotEmpty) {
+            correspondenciasActivas = correspondenciasActivas.where((c) {
+              // Buscar en datos de entrega (que incluye la vivienda)
+              final datosEntrega = c.datosEntrega.toLowerCase();
+              // También buscar en vivienda de recepción si existe
+              final viviendaRecepcion = c.viviendaRecepcion?.toLowerCase() ?? '';
+              
+              return datosEntrega.contains(_searchQuery) || 
+                     viviendaRecepcion.contains(_searchQuery);
+            }).toList();
+          }
 
           if (correspondenciasActivas.isEmpty) {
             return Center(
@@ -120,12 +176,17 @@ class _CorrespondenciasActivasScreenState
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'No hay correspondencias activas',
+                    _searchQuery.isNotEmpty 
+                      ? 'No se encontraron correspondencias para "$_searchQuery"'
+                      : 'No hay correspondencias activas',
                     style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Las correspondencias aparecerán aquí cuando se registren',
+                    _searchQuery.isNotEmpty
+                      ? 'Intenta con otro término de búsqueda'
+                      : 'Las correspondencias aparecerán aquí cuando se registren',
                     style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
                     textAlign: TextAlign.center,
                   ),
