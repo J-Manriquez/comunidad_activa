@@ -5,6 +5,8 @@ import '../../services/firestore_service.dart';
 import '../../models/user_model.dart';
 import '../home_screen.dart';
 import '../../services/bloqueo_service.dart';
+import '../../services/codigo_registro_service.dart';
+import '../../models/codigo_registro_model.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -23,6 +25,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _condominioDireccionController = TextEditingController();
   final _cargoEspecificoController = TextEditingController();
   final BloqueoService _bloqueoService = BloqueoService();
+  final CodigoRegistroService _codigoRegistroService = CodigoRegistroService();
 
   final _authService = AuthService();
   final _firestoreService = FirestoreService();
@@ -53,46 +56,80 @@ class _RegisterScreenState extends State<RegisterScreen> {
       });
 
       try {
-        // Verificar si el correo está bloqueado
-        final usuarioBloqueado = await _bloqueoService.verificarCorreoBloqueado(
-          _codigoController.text.trim(),
-          _emailController.text.trim(),
-        );
+        // Solo validar códigos para residentes y trabajadores (no para administradores)
+        String? condominioId;
+        String? codigoId;
+        String? tipoUsuarioEsperado;
+        
+        if (_tipoUsuario != UserType.administrador) {
+          // Validar código y obtener información del condominio
+          Map<String, String>? codigoInfo = await _codigoRegistroService.validarCodigoGlobalConCondominio(_codigoController.text.trim());
+          
+          if (codigoInfo == null) {
+            setState(() {
+              _errorMessage = 'Código de registro inválido o expirado';
+              _isLoading = false;
+            });
+            return;
+          }
+          
+          condominioId = codigoInfo['condominioId'];
+          codigoId = codigoInfo['codigoId'];
+          tipoUsuarioEsperado = codigoInfo['tipoUsuario'];
+          
+          // Verificar que el tipo de usuario coincida con el código
+          String tipoUsuarioActual = _tipoUsuario.toString().split('.').last;
+          if (tipoUsuarioEsperado != tipoUsuarioActual) {
+            setState(() {
+              _errorMessage = 'Este código es para usuarios de tipo: $tipoUsuarioEsperado';
+              _isLoading = false;
+            });
+            return;
+          }
+        }
 
-        if (usuarioBloqueado != null) {
-          if (mounted) {
-            showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('Registro No Permitido'),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'No tienes permitido registrarte en este condominio.',
+        // Verificar si el correo está bloqueado (solo si no es administrador)
+        if (_tipoUsuario != UserType.administrador) {
+          final usuarioBloqueado = await _bloqueoService.verificarCorreoBloqueado(
+            condominioId!,
+            _emailController.text.trim(),
+          );
+
+          if (usuarioBloqueado != null) {
+            if (mounted) {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Registro No Permitido'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'No tienes permitido registrarte en este condominio.',
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Motivo:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(usuarioBloqueado.motivo),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Entendido'),
                     ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Motivo:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    Text(usuarioBloqueado.motivo),
                   ],
                 ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Entendido'),
-                  ),
-                ],
-              ),
-            );
+              );
+            }
+            setState(() {
+              _isLoading = false;
+            });
+            return;
           }
-          setState(() {
-            _isLoading = false;
-          });
-          return;
         }
 
         // Registrar usuario en Firebase Auth
@@ -142,8 +179,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
               await _firestoreService.registerResidente(
                 nombre: nombre,
                 email: email,
-                codigo: _codigoController.text.trim(),
-                esComite: false, // Por ahora, todos son residentes normales
+                codigo: condominioId!,
+                esComite: tipoUsuarioEsperado == 'comite', // Verificar si es comité basado en el código
+              );
+
+              // Registrar usuario en el código de registro
+              await _codigoRegistroService.registrarUsuarioConCodigo(
+                condominioId: condominioId,
+                codigoId: codigoId!,
+                usuarioId: uid,
+                nombreUsuario: nombre,
+                uidUsuario: uid,
               );
 
               // Actualizar el modelo de usuario con el ID del condominio
@@ -152,7 +198,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 email: email,
                 nombre: nombre,
                 tipoUsuario: _tipoUsuario,
-                condominioId: _codigoController.text.trim(),
+                condominioId: condominioId,
               );
               break;
 
@@ -161,11 +207,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
               await _firestoreService.registerTrabajador(
                 nombre: nombre,
                 email: email,
-                codigo: _codigoController.text.trim(),
+                codigo: condominioId!,
                 tipoTrabajador: _tipoTrabajador,
                 cargoEspecifico: _tipoTrabajador == 'otro'
                     ? _cargoEspecificoController.text.trim()
                     : null,
+              );
+
+              // Registrar usuario en el código de registro
+              await _codigoRegistroService.registrarUsuarioConCodigo(
+                condominioId: condominioId,
+                codigoId: codigoId!,
+                usuarioId: uid,
+                nombreUsuario: nombre,
+                uidUsuario: uid,
               );
 
               // Actualizar el modelo de usuario con el ID del condominio
@@ -174,7 +229,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 email: email,
                 nombre: nombre,
                 tipoUsuario: _tipoUsuario,
-                condominioId: _codigoController.text.trim(),
+                condominioId: condominioId,
               );
               break;
           }

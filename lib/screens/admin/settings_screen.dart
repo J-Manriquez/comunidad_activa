@@ -1,4 +1,5 @@
 import 'package:comunidad_activa/screens/admin/vivienda/config_viviendas_screen.dart';
+import 'package:comunidad_activa/screens/admin/codigos_registro_screen.dart';
 import 'package:flutter/material.dart';
 import '../../models/condominio_model.dart';
 import '../../services/firestore_service.dart';
@@ -348,6 +349,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   builder: (context) => ViviendasScreen(condominioId: widget.condominioId),
                 ),
               ).then((_) => _loadCondominioData());
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.qr_code, color: Colors.orange),
+            title: const Text('Códigos de Registro'),
+            subtitle: const Text('Gestionar códigos para registro de usuarios'),
+            trailing: const Icon(Icons.arrow_forward_ios),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CodigosRegistroScreen(condominioId: widget.condominioId),
+                ),
+              );
             },
           ),
           const Divider(),

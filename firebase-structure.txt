@@ -3,7 +3,35 @@ ESTRUCTURA DE DATOS DE FIREBASE - COMUNIDAD ACTIVA
 
 cada vez que un adimistrador se registra crea una nueva colección principal: 
 
+{codigos} (Collection)
+    ├──── codigosRegistro (Document) 
+    │        ├── codigosCreados (Collection) 
+    │        │       ├── {id} (Document)  
+    │        │       │   ├── id: String 
+    │        │       │   ├── codigo: String 
+    │        │       │   ├── idCondominio: String 
+    │        │       │   ├── fecha: String 
+
 {condominioId} (Collection - formato: nombre_condominio_XXX) (ya creado)
+    ├──── codigosRegistro (Document) 
+    │        ├── codigosCreados (Collection) 
+    │        │       ├── {id} (Document)  
+    │        │       │   ├── id: String 
+    │        │       │   ├── codigo: String 
+    │        │       │   ├── tipoUsuario: String 
+    │        │       │   ├── cantUsuarios: String 
+    │        │       │   ├── fechaIngreso: String 
+    │        │       │   ├── estado: String 
+    │        │       │   └── usuariosRegistrados: map 
+    │        │       │              ├── id: String 
+    │        │       │              ├── nombre: String 
+    │        │       │              ├── uidUsuario: String
+    │        │       │              ├── fecha: String
+    │        │       │              └── ...
+
+
+
+
     ├──── controlAcceso (Document) 
     │        ├── camposAdicionales: map   
     │        ├── camposActivos: map
