@@ -5,11 +5,16 @@ import 'asignar_estacionamientos_screen.dart';
 import 'lista_estacionamientos_screen.dart';
 import 'estacionamientos_visitas_screen.dart';
 import 'solicitudes_estacionamiento_admin_screen.dart';
+import '../../../models/trabajador_model.dart';
+import '../../../models/comite_model.dart';
+import '../../../models/user_model.dart';
+import '../../../services/firestore_service.dart';
 
 class EstacionamientosAdminScreen extends StatefulWidget {
   final String condominioId;
+  final UserModel? currentUser;
 
-  const EstacionamientosAdminScreen({super.key, required this.condominioId});
+  const EstacionamientosAdminScreen({super.key, required this.condominioId, this.currentUser});
 
   @override
   State<EstacionamientosAdminScreen> createState() => _EstacionamientosAdminScreenState();
@@ -17,13 +22,91 @@ class EstacionamientosAdminScreen extends StatefulWidget {
 
 class _EstacionamientosAdminScreenState extends State<EstacionamientosAdminScreen> {
   final EstacionamientoService _estacionamientoService = EstacionamientoService();
+  final FirestoreService _firestoreService = FirestoreService();
   bool _permitirSeleccion = true;
+  bool _autoAsignacion = false; // Variable para controlar si requiere aprobación
   bool _isLoading = true;
+  
+  // Variables para permisos de estacionamientos
+  bool _puedeConfigurarEstacionamientos = false;
+  bool _puedeSolicitudesEstacionamientos = false;
+  bool _puedeListaEstacionamientos = false;
+  bool _puedeEstacionamientosVisitas = false;
 
   @override
   void initState() {
     super.initState();
-    _cargarConfiguracion();
+    _verificarPermisos();
+  }
+
+  Future<void> _verificarPermisos() async {
+    print('🔍 Verificando permisos para usuario: ${widget.currentUser?.tipoUsuario}');
+    print('🔍 Es comité: ${widget.currentUser?.esComite}');
+    
+    // Si es administrador, tiene todos los permisos
+    if (widget.currentUser?.tipoUsuario == UserType.administrador) {
+      print('✅ Usuario es administrador - otorgando todos los permisos');
+      setState(() {
+        _puedeConfigurarEstacionamientos = true;
+        _puedeSolicitudesEstacionamientos = true;
+        _puedeListaEstacionamientos = true;
+        _puedeEstacionamientosVisitas = true;
+      });
+      await _cargarConfiguracion();
+      return;
+    }
+
+    // Para trabajadores, verificar permisos específicos
+    if (widget.currentUser?.tipoUsuario == UserType.trabajador) {
+      print('👷 Usuario es trabajador - verificando permisos específicos');
+      try {
+        final trabajador = await _firestoreService.getTrabajadorData(
+          widget.currentUser!.condominioId!,
+          widget.currentUser!.uid
+        );
+        if (trabajador != null) {
+          print('📋 Funciones disponibles del trabajador: ${trabajador.funcionesDisponibles}');
+          setState(() {
+            _puedeConfigurarEstacionamientos = trabajador.funcionesDisponibles['configuracionEstacionamientos'] ?? false;
+            _puedeSolicitudesEstacionamientos = trabajador.funcionesDisponibles['solicitudesEstacionamientos'] ?? false;
+            _puedeListaEstacionamientos = trabajador.funcionesDisponibles['listaEstacionamientos'] ?? false;
+            _puedeEstacionamientosVisitas = trabajador.funcionesDisponibles['estacionamientosVisitas'] ?? false;
+          });
+          print('🔐 Permisos asignados - Config: $_puedeConfigurarEstacionamientos, Solicitudes: $_puedeSolicitudesEstacionamientos, Lista: $_puedeListaEstacionamientos, Visitas: $_puedeEstacionamientosVisitas');
+        } else {
+          print('❌ No se encontraron datos del trabajador');
+        }
+      } catch (e) {
+        print('❌ Error al obtener permisos del trabajador: $e');
+      }
+    } 
+    // Para comité, verificar permisos específicos (puede ser UserType.comite o UserType.residente con esComite = true)
+    else if (widget.currentUser?.tipoUsuario == UserType.comite || 
+             (widget.currentUser?.tipoUsuario == UserType.residente && widget.currentUser?.esComite == true)) {
+      print('🏛️ Usuario es comité - verificando permisos específicos');
+      try {
+        final comite = await _firestoreService.getComiteData(
+          widget.currentUser!.condominioId!,
+          widget.currentUser!.uid
+        );
+        if (comite != null) {
+          print('📋 Funciones disponibles del comité: ${comite.funcionesDisponibles}');
+          setState(() {
+            _puedeConfigurarEstacionamientos = comite.funcionesDisponibles['configuracionEstacionamientos'] ?? false;
+            _puedeSolicitudesEstacionamientos = comite.funcionesDisponibles['solicitudesEstacionamientos'] ?? false;
+            _puedeListaEstacionamientos = comite.funcionesDisponibles['listaEstacionamientos'] ?? false;
+            _puedeEstacionamientosVisitas = comite.funcionesDisponibles['estacionamientosVisitas'] ?? false;
+          });
+          print('🔐 Permisos asignados - Config: $_puedeConfigurarEstacionamientos, Solicitudes: $_puedeSolicitudesEstacionamientos, Lista: $_puedeListaEstacionamientos, Visitas: $_puedeEstacionamientosVisitas');
+        } else {
+          print('❌ No se encontraron datos del comité');
+        }
+      } catch (e) {
+        print('❌ Error al obtener permisos del comité: $e');
+      }
+    }
+
+    await _cargarConfiguracion();
   }
 
   Future<void> _cargarConfiguracion() async {
@@ -32,6 +115,7 @@ class _EstacionamientosAdminScreenState extends State<EstacionamientosAdminScree
       if (mounted) {
         setState(() {
           _permitirSeleccion = configuracion?['permitirSeleccion'] ?? true;
+          _autoAsignacion = configuracion?['autoAsignacion'] ?? false;
           _isLoading = false;
         });
       }
@@ -72,21 +156,22 @@ class _EstacionamientosAdminScreenState extends State<EstacionamientosAdminScree
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Header principal con configuración
-                GestureDetector(
-                  onTap: () async {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ConfiguracionEstacionamientosScreen(
-                          condominioId: widget.condominioId,
+                if (_puedeConfigurarEstacionamientos)
+                  GestureDetector(
+                    onTap: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ConfiguracionEstacionamientosScreen(
+                            condominioId: widget.condominioId,
+                          ),
                         ),
-                      ),
-                    );
-                    // Recargar configuración al regresar
-                    if (result == true) {
-                      _cargarConfiguracion();
-                    }
-                  },
+                      );
+                      // Recargar configuración al regresar
+                      if (result == true) {
+                        _cargarConfiguracion();
+                      }
+                    },
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
@@ -154,11 +239,11 @@ class _EstacionamientosAdminScreenState extends State<EstacionamientosAdminScree
                       ],
                     ),
                   ),
-                ),
+                  ),
                 const SizedBox(height: 20),
                 
-                // Card condicional para asignar estacionamientos (solo cuando _permitirSeleccion es false)
-                if (!_permitirSeleccion && !_isLoading) ...[
+                // Card condicional para asignar estacionamientos (solo cuando _permitirSeleccion es false y tiene permisos)
+                if (!_permitirSeleccion && !_isLoading && _puedeConfigurarEstacionamientos) ...[
                   _buildNavigationCard(
                     context,
                     icon: Icons.assignment_ind,
@@ -179,8 +264,8 @@ class _EstacionamientosAdminScreenState extends State<EstacionamientosAdminScree
                   const SizedBox(height: 16),
                 ],
                 
-                // Cards de navegación (solo visible cuando _permitirSeleccion está activa)
-                if (_permitirSeleccion && !_isLoading) ...[
+                // Cards de navegación (solo visible cuando _permitirSeleccion está activa, _autoAsignacion está activa y tiene permisos)
+                if (_permitirSeleccion && _autoAsignacion && !_isLoading && _puedeSolicitudesEstacionamientos) ...[
                   _buildNavigationCardWithBadgeRegular(
                     context,
                     icon: Icons.assignment,
@@ -201,44 +286,56 @@ class _EstacionamientosAdminScreenState extends State<EstacionamientosAdminScree
                   const SizedBox(height: 16),
                 ],
 
-                // Cards de navegación
-                _buildNavigationCard(
-                  context,
-                  icon: Icons.list,
-                  title: 'Lista de Estacionamientos',
-                  subtitle: 'Visualizar información por estacionamiento',
-                  color: Colors.blue,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ListaEstacionamientosScreen(
-                          condominioId: widget.condominioId,
+                // Cards de navegación condicionados por permisos
+                if (_puedeListaEstacionamientos) ...[
+                  _buildNavigationCard(
+                    context,
+                    icon: Icons.list,
+                    title: 'Lista de Estacionamientos',
+                    subtitle: 'Visualizar información por estacionamiento',
+                    color: Colors.blue,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ListaEstacionamientosScreen(
+                            condominioId: widget.condominioId,
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                ],
 
-                _buildNavigationCardWithBadge(
-                  context,
-                  icon: Icons.car_rental,
-                  title: 'Estacionamientos de Visitas',
-                  subtitle: 'Gestionar espacios para visitantes',
-                  color: Colors.green,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => EstacionamientosVisitasScreen(
-                          condominioId: widget.condominioId,
+                if (_puedeEstacionamientosVisitas) ...[
+                  _buildNavigationCardWithBadge(
+                    context,
+                    icon: Icons.car_rental,
+                    title: 'Estacionamientos de Visitas',
+                    subtitle: 'Gestionar espacios para visitantes',
+                    color: Colors.green,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EstacionamientosVisitasScreen(
+                            condominioId: widget.condominioId,
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                // Mostrar mensaje si no tiene permisos
+                if (!_puedeConfigurarEstacionamientos && 
+                    !_puedeSolicitudesEstacionamientos && 
+                    !_puedeListaEstacionamientos && 
+                    !_puedeEstacionamientosVisitas && 
+                    !_isLoading)
+                  _buildSinPermisos(),
 
                 
               ],
@@ -526,6 +623,53 @@ class _EstacionamientosAdminScreenState extends State<EstacionamientosAdminScree
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSinPermisos() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.lock_outline,
+              size: 48,
+              color: Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Sin permisos de acceso',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'No tienes permisos para acceder a las funciones de gestión de estacionamientos.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ],
       ),
     );
   }

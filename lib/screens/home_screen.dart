@@ -895,6 +895,31 @@ class _HomeScreenState extends State<HomeScreen> {
                     (funcion) => trabajador.funcionesDisponibles[funcion] == true
                   );
                   
+                  // Verificar permisos de gestión de estacionamientos
+                  final funcionesEstacionamientos = [
+                    'configuracionEstacionamientos',
+                    'solicitudesEstacionamientos',
+                    'listaEstacionamientos',
+                    'estacionamientosVisitas'
+                  ];
+                  
+                  bool tienePermisosEstacionamientos = funcionesEstacionamientos.any(
+                    (funcion) => trabajador.funcionesDisponibles[funcion] == true
+                  );
+                  
+                  // Verificar permisos de gestión de espacios comunes
+                  final funcionesEspaciosComunes = [
+                    'gestionEspaciosComunes',
+                    'solicitudesReservas',
+                    'revisionesPrePostUso',
+                    'solicitudesRechazadas',
+                    'historialRevisiones'
+                  ];
+                  
+                  bool tienePermisosEspaciosComunes = funcionesEspaciosComunes.any(
+                    (funcion) => trabajador.funcionesDisponibles[funcion] == true
+                  );
+                  
                   return Column(
                     children: [
                       if (tienePermisosCorrespondencia)
@@ -921,6 +946,39 @@ class _HomeScreenState extends State<HomeScreen> {
                               context,
                               MaterialPageRoute(
                                 builder: (context) => ControlAccesoScreen(currentUser: user),
+                              ),
+                            );
+                          },
+                        ),
+                      if (tienePermisosEstacionamientos)
+                        ListTile(
+                          leading: const Icon(Icons.local_parking),
+                          title: const Text('Gestión de Estacionamientos'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => EstacionamientosAdminScreen(
+                                  condominioId: user.condominioId!,
+                                  currentUser: user,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      if (tienePermisosEspaciosComunes)
+                        ListTile(
+                          leading: const Icon(Icons.meeting_room),
+                          title: const Text('Espacios Comunes'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => EspaciosComunesScreen(
+                                  currentUser: user,
+                                ),
                               ),
                             );
                           },
@@ -967,6 +1025,31 @@ class _HomeScreenState extends State<HomeScreen> {
                     (funcion) => comite.funcionesDisponibles[funcion] == true
                   );
                   
+                  // Verificar permisos de gestión de estacionamientos
+                  final funcionesEstacionamientos = [
+                    'configuracionEstacionamientos',
+                    'solicitudesEstacionamientos',
+                    'listaEstacionamientos',
+                    'estacionamientosVisitas'
+                  ];
+                  
+                  bool tienePermisosEstacionamientos = funcionesEstacionamientos.any(
+                    (funcion) => comite.funcionesDisponibles[funcion] == true
+                  );
+                  
+                  // Verificar permisos de gestión de espacios comunes
+                  final funcionesEspaciosComunes = [
+                    'gestionEspaciosComunes',
+                    'solicitudesReservas',
+                    'revisionesPrePostUso',
+                    'solicitudesRechazadas',
+                    'historialRevisiones'
+                  ];
+                  
+                  bool tienePermisosEspaciosComunes = funcionesEspaciosComunes.any(
+                    (funcion) => comite.funcionesDisponibles[funcion] == true
+                  );
+                  
                   return Column(
                     children: [
                       if (tienePermisosCorrespondencia)
@@ -993,6 +1076,39 @@ class _HomeScreenState extends State<HomeScreen> {
                               context,
                               MaterialPageRoute(
                                 builder: (context) => ControlAccesoScreen(currentUser: user),
+                              ),
+                            );
+                          },
+                        ),
+                      if (tienePermisosEstacionamientos)
+                        ListTile(
+                          leading: const Icon(Icons.local_parking),
+                          title: const Text('Gestión de Estacionamientos'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => EstacionamientosAdminScreen(
+                                  condominioId: user.condominioId!,
+                                  currentUser: user,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      if (tienePermisosEspaciosComunes)
+                        ListTile(
+                          leading: const Icon(Icons.meeting_room),
+                          title: const Text('Espacios Comunes'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => EspaciosComunesScreen(
+                                  currentUser: user,
+                                ),
                               ),
                             );
                           },

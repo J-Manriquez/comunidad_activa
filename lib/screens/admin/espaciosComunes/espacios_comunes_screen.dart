@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../models/user_model.dart';
+import '../../../models/comite_model.dart';
+import '../../../models/trabajador_model.dart';
 import '../../../services/espacios_comunes_service.dart';
+import '../../../services/firestore_service.dart';
 import 'lista_espacios_comunes_screen.dart';
 import 'solicitudes_reservas_screen.dart';
 import 'revisiones_post_uso_screen.dart';
@@ -21,13 +24,23 @@ class EspaciosComunesScreen extends StatefulWidget {
 
 class _EspaciosComunesScreenState extends State<EspaciosComunesScreen> {
   final EspaciosComunesService _espaciosComunesService = EspaciosComunesService();
+  final FirestoreService _firestoreService = FirestoreService();
   int _solicitudesPendientesCount = 0;
   bool _isLoadingCount = true;
+  
+  // Variables para permisos
+  bool _tieneGestionEspaciosComunes = false;
+  bool _tieneSolicitudesReservas = false;
+  bool _tieneRevisionesPrePostUso = false;
+  bool _tieneSolicitudesRechazadas = false;
+  bool _tieneHistorialRevisiones = false;
+  bool _isLoadingPermisos = true;
 
   @override
   void initState() {
     super.initState();
     _cargarContadorSolicitudesPendientes();
+    _verificarPermisos();
   }
 
   Future<void> _cargarContadorSolicitudesPendientes() async {
@@ -55,8 +68,89 @@ class _EspaciosComunesScreenState extends State<EspaciosComunesScreen> {
     }
   }
 
+  Future<void> _verificarPermisos() async {
+    try {
+      print('DEBUG: Verificando permisos para usuario ${widget.currentUser.tipoUsuario}');
+      
+      // Si es administrador, tiene todos los permisos
+      if (widget.currentUser.tipoUsuario == UserType.administrador) {
+        setState(() {
+          _tieneGestionEspaciosComunes = true;
+          _tieneSolicitudesReservas = true;
+          _tieneRevisionesPrePostUso = true;
+          _tieneSolicitudesRechazadas = true;
+          _tieneHistorialRevisiones = true;
+          _isLoadingPermisos = false;
+        });
+        return;
+      }
+
+      // Para trabajadores
+      if (widget.currentUser.tipoUsuario == UserType.trabajador) {
+        final trabajadorData = await _firestoreService.getTrabajadorData(
+          widget.currentUser.condominioId!,
+          widget.currentUser.uid,
+        );
+        
+        if (trabajadorData != null) {
+          setState(() {
+            _tieneGestionEspaciosComunes = trabajadorData.funcionesDisponibles['gestionEspaciosComunes'] ?? false;
+            _tieneSolicitudesReservas = trabajadorData.funcionesDisponibles['solicitudesReservas'] ?? false;
+            _tieneRevisionesPrePostUso = trabajadorData.funcionesDisponibles['revisionesPrePostUso'] ?? false;
+            _tieneSolicitudesRechazadas = trabajadorData.funcionesDisponibles['solicitudesRechazadas'] ?? false;
+            _tieneHistorialRevisiones = trabajadorData.funcionesDisponibles['historialRevisiones'] ?? false;
+            _isLoadingPermisos = false;
+          });
+        }
+      }
+      
+      // Para comité
+      if (widget.currentUser.tipoUsuario == UserType.comite || 
+          (widget.currentUser.tipoUsuario == UserType.residente && widget.currentUser.esComite == true)) {
+        final comiteData = await _firestoreService.getComiteData(
+          widget.currentUser.condominioId!,
+          widget.currentUser.uid,
+        );
+        
+        if (comiteData != null) {
+          setState(() {
+            _tieneGestionEspaciosComunes = comiteData.funcionesDisponibles['gestionEspaciosComunes'] ?? false;
+            _tieneSolicitudesReservas = comiteData.funcionesDisponibles['solicitudesReservas'] ?? false;
+            _tieneRevisionesPrePostUso = comiteData.funcionesDisponibles['revisionesPrePostUso'] ?? false;
+            _tieneSolicitudesRechazadas = comiteData.funcionesDisponibles['solicitudesRechazadas'] ?? false;
+            _tieneHistorialRevisiones = comiteData.funcionesDisponibles['historialRevisiones'] ?? false;
+            _isLoadingPermisos = false;
+          });
+        }
+      }
+      
+      print('DEBUG: Permisos cargados - Gestión: $_tieneGestionEspaciosComunes, Solicitudes: $_tieneSolicitudesReservas, Revisiones: $_tieneRevisionesPrePostUso, Rechazadas: $_tieneSolicitudesRechazadas, Historial: $_tieneHistorialRevisiones');
+      
+    } catch (e) {
+      print('ERROR: Error al verificar permisos: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingPermisos = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoadingPermisos) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Espacios Comunes'),
+          backgroundColor: Colors.blue.shade600,
+          foregroundColor: Colors.white,
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Espacios Comunes'),
@@ -68,109 +162,151 @@ class _EspaciosComunesScreenState extends State<EspaciosComunesScreen> {
         child: Column(
           children: [
             // Card para gestión de espacios comunes
-            _buildNavigationCard(
-              context,
-              title: 'Gestión de Espacios Comunes',
-              subtitle: 'Crear, editar y eliminar espacios comunes',
-              icon: Icons.business,
-              color: Colors.blue,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ListaEspaciosComunesScreen(
-                      currentUser: widget.currentUser,
+            if (_tieneGestionEspaciosComunes)
+              _buildNavigationCard(
+                context,
+                title: 'Gestión de Espacios Comunes',
+                subtitle: 'Crear, editar y eliminar espacios comunes',
+                icon: Icons.business,
+                color: Colors.blue,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ListaEspaciosComunesScreen(
+                        currentUser: widget.currentUser,
+                      ),
                     ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 16),
+                  );
+                },
+              ),
+            if (_tieneGestionEspaciosComunes) const SizedBox(height: 16),
             
             // Card para solicitudes de reservas
-            _buildNavigationCardWithCounter(
-              context,
-              title: 'Solicitudes de Reservas',
-              subtitle: 'Aprobar o rechazar reservas de espacios comunes',
-              icon: Icons.event_available,
-              color: Colors.orange,
-              counter: _solicitudesPendientesCount,
-              isLoadingCounter: _isLoadingCount,
-              onTap: () async {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => SolicitudesReservasScreen(
-                      currentUser: widget.currentUser,
+            if (_tieneSolicitudesReservas)
+              _buildNavigationCardWithCounter(
+                context,
+                title: 'Solicitudes de Reservas',
+                subtitle: 'Aprobar o rechazar reservas de espacios comunes',
+                icon: Icons.event_available,
+                color: Colors.orange,
+                counter: _solicitudesPendientesCount,
+                isLoadingCounter: _isLoadingCount,
+                onTap: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SolicitudesReservasScreen(
+                        currentUser: widget.currentUser,
+                      ),
                     ),
-                  ),
-                );
-                // Recargar contador al regresar
-                if (result != null || mounted) {
-                  _cargarContadorSolicitudesPendientes();
-                }
-              },
-            ),
-            const SizedBox(height: 16),
+                  );
+                  // Recargar contador al regresar
+                  if (result != null || mounted) {
+                    _cargarContadorSolicitudesPendientes();
+                  }
+                },
+              ),
+            if (_tieneSolicitudesReservas) const SizedBox(height: 16),
             
             // Card para revisiones pre y post uso
-            _buildNavigationCard(
-              context,
-              title: 'Revisiones Pre y Post Uso',
-              subtitle: 'Realizar revisiones antes o después del uso de espacios',
-              icon: Icons.rate_review,
-              color: Colors.green,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => RevisionesUsoScreen(
-                      currentUser: widget.currentUser,
+            if (_tieneRevisionesPrePostUso)
+              _buildNavigationCard(
+                context,
+                title: 'Revisiones Pre y Post Uso',
+                subtitle: 'Realizar revisiones antes o después del uso de espacios',
+                icon: Icons.rate_review,
+                color: Colors.green,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => RevisionesUsoScreen(
+                        currentUser: widget.currentUser,
+                      ),
                     ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 16),
+                  );
+                },
+              ),
+            if (_tieneRevisionesPrePostUso) const SizedBox(height: 16),
             
             // Card para solicitudes rechazadas
-            _buildNavigationCard(
-              context,
-              title: 'Solicitudes Rechazadas',
-              subtitle: 'Ver reservas que han sido rechazadas',
-              icon: Icons.cancel,
-              color: Colors.red,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => SolicitudesRechazadasScreen(
-                      currentUser: widget.currentUser,
+            if (_tieneSolicitudesRechazadas)
+              _buildNavigationCard(
+                context,
+                title: 'Solicitudes Rechazadas',
+                subtitle: 'Ver reservas que han sido rechazadas',
+                icon: Icons.cancel,
+                color: Colors.red,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SolicitudesRechazadasScreen(
+                        currentUser: widget.currentUser,
+                      ),
                     ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 16),
+                  );
+                },
+              ),
+            if (_tieneSolicitudesRechazadas) const SizedBox(height: 16),
             
             // Card para historial de revisiones
-            _buildNavigationCard(
-              context,
-              title: 'Historial de Revisiones',
-              subtitle: 'Ver todas las revisiones realizadas',
-              icon: Icons.history,
-              color: Colors.purple,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => HistorialRevisionesScreen(
-                      currentUser: widget.currentUser,
+            if (_tieneHistorialRevisiones)
+              _buildNavigationCard(
+                context,
+                title: 'Historial de Revisiones',
+                subtitle: 'Ver todas las revisiones realizadas',
+                icon: Icons.history,
+                color: Colors.purple,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => HistorialRevisionesScreen(
+                        currentUser: widget.currentUser,
+                      ),
                     ),
-                  ),
-                );
-              },
-            ),
+                  );
+                },
+              ),
+            
+            // Mensaje si no tiene permisos
+            if (!_tieneGestionEspaciosComunes && 
+                !_tieneSolicitudesReservas && 
+                !_tieneRevisionesPrePostUso && 
+                !_tieneSolicitudesRechazadas && 
+                !_tieneHistorialRevisiones)
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.lock_outline,
+                      size: 64,
+                      color: Colors.grey[400],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No tienes permisos para acceder a las funciones de espacios comunes',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey[600],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Contacta al administrador para solicitar acceso',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[500],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),

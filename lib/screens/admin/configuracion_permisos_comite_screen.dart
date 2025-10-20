@@ -28,6 +28,7 @@ class _ConfiguracionPermisosComiteScreenState
   bool _isLoading = false;
   bool _hasChanges = false;
   bool _estVisitas = false; // Variable para controlar la visibilidad de estacionamientos de visitas
+  bool _requiereAprobacion = false; // Variable para controlar la visibilidad de solicitudes de estacionamientos
   
   // Estado de visibilidad de las secciones
   final Map<String, bool> _seccionesVisibles = {
@@ -344,6 +345,7 @@ class _ConfiguracionPermisosComiteScreenState
     super.initState();
     _funcionesDisponibles = Map.from(widget.miembroComite.funcionesDisponibles);
     _loadEstVisitasConfig();
+    _loadRequiereAprobacionConfig();
   }
 
   Future<void> _loadEstVisitasConfig() async {
@@ -356,6 +358,20 @@ class _ConfiguracionPermisosComiteScreenState
       }
     } catch (e) {
       print('Error al cargar configuración de estVisitas: $e');
+      // En caso de error, mantener el valor por defecto (false)
+    }
+  }
+
+  Future<void> _loadRequiereAprobacionConfig() async {
+    try {
+      final config = await _estacionamientoService.obtenerConfiguracion(widget.currentUser.condominioId!);
+      if (mounted) {
+        setState(() {
+          _requiereAprobacion = config['autoAsignacion'] ?? false;
+        });
+      }
+    } catch (e) {
+      print('Error al cargar configuración de requiere aprobación: $e');
       // En caso de error, mantener el valor por defecto (false)
     }
   }
@@ -375,7 +391,9 @@ class _ConfiguracionPermisosComiteScreenState
         .where((key) => !funcionesVacias.contains(key) && 
                        (_funcionesDisponibles[key] ?? false) &&
                        // Excluir estacionamientosVisitas si estVisitas es false
-                       (key != 'estacionamientosVisitas' || _estVisitas))
+                       (key != 'estacionamientosVisitas' || _estVisitas) &&
+                       // Excluir solicitudesEstacionamientos si requiere aprobación es false
+                       (key != 'solicitudesEstacionamientos' || _requiereAprobacion))
         .length;
   }
 
@@ -386,8 +404,29 @@ class _ConfiguracionPermisosComiteScreenState
     return _funcionesInfo.keys
         .where((key) => !funcionesVacias.contains(key) &&
                        // Excluir estacionamientosVisitas del total si estVisitas es false
-                       (key != 'estacionamientosVisitas' || _estVisitas))
+                       (key != 'estacionamientosVisitas' || _estVisitas) &&
+                       // Excluir solicitudesEstacionamientos del total si requiere aprobación es false
+                       (key != 'solicitudesEstacionamientos' || _requiereAprobacion))
         .length;
+  }
+
+  void _activarTodas() {
+    setState(() {
+      for (String key in _funcionesInfo.keys) {
+        if (key != 'gestionMensajes') {
+          // Solo activar estacionamientosVisitas si estVisitas es true
+          if (key == 'estacionamientosVisitas' && !_estVisitas) {
+            continue;
+          }
+          // Solo activar solicitudesEstacionamientos si requiere aprobación es true
+          if (key == 'solicitudesEstacionamientos' && !_requiereAprobacion) {
+            continue;
+          }
+          _funcionesDisponibles[key] = true;
+        }
+      }
+      _hasChanges = true;
+    });
   }
 
   List<Widget> _buildFuncionesPorCategoria(String categoria) {
@@ -401,6 +440,11 @@ class _ConfiguracionPermisosComiteScreenState
       
       // Ocultar estacionamientosVisitas si estVisitas es false
       if (key == 'estacionamientosVisitas' && !_estVisitas) {
+        return const SizedBox.shrink();
+      }
+      
+      // Ocultar solicitudesEstacionamientos si requiere aprobación es false
+      if (key == 'solicitudesEstacionamientos' && !_requiereAprobacion) {
         return const SizedBox.shrink();
       }
       

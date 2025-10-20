@@ -28,6 +28,7 @@ class _ConfiguracionPermisosTrabajadorScreenState
   bool _isLoading = false;
   bool _hasChanges = false;
   bool _estVisitas = false; // Variable para controlar la visibilidad de estacionamientos de visitas
+  bool _requiereAprobacion = false; // Variable para controlar la visibilidad de solicitudes de estacionamientos
   
   // Estado de visibilidad de las secciones
   final Map<String, bool> _seccionesVisibles = {
@@ -141,13 +142,6 @@ class _ConfiguracionPermisosTrabajadorScreenState
       'categoria': 'Gestión de Estacionamientos',
     },
     // Gestión de Espacios Comunes - Sub-funciones
-    'configuracionEspaciosComunes': {
-      'titulo': 'Configuración de Espacios Comunes',
-      'descripcion': 'Configurar espacios y parámetros de reserva',
-      'icono': Icons.settings,
-      'color': Colors.teal,
-      'categoria': 'Gestión de Espacios Comunes',
-    },
     'gestionEspaciosComunes': {
       'titulo': 'Gestión de Espacios Comunes',
       'descripcion': 'Administrar espacios comunes del condominio',
@@ -155,9 +149,30 @@ class _ConfiguracionPermisosTrabajadorScreenState
       'color': Colors.teal,
       'categoria': 'Gestión de Espacios Comunes',
     },
-    'historialReservas': {
-      'titulo': 'Historial de Reservas',
-      'descripcion': 'Ver historial de reservas de espacios',
+    'solicitudesReservas': {
+      'titulo': 'Solicitudes de Reservas',
+      'descripcion': 'Gestionar solicitudes de reserva de espacios',
+      'icono': Icons.event_available,
+      'color': Colors.teal,
+      'categoria': 'Gestión de Espacios Comunes',
+    },
+    'revisionesPrePostUso': {
+      'titulo': 'Revisiones Pre/Post Uso',
+      'descripcion': 'Realizar revisiones antes y después del uso',
+      'icono': Icons.checklist,
+      'color': Colors.teal,
+      'categoria': 'Gestión de Espacios Comunes',
+    },
+    'solicitudesRechazadas': {
+      'titulo': 'Solicitudes Rechazadas',
+      'descripcion': 'Ver solicitudes rechazadas de espacios',
+      'icono': Icons.cancel,
+      'color': Colors.teal,
+      'categoria': 'Gestión de Espacios Comunes',
+    },
+    'historialRevisiones': {
+      'titulo': 'Historial de Revisiones',
+      'descripcion': 'Ver historial de revisiones de espacios',
       'icono': Icons.history,
       'color': Colors.teal,
       'categoria': 'Gestión de Espacios Comunes',
@@ -336,6 +351,7 @@ class _ConfiguracionPermisosTrabajadorScreenState
     super.initState();
     _funcionesDisponibles = Map<String, bool>.from(widget.trabajador.funcionesDisponibles);
     _loadEstVisitasConfig();
+    _loadRequiereAprobacionConfig();
   }
 
   Future<void> _loadEstVisitasConfig() async {
@@ -348,6 +364,20 @@ class _ConfiguracionPermisosTrabajadorScreenState
       }
     } catch (e) {
       print('Error al cargar configuración de estVisitas: $e');
+      // En caso de error, mantener el valor por defecto (false)
+    }
+  }
+
+  Future<void> _loadRequiereAprobacionConfig() async {
+    try {
+      final config = await _estacionamientoService.obtenerConfiguracion(widget.currentUser.condominioId!);
+      if (mounted) {
+        setState(() {
+          _requiereAprobacion = config['autoAsignacion'] ?? false;
+        });
+      }
+    } catch (e) {
+      print('Error al cargar configuración de requiere aprobación: $e');
       // En caso de error, mantener el valor por defecto (false)
     }
   }
@@ -414,6 +444,10 @@ class _ConfiguracionPermisosTrabajadorScreenState
           if (key == 'estacionamientosVisitas' && !_estVisitas) {
             continue;
           }
+          // Solo activar solicitudesEstacionamientos si requiere aprobación está activo
+          if (key == 'solicitudesEstacionamientos' && !_requiereAprobacion) {
+            continue;
+          }
           _funcionesDisponibles[key] = true;
         }
       }
@@ -450,7 +484,9 @@ class _ConfiguracionPermisosTrabajadorScreenState
         .where((key) => !funcionesVacias.contains(key) && 
                        (_funcionesDisponibles[key] ?? false) &&
                        // Excluir estacionamientosVisitas si estVisitas es false
-                       (key != 'estacionamientosVisitas' || _estVisitas))
+                       (key != 'estacionamientosVisitas' || _estVisitas) &&
+                       // Excluir solicitudesEstacionamientos si requiere aprobación es false
+                       (key != 'solicitudesEstacionamientos' || _requiereAprobacion))
         .length;
   }
 
@@ -462,7 +498,9 @@ class _ConfiguracionPermisosTrabajadorScreenState
     return _funcionesInfo.keys
         .where((key) => !funcionesVacias.contains(key) &&
                        // Excluir estacionamientosVisitas del total si estVisitas es false
-                       (key != 'estacionamientosVisitas' || _estVisitas))
+                       (key != 'estacionamientosVisitas' || _estVisitas) &&
+                       // Excluir solicitudesEstacionamientos del total si requiere aprobación es false
+                       (key != 'solicitudesEstacionamientos' || _requiereAprobacion))
         .length;
   }
 
@@ -753,6 +791,11 @@ class _ConfiguracionPermisosTrabajadorScreenState
 
       // Ocultar estacionamientosVisitas si estVisitas es false
       if (funcion == 'estacionamientosVisitas' && !_estVisitas) {
+        return const SizedBox.shrink();
+      }
+
+      // Ocultar solicitudesEstacionamientos si requiere aprobación es false
+      if (funcion == 'solicitudesEstacionamientos' && !_requiereAprobacion) {
         return const SizedBox.shrink();
       }
 
