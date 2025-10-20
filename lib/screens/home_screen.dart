@@ -37,6 +37,7 @@ import 'admin/comunicaciones/gestion_publicaciones_screen.dart';
 import 'admin/espaciosComunes/espacios_comunes_screen.dart';
 import 'residente/espacios_comunes_residente_screen.dart';
 import 'registro_acceso_screen.dart';
+import 'admin/registro_diario_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -657,6 +658,21 @@ class _HomeScreenState extends State<HomeScreen> {
                   MaterialPageRoute(
                     builder: (context) =>
                         GestionTrabajadoresScreen(currentUser: user),
+                  ),
+                );
+              },
+            ),
+            // Nueva opción para administradores - Registro Diario
+            ListTile(
+              leading: const Icon(Icons.assignment),
+              title: const Text('Registro Diario'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        RegistroDiarioScreen(condominioId: user.condominioId!),
                   ),
                 );
               },
