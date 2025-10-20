@@ -56,7 +56,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       });
 
       try {
-        // Solo validar códigos para residentes y trabajadores (no para administradores)
+        // Solo validar códigos para residentes, trabajadores y comité (no para administradores)
         String? condominioId;
         String? codigoId;
         String? tipoUsuarioEsperado;
@@ -181,6 +181,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 email: email,
                 codigo: condominioId!,
                 esComite: tipoUsuarioEsperado == 'comite', // Verificar si es comité basado en el código
+              );
+
+              // Registrar usuario en el código de registro
+              await _codigoRegistroService.registrarUsuarioConCodigo(
+                condominioId: condominioId,
+                codigoId: codigoId!,
+                usuarioId: uid,
+                nombreUsuario: nombre,
+                uidUsuario: uid,
+              );
+
+              // Actualizar el modelo de usuario con el ID del condominio
+              user = UserModel(
+                uid: uid,
+                email: email,
+                nombre: nombre,
+                tipoUsuario: _tipoUsuario,
+                condominioId: condominioId,
+              );
+              break;
+
+            case UserType.comite:
+              // Registrar usuario comité
+              await _firestoreService.registerComite(
+                nombre: nombre,
+                email: email,
+                codigo: condominioId!,
               );
 
               // Registrar usuario en el código de registro
@@ -332,6 +359,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       value: UserType.trabajador,
                       child: Text('Trabajador'),
                     ),
+                    DropdownMenuItem(
+                      value: UserType.comite,
+                      child: Text('Comité'),
+                    ),
                   ],
                   onChanged: (value) {
                     setState(() {
@@ -344,7 +375,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 16.0),
 
                 // Campos específicos según el tipo de usuario
-                if (_tipoUsuario == UserType.residente) ...[
+                if (_tipoUsuario == UserType.residente || _tipoUsuario == UserType.comite) ...[
                   TextFormField(
                     controller: _codigoController,
                     decoration: const InputDecoration(

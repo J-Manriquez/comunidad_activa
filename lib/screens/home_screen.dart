@@ -4,6 +4,7 @@ import 'package:comunidad_activa/screens/admin/settings_screen.dart';
 import 'admin/bloqueo_visitas_screen.dart';
 import 'admin/controlAcceso/control_acceso_screen.dart';
 import 'admin/gestion_trabajadores_screen.dart';
+import 'admin/gestion_comite_screen.dart';
 import 'package:comunidad_activa/screens/residente/comunicaciones/r_reclamos_screen.dart';
 import 'package:comunidad_activa/screens/residente/gastos_comunes_residente_screen.dart';
 import 'package:comunidad_activa/screens/residente/residente_screen.dart';
@@ -658,6 +659,21 @@ class _HomeScreenState extends State<HomeScreen> {
                   MaterialPageRoute(
                     builder: (context) =>
                         GestionTrabajadoresScreen(currentUser: user),
+                  ),
+                );
+              },
+            ),
+            // Nueva opción para administradores - Gestión de Comité
+            ListTile(
+              leading: const Icon(Icons.group),
+              title: const Text('Gestión de Comité'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        GestionComiteScreen(currentUser: user),
                   ),
                 );
               },

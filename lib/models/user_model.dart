@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'residente_model.dart';
 
-enum UserType { administrador, residente, trabajador }
+enum UserType { administrador, residente, trabajador, comite }
 
 class UserModel {
   final String uid;

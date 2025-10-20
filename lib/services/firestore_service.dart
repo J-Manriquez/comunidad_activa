@@ -229,6 +229,52 @@ class FirestoreService {
     }
   }
 
+  // Registrar un miembro del comité
+  Future<void> registerComite({
+    required String nombre,
+    required String email,
+    required String codigo,
+  }) async {
+    try {
+      // Verificar que el código (condominioId) exista
+      DocumentSnapshot condominioDoc = await _firestore
+          .collection(codigo)
+          .doc('condominio')
+          .get();
+
+      if (!condominioDoc.exists) {
+        throw Exception('El código de condominio no es válido');
+      }
+
+      User? currentUser = _auth.currentUser;
+      if (currentUser == null) throw Exception('No hay usuario autenticado');
+
+      String fechaActual = DateTime.now().toIso8601String();
+
+      // Crear modelo del miembro del comité
+      ComiteModel comite = ComiteModel(
+        uid: currentUser.uid,
+        nombre: nombre,
+        email: email,
+        condominioId: codigo,
+        codigo: codigo,
+        esComite: true,
+        fechaRegistro: fechaActual,
+      );
+
+      // Guardar en la colección de comité
+      await _firestore
+          .collection(codigo)
+          .doc('usuarios')
+          .collection('comite')
+          .doc(currentUser.uid)
+          .set(comite.toMap());
+    } catch (e) {
+      debugPrint('Error al registrar miembro del comité: $e');
+      throw Exception('Error al registrar miembro del comité: $e');
+    }
+  }
+
   // Registrar un trabajador
   Future<void> registerTrabajador({
     required String nombre,
