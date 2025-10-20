@@ -13,6 +13,21 @@ cada vez que un adimistrador se registra crea una nueva colección principal:
     │        │       │   ├── fecha: String 
 
 {condominioId} (Collection - formato: nombre_condominio_XXX) (ya creado)
+    ├──── registros (Document) 
+    │        ├── fecha(formato dd-mm-aaaa) (Collection) 
+    │        │       ├── {id} (Document)  
+    │        │       │      ├── id: string 
+    │        │       │      ├── hora: String
+    │        │       │      ├── nombre: String 
+    │        │       │      ├── uidUsuario: String
+    │        │       │      ├── tipoUsuario: String (si es trabajador, debe indicar el cargo)
+    │        │       │      ├── comentario: String
+    │        │       │      └── additionalData: map (segun las necesidades del usuario)
+    │        │       │                  └── ...
+    │        │       └── ...
+             └── ...
+
+
     ├──── codigosRegistro (Document) 
     │        ├── codigosCreados (Collection) 
     │        │       ├── {id} (Document)  
@@ -397,6 +412,9 @@ cada vez que un adimistrador se registra crea una nueva colección principal:
             │    │   ├── tipoTrabajador: String (conserje|guardia|personalAseo|otro)
             │    │   ├── cargoEspecifico: String (nullable)
             │    │   ├── fechaRegistro: String (ISO 8601)
+            │    │   ├── funcionesDisponibles: map
+
+
             │    │   └── notificaciones (Subcollection)
             │    │       ├── {id} (Document)
             │    │       │   ├── id: String
