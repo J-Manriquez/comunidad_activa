@@ -29,6 +29,7 @@ import '../admin/gastosComunes/gasto_detalle_screen.dart';
 import '../admin/gastosComunes/listas_porcentajes_screen.dart';
 import '../../models/gasto_comun_model.dart';
 import '../admin/comunicaciones/admin_reclamos_screen.dart';
+import '../admin/comunicaciones/gestion_tipos_reclamos_screen.dart';
 import '../admin/comunicaciones/gestion_multas_screen.dart';
 import '../admin/comunicaciones/historial_multas_screen.dart';
 import '../admin/comunicaciones/multas_admin_screen.dart';
@@ -38,6 +39,9 @@ import '../admin/comunicaciones/publicaciones_trabajadores_screen.dart';
 import '../admin/comunicaciones/mensajes_admin_screen.dart';
 import '../admin/bloqueo_visitas_screen.dart';
 import '../admin/visitasBloqueadas/crear_bloqueo_visita_screen.dart';
+import '../admin/registro_diario/crear_registro_screen.dart';
+import '../admin/registro_diario/registros_del_dia_screen.dart';
+import '../admin/registro_diario/historial_registros_screen.dart';
 import '../../models/user_model.dart';
 
 class TrabajadorScreen extends StatefulWidget {
@@ -509,6 +513,17 @@ class _TrabajadorScreenState extends State<TrabajadorScreen> {
         'icono': Icons.history,
         'color': Colors.orange,
       },
+      // Gestión de Reclamos - Sub-funciones
+      'gestionTiposReclamos': {
+        'titulo': 'Gestión de Tipos de Reclamos',
+        'icono': Icons.category,
+        'color': Colors.purple,
+      },
+      'gestionReclamos': {
+        'titulo': 'Gestión de Reclamos',
+        'icono': Icons.report_problem,
+        'color': Colors.red,
+      },
       'gestionPublicacionesAdmin': {
         'titulo': 'Gestión de Publicaciones (Admin)',
         'icono': Icons.article,
@@ -518,6 +533,22 @@ class _TrabajadorScreenState extends State<TrabajadorScreen> {
         'titulo': 'Publicaciones',
         'icono': Icons.feed,
         'color': Colors.blue,
+      },
+      // Registro Diario - Sub-funciones
+      'crearNuevoRegistro': {
+        'titulo': 'Crear Nuevo Registro',
+        'icono': Icons.add_circle_outline,
+        'color': Colors.green,
+      },
+      'registrosDelDia': {
+        'titulo': 'Registros del Día',
+        'icono': Icons.today,
+        'color': Colors.blue,
+      },
+      'historialRegistros': {
+        'titulo': 'Historial de Registros',
+        'icono': Icons.history,
+        'color': Colors.orange,
       },
       // Bloqueo de Visitas - Sub-funciones
       'crearBloqueoVisitas': {
@@ -530,15 +561,31 @@ class _TrabajadorScreenState extends State<TrabajadorScreen> {
         'icono': Icons.visibility,
         'color': Colors.orange,
       },
+      // Gestión de Mensajes - Sub-funciones
+      'chatCondominio': {
+        'titulo': 'Chat del Condominio',
+        'icono': Icons.chat,
+        'color': Colors.blue,
+      },
+      'chatConserjeria': {
+        'titulo': 'Chat de Conserjería',
+        'icono': Icons.chat_bubble,
+        'color': Colors.green,
+      },
+      'chatResidentes': {
+        'titulo': 'Chat con Residentes',
+        'icono': Icons.people,
+        'color': Colors.purple,
+      },
+      'chatAdministrador': {
+        'titulo': 'Chat con Administrador',
+        'icono': Icons.admin_panel_settings,
+        'color': Colors.orange,
+      },
       'gestionMensajes': {
         'titulo': 'Mensajes',
         'icono': Icons.message,
         'color': Colors.cyan,
-      },
-      'reportesYEstadisticas': {
-        'titulo': 'Reportes',
-        'icono': Icons.analytics,
-        'color': Colors.brown,
       },
     };
 
@@ -658,6 +705,10 @@ class _TrabajadorScreenState extends State<TrabajadorScreen> {
           tipoGasto: TipoGasto.adicional,
         );
         break;
+      // Gestión de Reclamos - Sub-funciones
+      case 'gestionTiposReclamos':
+        screen = GestionTiposReclamosScreen(currentUser: _currentUser!);
+        break;
       case 'gestionReclamos':
         screen = AdminReclamosScreen(currentUser: _currentUser!);
         break;
@@ -678,6 +729,16 @@ class _TrabajadorScreenState extends State<TrabajadorScreen> {
       case 'publicacionesTrabajadores':
         screen = PublicacionesTrabajadoresScreen(currentUser: _currentUser!);
         break;
+      // Registro Diario - Sub-funciones
+      case 'crearNuevoRegistro':
+        screen = CrearRegistroScreen(condominioId: widget.condominioId);
+        break;
+      case 'registrosDelDia':
+        screen = RegistrosDelDiaScreen(condominioId: widget.condominioId);
+        break;
+      case 'historialRegistros':
+        screen = HistorialRegistrosScreen(condominioId: widget.condominioId);
+        break;
       // Bloqueo de Visitas - Sub-funciones
       case 'crearBloqueoVisitas':
         screen = CrearBloqueoVisitaScreen(currentUser: _currentUser!);
@@ -685,17 +746,11 @@ class _TrabajadorScreenState extends State<TrabajadorScreen> {
       case 'visualizarVisitasBloqueadas':
         screen = BloqueoVisitasScreen(currentUser: _currentUser!);
         break;
+      // Gestión de Mensajes - Sub-funciones
+      
       case 'gestionMensajes':
         screen = MensajesAdminScreen(currentUser: _currentUser!);
         break;
-      case 'reportesYEstadisticas':
-        // TODO: Implementar pantalla de reportes
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Función de reportes en desarrollo'),
-          ),
-        );
-        return;
     }
 
     if (screen != null) {

@@ -9,6 +9,7 @@ import '../../../utils/storage_service.dart';
 import '../../../utils/image_display_widget.dart';
 import '../../../widgets/image_carousel_widget.dart';
 import '../../../utils/image_fullscreen_helper.dart';
+import 'gestion_tipos_reclamos_screen.dart';
 
 class AdminReclamosScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -80,6 +81,22 @@ class _AdminReclamosScreenState extends State<AdminReclamosScreen> {
         backgroundColor: Colors.blue[700],
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Gestionar tipos de reclamos',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => GestionTiposReclamosScreen(
+                    currentUser: widget.currentUser,
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: StreamBuilder<List<ReclamoModel>>(
         stream: _reclamoService.obtenerReclamosCondominio(

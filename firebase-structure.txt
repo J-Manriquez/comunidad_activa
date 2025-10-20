@@ -228,6 +228,11 @@ cada vez que un adimistrador se registra crea una nueva colección principal:
     │      │   │   ├── tipoMulta: String
     │      │   │   ├── valor: Integer
     │      │   │   └── unidadMedida: Integer
+    │      │   └── ... 
+    │      ├── gestionReclamos: Array<Map> 
+    │      │   ├── fecha-hora: Array<Map> 
+    │      │   │   ├── id: String
+    │      │   │   └── tipoMulta: String
     │          └── ... 
     │
     ├──── administrador (Document)

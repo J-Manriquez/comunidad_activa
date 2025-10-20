@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/reclamo_model.dart';
+import '../models/tipo_reclamo_model.dart';
 import '../services/notification_service.dart';
 import '../services/firestore_service.dart';
 
@@ -364,8 +365,86 @@ class ReclamoService {
     }
   }
 
-  // Obtener tipos de reclamo predefinidos
-  List<String> getTiposReclamoDisponibles() {
-    return ['Ruidos molestos', 'Auto mal estacionado', 'Otro'];
+  // Obtener tipos de reclamo desde el condominio
+  Future<List<TipoReclamo>> getTiposReclamoDisponibles(String condominioId) async {
+    try {
+      final condominioData = await FirestoreService().getCondominioData(condominioId);
+      return condominioData.gestionReclamos ?? [];
+    } catch (e) {
+      print('Error al obtener tipos de reclamo: $e');
+      return [];
+    }
+  }
+
+  // Crear un nuevo tipo de reclamo
+  Future<void> crearTipoReclamo(String condominioId, String tipoReclamo) async {
+    try {
+      final condominioData = await FirestoreService().getCondominioData(condominioId);
+      final tiposActuales = condominioData.gestionReclamos ?? [];
+      
+      // Generar un ID único para el nuevo tipo
+      final nuevoId = _firestore.collection('temp').doc().id;
+      final nuevoTipo = TipoReclamo(id: nuevoId, tipoReclamo: tipoReclamo);
+      
+      // Añadir el nuevo tipo a la lista
+      final tiposActualizados = [...tiposActuales, nuevoTipo];
+      
+      // Actualizar el condominio con los nuevos tipos
+      await _firestore
+          .collection(condominioId)
+          .doc('condominio')
+          .update({
+        'gestionReclamos': tiposActualizados.map((e) => e.toMap()).toList(),
+      });
+    } catch (e) {
+      throw Exception('Error al crear tipo de reclamo: $e');
+    }
+  }
+
+  // Actualizar un tipo de reclamo existente
+  Future<void> actualizarTipoReclamo(String condominioId, String tipoId, String nuevoTipoReclamo) async {
+    try {
+      final condominioData = await FirestoreService().getCondominioData(condominioId);
+      final tiposActuales = condominioData.gestionReclamos ?? [];
+      
+      // Buscar y actualizar el tipo específico
+      final tiposActualizados = tiposActuales.map((tipo) {
+        if (tipo.id == tipoId) {
+          return TipoReclamo(id: tipoId, tipoReclamo: nuevoTipoReclamo);
+        }
+        return tipo;
+      }).toList();
+      
+      // Actualizar el condominio con los tipos modificados
+      await _firestore
+          .collection(condominioId)
+          .doc('condominio')
+          .update({
+        'gestionReclamos': tiposActualizados.map((e) => e.toMap()).toList(),
+      });
+    } catch (e) {
+      throw Exception('Error al actualizar tipo de reclamo: $e');
+    }
+  }
+
+  // Eliminar un tipo de reclamo
+  Future<void> eliminarTipoReclamo(String condominioId, String tipoId) async {
+    try {
+      final condominioData = await FirestoreService().getCondominioData(condominioId);
+      final tiposActuales = condominioData.gestionReclamos ?? [];
+      
+      // Filtrar para eliminar el tipo específico
+      final tiposActualizados = tiposActuales.where((tipo) => tipo.id != tipoId).toList();
+      
+      // Actualizar el condominio sin el tipo eliminado
+      await _firestore
+          .collection(condominioId)
+          .doc('condominio')
+          .update({
+        'gestionReclamos': tiposActualizados.map((e) => e.toMap()).toList(),
+      });
+    } catch (e) {
+      throw Exception('Error al eliminar tipo de reclamo: $e');
+    }
   }
 }

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:comunidad_activa/models/multa_model.dart';
+import 'package:comunidad_activa/models/tipo_reclamo_model.dart';
 
 enum TipoCondominio { casas, edificio, mixto }
 
@@ -81,6 +82,9 @@ class CondominioModel {
   // Nueva propiedad para gestión de multas
   final List<GestionMulta>? gestionMultas;
   
+  // Nueva propiedad para gestión de reclamos
+  final List<TipoReclamo>? gestionReclamos;
+  
   // Configuración para cobrar multas junto con gastos comunes
   final bool? cobrarMultasConGastos;
   
@@ -108,6 +112,7 @@ class CondominioModel {
     this.totalInmuebles,
     this.requiereConfirmacionAdmin,
     this.gestionMultas,
+    this.gestionReclamos,
     this.cobrarMultasConGastos,
     this.cobrarEspaciosConGastos,
   });
@@ -156,6 +161,7 @@ class CondominioModel {
       'totalInmuebles': calcularTotalInmuebles(),
       'requiereConfirmacionAdmin': requiereConfirmacionAdmin,
       'gestionMultas': gestionMultas?.map((e) => e.toMap()).toList(),
+      'gestionReclamos': gestionReclamos?.map((e) => e.toMap()).toList(),
       'cobrarMultasConGastos': cobrarMultasConGastos,
       'cobrarEspaciosConGastos': cobrarEspaciosConGastos,
     };
@@ -191,6 +197,13 @@ class CondominioModel {
           .toList();
     }
     
+    List<TipoReclamo>? gestionReclamosList;
+    if (map['gestionReclamos'] != null) {
+      gestionReclamosList = (map['gestionReclamos'] as List)
+          .map((e) => TipoReclamo.fromMap(e))
+          .toList();
+    }
+    
     return CondominioModel(
       id: map['id'] ?? '',
       nombre: map['nombre'] ?? '',
@@ -212,6 +225,7 @@ class CondominioModel {
       totalInmuebles: map['totalInmuebles'],
       requiereConfirmacionAdmin: map['requiereConfirmacionAdmin'],
       gestionMultas: gestionMultasList,
+      gestionReclamos: gestionReclamosList,
       cobrarMultasConGastos: map['cobrarMultasConGastos'],
       cobrarEspaciosConGastos: map['cobrarEspaciosConGastos'],
     );

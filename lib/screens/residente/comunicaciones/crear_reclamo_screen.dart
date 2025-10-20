@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import '../../../models/user_model.dart';
+import '../../../models/tipo_reclamo_model.dart';
 import '../../../services/reclamo_service.dart';
 import '../../../utils/storage_service.dart';
 import '../../../utils/image_display_widget.dart';
@@ -28,12 +29,44 @@ class _CrearReclamoScreenState extends State<CrearReclamoScreen> {
   bool _usarTipoPersonalizado = false;
   bool _isLoading = false;
   bool _isUploadingImage = false;
+  List<TipoReclamo> _tiposReclamo = [];
+  bool _loadingTipos = true;
   
   // Variables para las imágenes (ahora soportan fragmentación)
   Map<String, dynamic>? _imagen1Data;
   Map<String, dynamic>? _imagen2Data;
   Map<String, dynamic>? _imagen3Data;
   double _uploadProgress = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarTiposReclamo();
+  }
+
+  Future<void> _cargarTiposReclamo() async {
+    try {
+      final tipos = await _reclamoService.getTiposReclamoDisponibles(
+        widget.currentUser.condominioId.toString(),
+      );
+      setState(() {
+        _tiposReclamo = tipos;
+        _loadingTipos = false;
+      });
+    } catch (e) {
+      setState(() {
+        _loadingTipos = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cargar tipos de reclamo: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -109,24 +142,36 @@ class _CrearReclamoScreenState extends State<CrearReclamoScreen> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  hintText: 'Seleccione el tipo de reclamo',
+                  hintText: _loadingTipos 
+                      ? 'Cargando tipos de reclamo...' 
+                      : 'Seleccione el tipo de reclamo',
                   filled: true,
                   fillColor: Colors.white,
                 ),
-                items: [
-                  ..._reclamoService.getTiposReclamoDisponibles().map(
-                    (tipo) => DropdownMenuItem(
-                      value: tipo,
-                      child: Text(tipo),
-                    ),
-                  ),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    _tipoSeleccionado = value;
-                    _usarTipoPersonalizado = value == 'Otro';
-                  });
-                },
+                items: _loadingTipos 
+                    ? []
+                    : [
+                        ..._tiposReclamo.map(
+                          (tipo) => DropdownMenuItem(
+                            value: tipo.tipoReclamo,
+                            child: Text(tipo.tipoReclamo),
+                          ),
+                        ),
+                        // Añadir opción "Otro" si no existe
+                        if (!_tiposReclamo.any((tipo) => tipo.tipoReclamo == 'Otro'))
+                          const DropdownMenuItem(
+                            value: 'Otro',
+                            child: Text('Otro'),
+                          ),
+                      ],
+                onChanged: _loadingTipos 
+                    ? null 
+                    : (value) {
+                        setState(() {
+                          _tipoSeleccionado = value;
+                          _usarTipoPersonalizado = value == 'Otro';
+                        });
+                      },
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Por favor seleccione un tipo de reclamo';

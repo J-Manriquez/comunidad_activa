@@ -91,17 +91,26 @@ class TrabajadorModel {
       'crearMulta': false,
       'gestionadorMultas': false,
       'historialMultas': false,
-      // Otras funciones principales
+      // Gestión de Reclamos - Sub-funciones
+      'gestionTiposReclamos': false,
       'gestionReclamos': false,
       // Gestión de Publicaciones - Sub-funciones
       'gestionPublicacionesAdmin': false,
       'publicacionesTrabajadores': false,
+      // Registro Diario - Sub-funciones
+      'crearNuevoRegistro': false,
+      'registrosDelDia': false,
+      'historialRegistros': false,
       // Bloqueo de Visitas - Sub-funciones
       'crearBloqueoVisitas': false,
       'visualizarVisitasBloqueadas': false,
+      // Gestión de Mensajes - Sub-funciones
+      'chatCondominio': false,
+      'chatConserjeria': false,
+      'chatResidentes': false,
+      'chatAdministrador': false,
       'gestionMensajes': false,
-      'reportesYEstadisticas': false,
-    };
+  };
   }
 
   // Método para crear una copia con funciones actualizadas
