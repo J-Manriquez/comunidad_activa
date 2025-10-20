@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/user_model.dart';
 import '../../models/trabajador_model.dart';
 import '../../services/firestore_service.dart';
+import '../../services/estacionamiento_service.dart';
 
 class ConfiguracionPermisosTrabajadorScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -22,9 +23,11 @@ class ConfiguracionPermisosTrabajadorScreen extends StatefulWidget {
 class _ConfiguracionPermisosTrabajadorScreenState
     extends State<ConfiguracionPermisosTrabajadorScreen> {
   final FirestoreService _firestoreService = FirestoreService();
+  final EstacionamientoService _estacionamientoService = EstacionamientoService();
   late Map<String, bool> _funcionesDisponibles;
   bool _isLoading = false;
   bool _hasChanges = false;
+  bool _estVisitas = false; // Variable para controlar la visibilidad de estacionamientos de visitas
   
   // Estado de visibilidad de las secciones
   final Map<String, bool> _seccionesVisibles = {
@@ -116,17 +119,24 @@ class _ConfiguracionPermisosTrabajadorScreenState
       'color': Colors.indigo,
       'categoria': 'Gestión de Estacionamientos',
     },
-    'gestionEstacionamientos': {
-      'titulo': 'Gestión de Estacionamientos',
-      'descripcion': 'Administrar espacios de estacionamiento',
-      'icono': Icons.local_parking,
+    'solicitudesEstacionamientos': {
+      'titulo': 'Solicitudes de Estacionamientos',
+      'descripcion': 'Gestionar solicitudes de estacionamientos',
+      'icono': Icons.request_page,
       'color': Colors.indigo,
       'categoria': 'Gestión de Estacionamientos',
     },
-    'historialEstacionamientos': {
-      'titulo': 'Historial de Estacionamientos',
-      'descripcion': 'Ver historial de uso de estacionamientos',
-      'icono': Icons.history,
+    'listaEstacionamientos': {
+      'titulo': 'Lista de Estacionamientos',
+      'descripcion': 'Ver lista de estacionamientos disponibles',
+      'icono': Icons.list_alt,
+      'color': Colors.indigo,
+      'categoria': 'Gestión de Estacionamientos',
+    },
+    'estacionamientosVisitas': {
+      'titulo': 'Estacionamientos de Visitas',
+      'descripcion': 'Gestionar estacionamientos para visitas',
+      'icono': Icons.local_parking,
       'color': Colors.indigo,
       'categoria': 'Gestión de Estacionamientos',
     },
@@ -325,6 +335,21 @@ class _ConfiguracionPermisosTrabajadorScreenState
   void initState() {
     super.initState();
     _funcionesDisponibles = Map<String, bool>.from(widget.trabajador.funcionesDisponibles);
+    _loadEstVisitasConfig();
+  }
+
+  Future<void> _loadEstVisitasConfig() async {
+    try {
+      final config = await _estacionamientoService.obtenerConfiguracion(widget.currentUser.condominioId!);
+      if (mounted) {
+        setState(() {
+          _estVisitas = config['estVisitas'] ?? false;
+        });
+      }
+    } catch (e) {
+      print('Error al cargar configuración de estVisitas: $e');
+      // En caso de error, mantener el valor por defecto (false)
+    }
   }
 
   Future<void> _guardarCambios() async {
@@ -385,6 +410,10 @@ class _ConfiguracionPermisosTrabajadorScreenState
       
       for (String key in _funcionesInfo.keys) {
         if (!funcionesVacias.contains(key)) {
+          // Solo activar estacionamientosVisitas si estVisitas es true
+          if (key == 'estacionamientosVisitas' && !_estVisitas) {
+            continue;
+          }
           _funcionesDisponibles[key] = true;
         }
       }
@@ -418,7 +447,10 @@ class _ConfiguracionPermisosTrabajadorScreenState
     final funcionesVacias = ['gestionMensajes'];
     
     return _funcionesInfo.keys
-        .where((key) => !funcionesVacias.contains(key) && (_funcionesDisponibles[key] ?? false))
+        .where((key) => !funcionesVacias.contains(key) && 
+                       (_funcionesDisponibles[key] ?? false) &&
+                       // Excluir estacionamientosVisitas si estVisitas es false
+                       (key != 'estacionamientosVisitas' || _estVisitas))
         .length;
   }
 
@@ -428,7 +460,9 @@ class _ConfiguracionPermisosTrabajadorScreenState
     final funcionesVacias = ['gestionMensajes'];
     
     return _funcionesInfo.keys
-        .where((key) => !funcionesVacias.contains(key))
+        .where((key) => !funcionesVacias.contains(key) &&
+                       // Excluir estacionamientosVisitas del total si estVisitas es false
+                       (key != 'estacionamientosVisitas' || _estVisitas))
         .length;
   }
 
@@ -716,6 +750,11 @@ class _ConfiguracionPermisosTrabajadorScreenState
       final funcion = entry.key;
       final info = entry.value;
       final isActive = _funcionesDisponibles[funcion] ?? false;
+
+      // Ocultar estacionamientosVisitas si estVisitas es false
+      if (funcion == 'estacionamientosVisitas' && !_estVisitas) {
+        return const SizedBox.shrink();
+      }
 
       return Card(
         margin: const EdgeInsets.only(bottom: 8),

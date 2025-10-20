@@ -824,4 +824,44 @@ class FirestoreService {
     }
   }
 
+  // Obtener datos del trabajador
+  Future<TrabajadorModel?> getTrabajadorData(String condominioId, String uid) async {
+    try {
+      DocumentSnapshot doc = await _firestore
+          .collection(condominioId)
+          .doc('usuarios')
+          .collection('trabajadores')
+          .doc(uid)
+          .get();
+
+      if (doc.exists && doc.data() != null) {
+        return TrabajadorModel.fromFirestore(doc);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error al obtener datos del trabajador: $e');
+      return null;
+    }
+  }
+
+  // Obtener datos del comité
+  Future<ComiteModel?> getComiteData(String condominioId, String uid) async {
+    try {
+      DocumentSnapshot doc = await _firestore
+          .collection(condominioId)
+          .doc('usuarios')
+          .collection('comite')
+          .doc(uid)
+          .get();
+
+      if (doc.exists && doc.data() != null) {
+        return ComiteModel.fromFirestore(doc);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error al obtener datos del comité: $e');
+      return null;
+    }
+  }
+
 }

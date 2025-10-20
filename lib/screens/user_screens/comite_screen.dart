@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import '../../models/condominio_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../models/comite_model.dart';
 import '../../services/firestore_service.dart';
 
 class ComiteScreen extends StatefulWidget {
@@ -14,171 +15,122 @@ class ComiteScreen extends StatefulWidget {
 
 class _ComiteScreenState extends State<ComiteScreen> {
   final FirestoreService _firestoreService = FirestoreService();
-  CondominioModel? _condominio;
-  int _residentes = 0;
-  int _comite = 0;
-  int _trabajadores = 0;
+  ComiteModel? _comite;
   bool _isLoading = true;
+  String _errorMessage = '';
 
   @override
   void initState() {
     super.initState();
-    _loadCondominioData();
+    _cargarDatosComite();
   }
 
-  Future<void> _loadCondominioData() async {
+  Future<void> _cargarDatosComite() async {
     try {
-      // Obtener datos del condominio
-      final condominio = await _firestoreService.getCondominioData(widget.condominioId);
-      
-      // Obtener conteos de usuarios
-      final residentes = await _firestoreService.getResidentesCount(widget.condominioId);
-      final comite = await _firestoreService.getComiteCount(widget.condominioId);
-      final trabajadores = await _firestoreService.getTrabajadoresCount(widget.condominioId);
-      
-      if (mounted) {
-        setState(() {
-          _condominio = condominio;
-          _residentes = residentes;
-          _comite = comite;
-          _trabajadores = trabajadores;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al cargar datos: $e')),
-        );
-      }
-    }
-  }
+      setState(() {
+        _isLoading = true;
+        _errorMessage = '';
+      });
 
-  void _copyToClipboard(String text) {
-    Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Código copiado al portapapeles')),
-    );
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('Usuario no autenticado');
+      }
+
+      // Cargar datos del comité
+      final comiteDoc = await FirebaseFirestore.instance
+          .collection(widget.condominioId)
+          .doc('usuarios')
+          .collection('comite')
+          .doc(user.uid)
+          .get();
+
+      if (!comiteDoc.exists) {
+        throw Exception('Miembro del comité no encontrado');
+      }
+
+      _comite = ComiteModel.fromFirestore(comiteDoc);
+
+      setState(() {
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Error al cargar datos: $e';
+        _isLoading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
     }
 
-    if (_condominio == null) {
-      return const Center(child: Text('No se encontró información del condominio'));
+    if (_errorMessage.isNotEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Colors.red.shade400,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage,
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.red.shade600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _cargarDatosComite,
+              child: const Text('Reintentar'),
+            ),
+          ],
+        ),
+      );
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+    if (_comite == null) {
+      return const Center(
+        child: Text('No se pudieron cargar los datos del comité'),
+      );
+    }
+
+    // Pantalla principal vacía - solo mostrará el contenido del drawer
+    return const Center(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Información del condominio
-          Card(
-            elevation: 4,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _condominio!.nombre,
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Dirección: ${_condominio!.direccion}',
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Código de registro:',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            widget.condominioId,
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.copy),
-                        onPressed: () => _copyToClipboard(widget.condominioId),
-                        tooltip: 'Copiar código',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Comparte este código con los residentes y trabajadores para que puedan registrarse.',
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
+          Icon(
+            Icons.home,
+            size: 80,
+            color: Colors.grey,
           ),
-          
-          const SizedBox(height: 16),
-          
-          // Estadísticas de usuarios
-          Card(
-            elevation: 4,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Estadísticas de usuarios',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildStatisticTile('Residentes', _residentes, Icons.people),
-                  const Divider(),
-                  _buildStatisticTile('Comité', _comite, Icons.group),
-                  const Divider(),
-                  _buildStatisticTile('Trabajadores', _trabajadores, Icons.work),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatisticTile(String title, int count, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        children: [
-          Icon(icon, size: 28, color: Theme.of(context).primaryColor),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(fontSize: 16),
-            ),
-          ),
+          SizedBox(height: 16),
           Text(
-            count.toString(),
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            'Bienvenido',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Utiliza el menú lateral para navegar',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey,
+            ),
           ),
         ],
       ),

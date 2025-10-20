@@ -133,6 +133,32 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 12.0),
                 ),
               ),
+              const SizedBox(height: 12.0),
+              
+              // Botón para comité
+              ElevatedButton.icon(
+                onPressed: _isLoading ? null : () => _quickLogin('com@com.cl', '000000'),
+                icon: const Icon(Icons.group),
+                label: const Text('Comité (com@com.cl)'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange[700],
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12.0),
+                ),
+              ),
+              const SizedBox(height: 12.0),
+              
+              // Botón para trabajador
+              ElevatedButton.icon(
+                onPressed: _isLoading ? null : () => _quickLogin('tra@tra.cl', '000000'),
+                icon: const Icon(Icons.engineering),
+                label: const Text('Trabajador (tra@tra.cl)'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.purple[700],
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12.0),
+                ),
+              ),
               
               if (_isLoading) ...[
                 const SizedBox(height: 16.0),

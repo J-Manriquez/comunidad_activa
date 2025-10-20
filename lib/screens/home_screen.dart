@@ -12,6 +12,8 @@ import 'package:comunidad_activa/screens/residente/visitas_bloqueadas_residente_
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../models/residente_bloqueado_model.dart';
+import '../models/trabajador_model.dart';
+import '../models/comite_model.dart';
 import '../services/auth_service.dart';
 import '../services/bloqueo_service.dart';
 import '../services/bloqueo_visitas_service.dart';
@@ -709,8 +711,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
 
-          // Opciones específicas para residentes
-          if (user.tipoUsuario == UserType.residente) ...[            
+          // Opciones específicas para residentes (no comité)
+          if (user.tipoUsuario == UserType.residente && user.esComite != true) ...[            
             ListTile(
               leading: const Icon(Icons.message),
               title: const Text('Mensajes'),
@@ -860,6 +862,149 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
 
+          // Opciones específicas para trabajadores
+          if (user.tipoUsuario == UserType.trabajador) ...[
+            FutureBuilder<TrabajadorModel?>(
+              future: _firestoreService.getTrabajadorData(user.condominioId!, user.uid),
+              builder: (context, snapshot) {
+                if (snapshot.hasData && snapshot.data != null) {
+                  final trabajador = snapshot.data!;
+                  
+                  // Verificar permisos de correspondencia
+                  final funcionesCorrespondencia = [
+                    'configuracionCorrespondencias',
+                    'ingresarCorrespondencia',
+                    'correspondenciasActivas',
+                    'historialCorrespondencias'
+                  ];
+                  
+                  bool tienePermisosCorrespondencia = funcionesCorrespondencia.any(
+                    (funcion) => trabajador.funcionesDisponibles[funcion] == true
+                  );
+                  
+                  // Verificar permisos de control de acceso
+                  final funcionesControlAcceso = [
+                    'gestionCamposAdicionales',
+                    'gestionCamposActivos',
+                    'crearRegistroAcceso',
+                    'controlDiario',
+                    'historialControlAcceso'
+                  ];
+                  
+                  bool tienePermisosControlAcceso = funcionesControlAcceso.any(
+                    (funcion) => trabajador.funcionesDisponibles[funcion] == true
+                  );
+                  
+                  return Column(
+                    children: [
+                      if (tienePermisosCorrespondencia)
+                        ListTile(
+                          leading: const Icon(Icons.mail),
+                          title: const Text('Correspondencias'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => CorrespondenciasScreen(currentUser: user),
+                              ),
+                            );
+                          },
+                        ),
+                      if (tienePermisosControlAcceso)
+                        ListTile(
+                          leading: const Icon(Icons.security),
+                          title: const Text('Control de Acceso'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ControlAccesoScreen(currentUser: user),
+                              ),
+                            );
+                          },
+                        ),
+                    ],
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+          ],
+
+          // Opciones específicas para comité (residentes que son comité o usuarios tipo comité)
+          if ((user.tipoUsuario == UserType.residente && user.esComite == true) || 
+              user.tipoUsuario == UserType.comite) ...[
+            FutureBuilder<ComiteModel?>(
+              future: _firestoreService.getComiteData(user.condominioId!, user.uid),
+              builder: (context, snapshot) {
+                if (snapshot.hasData && snapshot.data != null) {
+                  final comite = snapshot.data!;
+                  
+                  // Verificar permisos de correspondencia
+                  final funcionesCorrespondencia = [
+                    'configuracionCorrespondencias',
+                    'ingresarCorrespondencia',
+                    'correspondenciasActivas',
+                    'historialCorrespondencias'
+                  ];
+                  
+                  bool tienePermisosCorrespondencia = funcionesCorrespondencia.any(
+                    (funcion) => comite.funcionesDisponibles[funcion] == true
+                  );
+                  
+                  // Verificar permisos de control de acceso
+                  final funcionesControlAcceso = [
+                    'gestionCamposAdicionales',
+                    'gestionCamposActivos',
+                    'crearRegistroAcceso',
+                    'controlDiario',
+                    'historialControlAcceso'
+                  ];
+                  
+                  bool tienePermisosControlAcceso = funcionesControlAcceso.any(
+                    (funcion) => comite.funcionesDisponibles[funcion] == true
+                  );
+                  
+                  return Column(
+                    children: [
+                      if (tienePermisosCorrespondencia)
+                        ListTile(
+                          leading: const Icon(Icons.mail),
+                          title: const Text('Correspondencias'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => CorrespondenciasScreen(currentUser: user),
+                              ),
+                            );
+                          },
+                        ),
+                      if (tienePermisosControlAcceso)
+                        ListTile(
+                          leading: const Icon(Icons.security),
+                          title: const Text('Control de Acceso'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ControlAccesoScreen(currentUser: user),
+                              ),
+                            );
+                          },
+                        ),
+                    ],
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+          ],
+
           const Divider(),
           // Opción de cerrar sesión para todos los usuarios
           ListTile(
@@ -904,6 +1049,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return _buildResidenteContent(user.condominioId!);
       case UserType.trabajador:
         return _buildTrabajadorContent(user.condominioId!);
+      case UserType.comite:
+        return _buildComiteContent(user.condominioId!);
       default:
         return const Center(child: Text('Tipo de usuario no reconocido'));
     }

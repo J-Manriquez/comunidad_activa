@@ -1,17 +1,111 @@
 import 'package:flutter/material.dart';
 import '../../../models/user_model.dart';
+import '../../../models/trabajador_model.dart';
+import '../../../models/comite_model.dart';
+import '../../../services/firestore_service.dart';
 import 'gestion_campos_adicionales_screen.dart';
 import 'campos_activos_screen.dart';
 import 'control_diario_screen.dart';
 import 'historial_control_acceso_screen.dart';
 
-class ControlAccesoScreen extends StatelessWidget {
+class ControlAccesoScreen extends StatefulWidget {
   final UserModel? currentUser;
 
   const ControlAccesoScreen({Key? key, this.currentUser}) : super(key: key);
 
   @override
+  State<ControlAccesoScreen> createState() => _ControlAccesoScreenState();
+}
+
+class _ControlAccesoScreenState extends State<ControlAccesoScreen> {
+  final FirestoreService _firestoreService = FirestoreService();
+  Map<String, bool> _permisos = {};
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarPermisos();
+  }
+
+  Future<void> _cargarPermisos() async {
+    if (widget.currentUser == null) return;
+
+    try {
+      // Verificar si es trabajador
+      if (widget.currentUser!.tipoUsuario == UserType.trabajador) {
+        final trabajador = await _firestoreService.getTrabajadorData(
+          widget.currentUser!.condominioId!,
+          widget.currentUser!.uid,
+        );
+        if (trabajador != null) {
+          setState(() {
+            _permisos = {
+              'gestionCamposAdicionales': trabajador.funcionesDisponibles['gestionCamposAdicionales'] ?? false,
+              'gestionCamposActivos': trabajador.funcionesDisponibles['gestionCamposActivos'] ?? false,
+              'crearRegistroAcceso': trabajador.funcionesDisponibles['crearRegistroAcceso'] ?? false,
+              'controlDiario': trabajador.funcionesDisponibles['controlDiario'] ?? false,
+              'historialControlAcceso': trabajador.funcionesDisponibles['historialControlAcceso'] ?? false,
+            };
+            _isLoading = false;
+          });
+        }
+      }
+      // Verificar si es comité
+      else if (widget.currentUser!.tipoUsuario == UserType.comite ||
+               (widget.currentUser!.tipoUsuario == UserType.residente && widget.currentUser!.esComite == true)) {
+        final comite = await _firestoreService.getComiteData(
+          widget.currentUser!.condominioId!,
+          widget.currentUser!.uid,
+        );
+        if (comite != null) {
+          setState(() {
+            _permisos = {
+              'gestionCamposAdicionales': comite.funcionesDisponibles['gestionCamposAdicionales'] ?? false,
+              'gestionCamposActivos': comite.funcionesDisponibles['gestionCamposActivos'] ?? false,
+              'crearRegistroAcceso': comite.funcionesDisponibles['crearRegistroAcceso'] ?? false,
+              'controlDiario': comite.funcionesDisponibles['controlDiario'] ?? false,
+              'historialControlAcceso': comite.funcionesDisponibles['historialControlAcceso'] ?? false,
+            };
+            _isLoading = false;
+          });
+        }
+      }
+      // Si es administrador, permitir todo
+      else if (widget.currentUser!.tipoUsuario == UserType.administrador) {
+        setState(() {
+          _permisos = {
+            'gestionCamposAdicionales': true,
+            'gestionCamposActivos': true,
+            'crearRegistroAcceso': true,
+            'controlDiario': true,
+            'historialControlAcceso': true,
+          };
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Control de Acceso'),
+          backgroundColor: Colors.blue[700],
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('Control de Acceso'),
@@ -60,83 +154,91 @@ class ControlAccesoScreen extends StatelessWidget {
                     mainAxisSpacing: 16,
                     childAspectRatio: 1.1,
                     children: [
-                      _buildNavigationCard(
-                        context,
-                        title: 'Gestión de Campos\nAdicionales',
-                        subtitle: 'Configura campos personalizados',
-                        icon: Icons.add_box_outlined,
-                        color: Colors.green,
-                        onTap: () {
-                          if (currentUser != null) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => GestionCamposAdicionalesScreen(
-                                  currentUser: currentUser!,
-                                ),
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                      _buildNavigationCard(
-                        context,
-                        title: 'Campos Activos',
-                        subtitle: 'Activa/desactiva campos del formulario',
-                        icon: Icons.toggle_on_outlined,
-                        color: Colors.orange,
-                        onTap: () {
-                          if (currentUser != null) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => CamposActivosScreen(
-                                  currentUser: currentUser!,
-                                ),
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                      _buildNavigationCard(
-                        context,
-                        title: 'Control Diario',
-                        subtitle: 'Registra ingresos y salidas',
-                        icon: Icons.today_outlined,
-                        color: Colors.blue,
-                        onTap: () {
-                          if (currentUser != null) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ControlDiarioScreen(
-                                  currentUser: currentUser!,
-                                ),
-                              ),
-                            );
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Error: Usuario no válido'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                      _buildNavigationCard(
-                        context,
-                        title: 'Historial de\nControl de Acceso',
-                        subtitle: 'Consulta registros históricos',
-                        icon: Icons.history_outlined,
-                        color: Colors.purple,
-                        onTap: () => Navigator.push(
+                      // Gestión de Campos Adicionales
+                      if (_permisos['gestionCamposAdicionales'] == true)
+                        _buildNavigationCard(
                           context,
-                          MaterialPageRoute(
-                            builder: (context) => HistorialControlAccesoScreen(currentUser: currentUser),
+                          title: 'Gestión de Campos\nAdicionales',
+                          subtitle: 'Configura campos personalizados',
+                          icon: Icons.add_box_outlined,
+                          color: Colors.green,
+                          onTap: () {
+                            if (widget.currentUser != null) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => GestionCamposAdicionalesScreen(
+                                    currentUser: widget.currentUser!,
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                      // Campos Activos
+                      if (_permisos['gestionCamposActivos'] == true)
+                        _buildNavigationCard(
+                          context,
+                          title: 'Campos Activos',
+                          subtitle: 'Activa/desactiva campos del formulario',
+                          icon: Icons.toggle_on_outlined,
+                          color: Colors.orange,
+                          onTap: () {
+                            if (widget.currentUser != null) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => CamposActivosScreen(
+                                    currentUser: widget.currentUser!,
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                      // Control Diario
+                      if (_permisos['controlDiario'] == true || _permisos['crearRegistroAcceso'] == true)
+                        _buildNavigationCard(
+                          context,
+                          title: 'Control Diario',
+                          subtitle: 'Registra ingresos y salidas',
+                          icon: Icons.today_outlined,
+                          color: Colors.blue,
+                          onTap: () {
+                            if (widget.currentUser != null) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ControlDiarioScreen(
+                                    currentUser: widget.currentUser!,
+                                  ),
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Error: Usuario no válido'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                      // Historial de Control de Acceso
+                      if (_permisos['historialControlAcceso'] == true)
+                        _buildNavigationCard(
+                          context,
+                          title: 'Historial de\nControl de Acceso',
+                          subtitle: 'Consulta registros históricos',
+                          icon: Icons.history_outlined,
+                          color: Colors.purple,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => HistorialControlAccesoScreen(currentUser: widget.currentUser),
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 ),

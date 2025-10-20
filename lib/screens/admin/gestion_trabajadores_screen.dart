@@ -226,6 +226,68 @@ class _GestionTrabajadoresScreenState extends State<GestionTrabajadoresScreen> {
     );
   }
 
+  // Definición de funciones disponibles (debe coincidir con configuracion_permisos_trabajador_screen.dart)
+  final Map<String, Map<String, dynamic>> _funcionesInfo = {
+    // Gestión de Correspondencia
+    'configuracionCorrespondencias': {'categoria': 'Gestión de Correspondencia'},
+    'ingresarCorrespondencia': {'categoria': 'Gestión de Correspondencia'},
+    'correspondenciasActivas': {'categoria': 'Gestión de Correspondencia'},
+    'historialCorrespondencias': {'categoria': 'Gestión de Correspondencia'},
+    // Control de Acceso
+    'gestionCamposAdicionales': {'categoria': 'Control de Acceso'},
+    'gestionCamposActivos': {'categoria': 'Control de Acceso'},
+    'crearRegistroAcceso': {'categoria': 'Control de Acceso'},
+    'controlDiario': {'categoria': 'Control de Acceso'},
+    'historialControlAcceso': {'categoria': 'Control de Acceso'},
+    // Gestión de Estacionamientos
+    'configuracionEstacionamientos': {'categoria': 'Gestión de Estacionamientos'},
+    'gestionEstacionamientos': {'categoria': 'Gestión de Estacionamientos'},
+    'historialEstacionamientos': {'categoria': 'Gestión de Estacionamientos'},
+    // Gestión de Espacios Comunes
+    'configuracionEspaciosComunes': {'categoria': 'Gestión de Espacios Comunes'},
+    'gestionEspaciosComunes': {'categoria': 'Gestión de Espacios Comunes'},
+    'historialReservas': {'categoria': 'Gestión de Espacios Comunes'},
+    // Gestión de Gastos Comunes
+    'configuracionGastosComunes': {'categoria': 'Gestión de Gastos Comunes'},
+    'gestionGastosComunes': {'categoria': 'Gestión de Gastos Comunes'},
+    'historialGastosComunes': {'categoria': 'Gestión de Gastos Comunes'},
+    // Gestión de Multas
+    'configuracionMultas': {'categoria': 'Gestión de Multas'},
+    'gestionMultas': {'categoria': 'Gestión de Multas'},
+    'historialMultas': {'categoria': 'Gestión de Multas'},
+    // Gestión de Reclamos
+    'configuracionReclamos': {'categoria': 'Gestión de Reclamos'},
+    'gestionReclamos': {'categoria': 'Gestión de Reclamos'},
+    'historialReclamos': {'categoria': 'Gestión de Reclamos'},
+    // Gestión de Publicaciones
+    'configuracionPublicaciones': {'categoria': 'Gestión de Publicaciones'},
+    'gestionPublicaciones': {'categoria': 'Gestión de Publicaciones'},
+    'historialPublicaciones': {'categoria': 'Gestión de Publicaciones'},
+    // Registro Diario
+    'configuracionRegistroDiario': {'categoria': 'Registro Diario'},
+    'registroDiario': {'categoria': 'Registro Diario'},
+    'historialRegistroDiario': {'categoria': 'Registro Diario'},
+    // Bloqueo de Visitas
+    'configuracionBloqueoVisitas': {'categoria': 'Bloqueo de Visitas'},
+    'bloqueoVisitas': {'categoria': 'Bloqueo de Visitas'},
+    'historialBloqueoVisitas': {'categoria': 'Bloqueo de Visitas'},
+    // Gestión de Mensajes
+    'chatCondominio': {'categoria': 'Gestión de Mensajes'},
+    'chatConserjeria': {'categoria': 'Gestión de Mensajes'},
+    'chatResidentes': {'categoria': 'Gestión de Mensajes'},
+    'chatAdministrador': {'categoria': 'Gestión de Mensajes'},
+  };
+
+  int _contarFuncionesActivas(TrabajadorModel trabajador) {
+    // Contar solo las funciones activas que están definidas en _funcionesInfo
+    // Excluir las funciones vacías que aparecen en la pantalla principal
+    final funcionesVacias = ['gestionMensajes'];
+    
+    return _funcionesInfo.keys
+        .where((key) => !funcionesVacias.contains(key) && (trabajador.funcionesDisponibles[key] ?? false))
+        .length;
+  }
+
   Widget _buildTrabajadorCard(TrabajadorModel trabajador) {
     final color = _getColorPorTipo(trabajador.tipoTrabajador);
     final icono = _getIconoPorTipo(trabajador.tipoTrabajador);
@@ -339,7 +401,7 @@ class _GestionTrabajadoresScreenState extends State<GestionTrabajadoresScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${trabajador.funcionesDisponibles.values.where((v) => v).length}',
+                    '${_contarFuncionesActivas(trabajador)}',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey.shade600,

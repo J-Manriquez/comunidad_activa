@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import '../../../models/user_model.dart';
+import '../../../models/trabajador_model.dart';
+import '../../../models/comite_model.dart';
 import '../../../models/control_acceso_model.dart';
 import '../../../services/control_acceso_service.dart';
+import '../../../services/firestore_service.dart';
 import 'formulario_control_acceso_screen.dart';
 
 class ControlDiarioScreen extends StatefulWidget {
@@ -20,14 +23,73 @@ class ControlDiarioScreen extends StatefulWidget {
 
 class _ControlDiarioScreenState extends State<ControlDiarioScreen> {
   final ControlAccesoService _controlAccesoService = ControlAccesoService();
+  final FirestoreService _firestoreService = FirestoreService();
   List<ControlDiario> _registrosHoy = [];
   bool _isLoading = true;
+  bool _puedeCrearRegistro = false;
+  bool _puedeVerControlDiario = false;
   late StreamSubscription<List<ControlDiario>> _registrosSubscription;
 
   @override
   void initState() {
     super.initState();
-    _cargarRegistrosHoy();
+    _verificarPermisos();
+  }
+
+  Future<void> _verificarPermisos() async {
+    try {
+      // Si es administrador, permitir todo
+      if (widget.currentUser.tipoUsuario == UserType.administrador) {
+        setState(() {
+          _puedeCrearRegistro = true;
+          _puedeVerControlDiario = true;
+        });
+        _cargarRegistrosHoy();
+        return;
+      }
+
+      // Verificar permisos para trabajador
+      if (widget.currentUser.tipoUsuario == UserType.trabajador) {
+        final trabajador = await _firestoreService.getTrabajadorData(
+          widget.currentUser.condominioId!,
+          widget.currentUser.uid,
+        );
+        if (trabajador != null) {
+          setState(() {
+            _puedeCrearRegistro = trabajador.funcionesDisponibles['crearRegistroAcceso'] ?? false;
+            _puedeVerControlDiario = trabajador.funcionesDisponibles['controlDiario'] ?? false;
+          });
+        }
+      }
+      // Verificar permisos para comité
+      else if (widget.currentUser.tipoUsuario == UserType.comite ||
+               (widget.currentUser.tipoUsuario == UserType.residente && widget.currentUser.esComite == true)) {
+        final comite = await _firestoreService.getComiteData(
+          widget.currentUser.condominioId!,
+          widget.currentUser.uid,
+        );
+        if (comite != null) {
+          setState(() {
+            _puedeCrearRegistro = comite.funcionesDisponibles['crearRegistroAcceso'] ?? false;
+            _puedeVerControlDiario = comite.funcionesDisponibles['controlDiario'] ?? false;
+          });
+        }
+      }
+
+      // Solo cargar registros si tiene permiso para ver control diario
+      if (_puedeVerControlDiario) {
+        _cargarRegistrosHoy();
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      _mostrarError('Error al verificar permisos: $e');
+    }
   }
 
   @override
@@ -132,29 +194,37 @@ class _ControlDiarioScreenState extends State<ControlDiarioScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Card para nuevo registro
-                _buildNuevoRegistroCard(),
-                const SizedBox(height: 24),
+                // Card para nuevo registro - Solo si tiene permiso
+                if (_puedeCrearRegistro) ...[
+                  _buildNuevoRegistroCard(),
+                  const SizedBox(height: 24),
+                ],
                 
-                // Título de registros del día
-                _buildTituloRegistros(),
-                const SizedBox(height: 16),
-                
-                // Lista de registros
-                if (_isLoading)
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(40.0),
-                      child: CircularProgressIndicator(
-                        color: Color(0xFF1E3A8A),
-                        strokeWidth: 3,
+                // Título de registros del día - Solo si tiene permiso para ver control diario
+                if (_puedeVerControlDiario) ...[
+                  _buildTituloRegistros(),
+                  const SizedBox(height: 16),
+                  
+                  // Lista de registros
+                  if (_isLoading)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(40.0),
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF1E3A8A),
+                          strokeWidth: 3,
+                        ),
                       ),
-                    ),
-                  )
-                else if (_registrosHoy.isEmpty)
-                  _buildSinRegistros()
-                else
-                  ..._buildListaRegistros(),
+                    )
+                  else if (_registrosHoy.isEmpty)
+                    _buildSinRegistros()
+                  else
+                    ..._buildListaRegistros(),
+                ],
+                
+                // Mensaje si no tiene permisos
+                if (!_puedeCrearRegistro && !_puedeVerControlDiario)
+                  _buildSinPermisos(),
               ],
             ),
           ),
@@ -700,5 +770,63 @@ class _ControlDiarioScreenState extends State<ControlDiarioScreen> {
     // Capitalize the first letter of the first word
     if (content.isEmpty) return content;
     return '${content[0].toUpperCase()}${content.substring(1).toLowerCase()}';
+  }
+
+  Widget _buildSinPermisos() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFFE5E7EB),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF59E0B).withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.lock_outline,
+              size: 48,
+              color: Color(0xFFF59E0B),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Sin permisos de acceso',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF374151),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'No tienes permisos para acceder a las funciones de control diario',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
