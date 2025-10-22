@@ -81,6 +81,7 @@ class TrabajadorModel {
       'revisionesPrePostUso': false,
       'solicitudesRechazadas': false,
       'historialRevisiones': false,
+
       // Gestión de Gastos Comunes - Sub-funciones
       'verTotalGastos': false,
       'porcentajesPorResidentes': false,

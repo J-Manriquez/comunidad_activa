@@ -10,6 +10,9 @@ import '../../../utils/image_display_widget.dart';
 import '../../../widgets/image_carousel_widget.dart';
 import '../../../utils/image_fullscreen_helper.dart';
 import 'gestion_tipos_reclamos_screen.dart';
+import '../../../services/firestore_service.dart';
+import '../../../models/trabajador_model.dart';
+import '../../../models/comite_model.dart';
 
 class AdminReclamosScreen extends StatefulWidget {
   final UserModel currentUser;
@@ -27,6 +30,7 @@ class AdminReclamosScreen extends StatefulWidget {
 
 class _AdminReclamosScreenState extends State<AdminReclamosScreen> {
   final ReclamoService _reclamoService = ReclamoService();
+  final FirestoreService _firestoreService = FirestoreService();
 
   @override
   void initState() {
@@ -71,6 +75,61 @@ class _AdminReclamosScreenState extends State<AdminReclamosScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Verificar permisos según el tipo de usuario
+    if (widget.currentUser.tipoUsuario == UserType.trabajador) {
+      return FutureBuilder<TrabajadorModel?>(
+        future: _firestoreService.getTrabajadorData(widget.currentUser.condominioId!, widget.currentUser.uid),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+          
+          if (!snapshot.hasData || snapshot.data == null) {
+            return const Scaffold(
+              body: Center(child: Text('Error al cargar datos del trabajador')),
+            );
+          }
+          
+          final trabajador = snapshot.data!;
+          final tieneGestionReclamos = trabajador.funcionesDisponibles['gestionReclamos'] == true;
+          final tieneGestionTipos = trabajador.funcionesDisponibles['gestionTiposReclamos'] == true;
+          
+          return _buildReclamosScreen(tieneGestionReclamos, tieneGestionTipos);
+        },
+      );
+    } else if (widget.currentUser.tipoUsuario == UserType.comite || 
+               (widget.currentUser.tipoUsuario == UserType.residente && widget.currentUser.esComite == true)) {
+      return FutureBuilder<ComiteModel?>(
+        future: _firestoreService.getComiteData(widget.currentUser.condominioId!, widget.currentUser.uid),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+          
+          if (!snapshot.hasData || snapshot.data == null) {
+            return const Scaffold(
+              body: Center(child: Text('Error al cargar datos del comité')),
+            );
+          }
+          
+          final comite = snapshot.data!;
+          final tieneGestionReclamos = comite.funcionesDisponibles['gestionReclamos'] == true;
+          final tieneGestionTipos = comite.funcionesDisponibles['gestionTiposReclamos'] == true;
+          
+          return _buildReclamosScreen(tieneGestionReclamos, tieneGestionTipos);
+        },
+      );
+    } else {
+      // Para administradores, mostrar todo
+      return _buildReclamosScreen(true, true);
+    }
+  }
+
+  Widget _buildReclamosScreen(bool tieneGestionReclamos, bool tieneGestionTipos) {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
@@ -82,23 +141,46 @@ class _AdminReclamosScreenState extends State<AdminReclamosScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            tooltip: 'Gestionar tipos de reclamos',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => GestionTiposReclamosScreen(
-                    currentUser: widget.currentUser,
+          if (tieneGestionTipos)
+            IconButton(
+              icon: const Icon(Icons.settings),
+              tooltip: 'Gestionar tipos de reclamos',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => GestionTiposReclamosScreen(
+                      currentUser: widget.currentUser,
+                    ),
                   ),
-                ),
-              );
-            },
-          ),
+                );
+              },
+            ),
         ],
       ),
-      body: StreamBuilder<List<ReclamoModel>>(
+      body: !tieneGestionReclamos ? 
+        Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.block,
+                size: 64,
+                color: Colors.grey.shade400,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No tienes permisos para ver la gestión de reclamos',
+                style: TextStyle(
+                  fontSize: 18,
+                  color: Colors.grey.shade600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ) :
+        StreamBuilder<List<ReclamoModel>>(
         stream: _reclamoService.obtenerReclamosCondominio(
           widget.currentUser.condominioId.toString(),
         ),

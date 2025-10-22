@@ -920,6 +920,40 @@ class _HomeScreenState extends State<HomeScreen> {
                     (funcion) => trabajador.funcionesDisponibles[funcion] == true
                   );
                   
+                  // Verificar permisos de gestión de gastos comunes
+                  final funcionesGastosComunes = [
+                    'verTotalGastos',
+                    'porcentajesPorResidentes',
+                    'gastosFijos',
+                    'gastosVariables',
+                    'gastosAdicionales'
+                  ];
+                  
+                  bool tienePermisosGastosComunes = funcionesGastosComunes.any(
+                    (funcion) => trabajador.funcionesDisponibles[funcion] == true
+                  );
+                  
+                  // Verificar permisos de gestión de multas
+                  final funcionesMultas = [
+                    'crearMulta',
+                    'gestionadorMultas',
+                    'historialMultas'
+                  ];
+                  
+                  bool tienePermisosMultas = funcionesMultas.any(
+                    (funcion) => trabajador.funcionesDisponibles[funcion] == true
+                  );
+                  
+                  // Verificar permisos de gestión de reclamos
+                  final funcionesReclamos = [
+                    'gestionReclamos',
+                    'gestionTiposReclamos'
+                  ];
+                  
+                  bool tienePermisosReclamos = funcionesReclamos.any(
+                    (funcion) => trabajador.funcionesDisponibles[funcion] == true
+                  );
+                  
                   return Column(
                     children: [
                       if (tienePermisosCorrespondencia)
@@ -979,6 +1013,53 @@ class _HomeScreenState extends State<HomeScreen> {
                                 builder: (context) => EspaciosComunesScreen(
                                   currentUser: user,
                                 ),
+                              ),
+                            );
+                          },
+                        ),
+                      if (tienePermisosGastosComunes)
+                        ListTile(
+                          leading: const Icon(Icons.account_balance_wallet),
+                          title: const Text('Gastos Comunes'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => GastosComunesScreen(
+                                  condominioId: user.condominioId!,
+                                  currentUser: user,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      if (tienePermisosMultas)
+                        ListTile(
+                          leading: const Icon(Icons.gavel),
+                          title: const Text('Gestión de Multas'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => MultasAdminScreen(
+                                  currentUser: user,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      if (tienePermisosReclamos)
+                        ListTile(
+                          leading: const Icon(Icons.report_problem),
+                          title: const Text('Gestión de Reclamos'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AdminReclamosScreen(currentUser: user),
                               ),
                             );
                           },
@@ -1050,6 +1131,40 @@ class _HomeScreenState extends State<HomeScreen> {
                     (funcion) => comite.funcionesDisponibles[funcion] == true
                   );
                   
+                  // Verificar permisos de gestión de gastos comunes
+                  final funcionesGastosComunes = [
+                    'verTotalGastos',
+                    'porcentajesPorResidentes',
+                    'gastosFijos',
+                    'gastosVariables',
+                    'gastosAdicionales'
+                  ];
+                  
+                  bool tienePermisosGastosComunes = funcionesGastosComunes.any(
+                    (funcion) => comite.funcionesDisponibles[funcion] == true
+                  );
+                  
+                  // Verificar permisos de gestión de multas
+                  final funcionesMultas = [
+                    'crearMulta',
+                    'gestionadorMultas',
+                    'historialMultas'
+                  ];
+                  
+                  bool tienePermisosMultas = funcionesMultas.any(
+                    (funcion) => comite.funcionesDisponibles[funcion] == true
+                  );
+                  
+                  // Verificar permisos de gestión de reclamos
+                  final funcionesReclamos = [
+                    'gestionReclamos',
+                    'gestionTiposReclamos'
+                  ];
+                  
+                  bool tienePermisosReclamos = funcionesReclamos.any(
+                    (funcion) => comite.funcionesDisponibles[funcion] == true
+                  );
+                  
                   return Column(
                     children: [
                       if (tienePermisosCorrespondencia)
@@ -1109,6 +1224,51 @@ class _HomeScreenState extends State<HomeScreen> {
                                 builder: (context) => EspaciosComunesScreen(
                                   currentUser: user,
                                 ),
+                              ),
+                            );
+                          },
+                        ),
+                      if (tienePermisosGastosComunes)
+                        ListTile(
+                          leading: const Icon(Icons.account_balance_wallet),
+                          title: const Text('Gastos Comunes'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => GastosComunesScreen(
+                                  condominioId: user.condominioId!,
+                                  currentUser: user,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      if (tienePermisosMultas)
+                        ListTile(
+                          leading: const Icon(Icons.gavel),
+                          title: const Text('Gestión de Multas'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => MultasAdminScreen(currentUser: user),
+                              ),
+                            );
+                          },
+                        ),
+                      if (tienePermisosReclamos)
+                        ListTile(
+                          leading: const Icon(Icons.report_problem),
+                          title: const Text('Gestión de Reclamos'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AdminReclamosScreen(currentUser: user),
                               ),
                             );
                           },

@@ -2,17 +2,22 @@ import 'package:flutter/material.dart';
 import '../../../models/user_model.dart';
 import '../../../models/gasto_comun_model.dart';
 import '../../../models/lista_porcentajes_model.dart';
+import '../../../models/trabajador_model.dart';
+import '../../../models/comite_model.dart';
 import '../../../services/gastos_comunes_service.dart';
+import '../../../services/firestore_service.dart';
 import 'gasto_detalle_screen.dart';
 import 'listas_porcentajes_screen.dart';
 import 'gastos_por_vivienda_screen.dart';
 
 class GastosComunesScreen extends StatefulWidget {
   final UserModel currentUser;
+  final String? condominioId;
 
   const GastosComunesScreen({
     Key? key,
     required this.currentUser,
+    this.condominioId,
   }) : super(key: key);
 
   @override
@@ -21,16 +26,88 @@ class GastosComunesScreen extends StatefulWidget {
 
 class _GastosComunesScreenState extends State<GastosComunesScreen> {
   final GastosComunesService _gastosService = GastosComunesService();
+  final FirestoreService _firestoreService = FirestoreService();
   Map<TipoGasto, List<GastoComunModel>> _gastos = {};
   Map<TipoGasto, int> _totales = {};
   bool _isLoading = true;
   int _totalGeneral = 0;
   int _cantidadListasPorcentajes = 0;
+  
+  // Variables para permisos
+  bool _tienePermisoVerTotal = true;
+  bool _tienePermisoPorcentajes = true;
+  bool _tienePermisoGastosFijos = true;
+  bool _tienePermisoGastosVariables = true;
+  bool _tienePermisoGastosAdicionales = true;
 
   @override
   void initState() {
     super.initState();
+    _verificarPermisos();
     _cargarGastos();
+  }
+
+  Future<void> _verificarPermisos() async {
+    // Si es administrador, tiene todos los permisos
+    if (widget.currentUser.tipoUsuario == UserType.administrador) {
+      setState(() {
+        _tienePermisoVerTotal = true;
+        _tienePermisoPorcentajes = true;
+        _tienePermisoGastosFijos = true;
+        _tienePermisoGastosVariables = true;
+        _tienePermisoGastosAdicionales = true;
+      });
+      return;
+    }
+
+    try {
+      // Verificar permisos para trabajadores
+      if (widget.currentUser.tipoUsuario == UserType.trabajador) {
+        final trabajador = await _firestoreService.getTrabajadorData(
+          widget.currentUser.condominioId!,
+          widget.currentUser.uid,
+        );
+        
+        if (trabajador != null) {
+          setState(() {
+            _tienePermisoVerTotal = trabajador.funcionesDisponibles['verTotalGastos'] ?? false;
+            _tienePermisoPorcentajes = trabajador.funcionesDisponibles['porcentajesPorResidentes'] ?? false;
+            _tienePermisoGastosFijos = trabajador.funcionesDisponibles['gastosFijos'] ?? false;
+            _tienePermisoGastosVariables = trabajador.funcionesDisponibles['gastosVariables'] ?? false;
+            _tienePermisoGastosAdicionales = trabajador.funcionesDisponibles['gastosAdicionales'] ?? false;
+          });
+        }
+      }
+      
+      // Verificar permisos para comité
+      else if (widget.currentUser.tipoUsuario == UserType.comite || 
+               (widget.currentUser.tipoUsuario == UserType.residente && widget.currentUser.esComite == true)) {
+        final comite = await _firestoreService.getComiteData(
+          widget.currentUser.condominioId!,
+          widget.currentUser.uid,
+        );
+        
+        if (comite != null) {
+          setState(() {
+            _tienePermisoVerTotal = comite.funcionesDisponibles['verTotalGastos'] ?? false;
+            _tienePermisoPorcentajes = comite.funcionesDisponibles['porcentajesPorResidentes'] ?? false;
+            _tienePermisoGastosFijos = comite.funcionesDisponibles['gastosFijos'] ?? false;
+            _tienePermisoGastosVariables = comite.funcionesDisponibles['gastosVariables'] ?? false;
+            _tienePermisoGastosAdicionales = comite.funcionesDisponibles['gastosAdicionales'] ?? false;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error al verificar permisos: $e');
+      // En caso de error, denegar todos los permisos por seguridad
+      setState(() {
+        _tienePermisoVerTotal = false;
+        _tienePermisoPorcentajes = false;
+        _tienePermisoGastosFijos = false;
+        _tienePermisoGastosVariables = false;
+        _tienePermisoGastosAdicionales = false;
+      });
+    }
   }
 
   Future<void> _cargarGastos() async {
@@ -115,47 +192,88 @@ class _GastosComunesScreenState extends State<GastosComunesScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Resumen total
-                    _buildResumenTotal(),
-                    const SizedBox(height: 24),
+                    // Resumen total - solo mostrar si tiene permiso
+                    if (_tienePermisoVerTotal) ...[
+                      _buildResumenTotal(),
+                      const SizedBox(height: 24),
+                    ],
                     
-                    // Sección de Listas de Porcentajes
-                    _buildSeccionListasPorcentajes(),
-                    const SizedBox(height: 24),
+                    // Sección de Listas de Porcentajes - solo mostrar si tiene permiso
+                    if (_tienePermisoPorcentajes) ...[
+                      _buildSeccionListasPorcentajes(),
+                      const SizedBox(height: 24),
+                    ],
                     
-                    // Título
-                    const Text(
-                      'Categorías de Gastos',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                    // Título - solo mostrar si tiene al menos un permiso de categoría
+                    if (_tienePermisoGastosFijos || _tienePermisoGastosVariables || _tienePermisoGastosAdicionales) ...[
+                      const Text(
+                        'Categorías de Gastos',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 16),
+                    ],
                     
-                    // Cards de categorías
-                    _buildCategoriaCard(
-                      tipo: TipoGasto.fijo,
-                      icon: Icons.home,
-                      color: Colors.blue,
-                      descripcion: 'Gastos recurrentes mensuales',
-                    ),
-                    const SizedBox(height: 12),
+                    // Cards de categorías - mostrar solo las que tienen permiso
+                    if (_tienePermisoGastosFijos) ...[
+                      _buildCategoriaCard(
+                        tipo: TipoGasto.fijo,
+                        icon: Icons.home,
+                        color: Colors.blue,
+                        descripcion: 'Gastos recurrentes mensuales',
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                     
-                    _buildCategoriaCard(
-                      tipo: TipoGasto.variable,
-                      icon: Icons.trending_up,
-                      color: Colors.orange,
-                      descripcion: 'Gastos que varían mes a mes',
-                    ),
-                    const SizedBox(height: 12),
+                    if (_tienePermisoGastosVariables) ...[
+                      _buildCategoriaCard(
+                        tipo: TipoGasto.variable,
+                        icon: Icons.trending_up,
+                        color: Colors.orange,
+                        descripcion: 'Gastos que varían mes a mes',
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                     
-                    _buildCategoriaCard(
-                      tipo: TipoGasto.adicional,
-                      icon: Icons.add_circle,
-                      color: Colors.green,
-                      descripcion: 'Gastos extraordinarios o por período',
-                    ),
+                    if (_tienePermisoGastosAdicionales) ...[
+                      _buildCategoriaCard(
+                        tipo: TipoGasto.adicional,
+                        icon: Icons.add_circle,
+                        color: Colors.green,
+                        descripcion: 'Gastos extraordinarios o por período',
+                      ),
+                    ],
+                    
+                    // Mensaje si no tiene permisos
+                    if (!_tienePermisoVerTotal && !_tienePermisoPorcentajes && 
+                        !_tienePermisoGastosFijos && !_tienePermisoGastosVariables && 
+                        !_tienePermisoGastosAdicionales) ...[
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(32.0),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.lock,
+                                size: 64,
+                                color: Colors.grey,
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                'No tienes permisos para acceder a las funciones de gastos comunes',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -165,7 +283,7 @@ class _GastosComunesScreenState extends State<GastosComunesScreen> {
 
   Widget _buildResumenTotal() {
     return InkWell(
-      onTap: _mostrarDetalleGastosPorVivienda,
+      onTap: _tienePermisoVerTotal ? _mostrarDetalleGastosPorVivienda : null,
       borderRadius: BorderRadius.circular(16),
       child: Container(
         width: double.infinity,
@@ -349,7 +467,7 @@ class _GastosComunesScreenState extends State<GastosComunesScreen> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: InkWell(
-            onTap: _navegarAListasPorcentajes,
+            onTap: _tienePermisoPorcentajes ? _navegarAListasPorcentajes : null,
             borderRadius: BorderRadius.circular(12),
             child: Padding(
               padding: const EdgeInsets.all(16),

@@ -236,17 +236,17 @@ class _ConfiguracionPermisosComiteScreenState
       'categoria': 'Gestión de Multas',
     },
     // Gestión de Reclamos - Sub-funciones
-    'gestionTiposReclamos': {
-      'titulo': 'Gestión de Tipos de Reclamos',
-      'descripcion': 'Configurar tipos de reclamos disponibles',
-      'icono': Icons.category,
-      'color': Colors.deepOrange,
-      'categoria': 'Gestión de Reclamos',
-    },
     'gestionReclamos': {
       'titulo': 'Gestión de Reclamos',
       'descripcion': 'Administrar reclamos de residentes',
       'icono': Icons.report_problem,
+      'color': Colors.deepOrange,
+      'categoria': 'Gestión de Reclamos',
+    },
+    'gestionTiposReclamos': {
+      'titulo': 'Gestión de Tipos de Reclamos',
+      'descripcion': 'Configurar tipos de reclamos disponibles',
+      'icono': Icons.category,
       'color': Colors.deepOrange,
       'categoria': 'Gestión de Reclamos',
     },

@@ -178,38 +178,52 @@ class _ConfiguracionPermisosTrabajadorScreenState
       'categoria': 'Gestión de Espacios Comunes',
     },
     // Gestión de Gastos Comunes - Sub-funciones
-    'configuracionGastosComunes': {
-      'titulo': 'Configuración de Gastos Comunes',
-      'descripcion': 'Configurar parámetros de gastos comunes',
-      'icono': Icons.settings,
-      'color': Colors.amber,
-      'categoria': 'Gestión de Gastos Comunes',
-    },
-    'gestionGastosComunes': {
-      'titulo': 'Gestión de Gastos Comunes',
-      'descripcion': 'Administrar gastos comunes del condominio',
+    'verTotalGastos': {
+      'titulo': 'Ver Total de Gastos',
+      'descripcion': 'Visualizar el total de gastos comunes',
       'icono': Icons.account_balance_wallet,
       'color': Colors.amber,
       'categoria': 'Gestión de Gastos Comunes',
     },
-    'historialGastosComunes': {
-      'titulo': 'Historial de Gastos Comunes',
-      'descripcion': 'Ver historial de gastos comunes',
-      'icono': Icons.history,
+    'porcentajesPorResidentes': {
+      'titulo': 'Porcentajes por Residentes',
+      'descripcion': 'Gestionar porcentajes de gastos por residente',
+      'icono': Icons.pie_chart,
+      'color': Colors.amber,
+      'categoria': 'Gestión de Gastos Comunes',
+    },
+    'gastosFijos': {
+      'titulo': 'Gastos Fijos',
+      'descripcion': 'Administrar gastos fijos del condominio',
+      'icono': Icons.attach_money,
+      'color': Colors.amber,
+      'categoria': 'Gestión de Gastos Comunes',
+    },
+    'gastosVariables': {
+      'titulo': 'Gastos Variables',
+      'descripcion': 'Administrar gastos variables del condominio',
+      'icono': Icons.trending_up,
+      'color': Colors.amber,
+      'categoria': 'Gestión de Gastos Comunes',
+    },
+    'gastosAdicionales': {
+      'titulo': 'Gastos Adicionales',
+      'descripcion': 'Gestionar gastos adicionales extraordinarios',
+      'icono': Icons.add_circle,
       'color': Colors.amber,
       'categoria': 'Gestión de Gastos Comunes',
     },
     // Gestión de Multas - Sub-funciones
-    'configuracionMultas': {
-      'titulo': 'Configuración de Multas',
-      'descripcion': 'Configurar tipos y parámetros de multas',
-      'icono': Icons.settings,
+    'crearMulta': {
+      'titulo': 'Crear Multa',
+      'descripcion': 'Crear nuevas multas para residentes',
+      'icono': Icons.add,
       'color': Colors.red,
       'categoria': 'Gestión de Multas',
     },
-    'gestionMultas': {
-      'titulo': 'Gestión de Multas',
-      'descripcion': 'Administrar multas del condominio',
+    'gestionadorMultas': {
+      'titulo': 'Gestionador de Multas',
+      'descripcion': 'Administrar multas existentes',
       'icono': Icons.gavel,
       'color': Colors.red,
       'categoria': 'Gestión de Multas',
@@ -222,13 +236,6 @@ class _ConfiguracionPermisosTrabajadorScreenState
       'categoria': 'Gestión de Multas',
     },
     // Gestión de Reclamos - Sub-funciones
-    'configuracionReclamos': {
-      'titulo': 'Configuración de Reclamos',
-      'descripcion': 'Configurar tipos y parámetros de reclamos',
-      'icono': Icons.settings,
-      'color': Colors.deepOrange,
-      'categoria': 'Gestión de Reclamos',
-    },
     'gestionReclamos': {
       'titulo': 'Gestión de Reclamos',
       'descripcion': 'Administrar reclamos de residentes',
@@ -236,10 +243,10 @@ class _ConfiguracionPermisosTrabajadorScreenState
       'color': Colors.deepOrange,
       'categoria': 'Gestión de Reclamos',
     },
-    'historialReclamos': {
-      'titulo': 'Historial de Reclamos',
-      'descripcion': 'Ver historial de reclamos procesados',
-      'icono': Icons.history,
+    'gestionTiposReclamos': {
+      'titulo': 'Gestión de Tipos de Reclamos',
+      'descripcion': 'Configurar tipos de reclamos disponibles',
+      'icono': Icons.category,
       'color': Colors.deepOrange,
       'categoria': 'Gestión de Reclamos',
     },
