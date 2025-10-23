@@ -864,4 +864,66 @@ class FirestoreService {
     }
   }
 
+  // Obtener todos los trabajadores de un condominio
+  Future<List<TrabajadorModel>> obtenerTrabajadoresCondominio(
+    String condominioId,
+  ) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection(condominioId)
+          .doc('usuarios')
+          .collection('trabajadores')
+          .get();
+
+      return querySnapshot.docs
+          .where((doc) => doc.id != '_placeholder') // Filtrar placeholder
+          .map((doc) {
+            try {
+              return TrabajadorModel.fromFirestore(doc);
+            } catch (e) {
+              print('❌ Error al procesar trabajador ${doc.id}: $e');
+              print('Datos del documento: ${doc.data()}');
+              return null;
+            }
+          })
+          .where((trabajador) => trabajador != null)
+          .cast<TrabajadorModel>()
+          .toList();
+    } catch (e) {
+      debugPrint('Error al obtener trabajadores del condominio: $e');
+      throw Exception('Error al obtener trabajadores del condominio: $e');
+    }
+  }
+
+  // Obtener todos los miembros del comité de un condominio
+  Future<List<ComiteModel>> obtenerMiembrosComite(
+    String condominioId,
+  ) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection(condominioId)
+          .doc('usuarios')
+          .collection('comite')
+          .get();
+
+      return querySnapshot.docs
+          .where((doc) => doc.id != '_placeholder') // Filtrar placeholder
+          .map((doc) {
+            try {
+              return ComiteModel.fromFirestore(doc);
+            } catch (e) {
+              print('❌ Error al procesar miembro del comité ${doc.id}: $e');
+              print('Datos del documento: ${doc.data()}');
+              return null;
+            }
+          })
+          .where((comite) => comite != null)
+          .cast<ComiteModel>()
+          .toList();
+    } catch (e) {
+      debugPrint('Error al obtener miembros del comité: $e');
+      throw Exception('Error al obtener miembros del comité: $e');
+    }
+  }
+
 }

@@ -1,89 +1,89 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:comunidad_activa/services/notification_service.dart';
 import 'package:flutter/material.dart';
-import '../../../models/user_model.dart';
-import '../../../models/mensaje_model.dart';
-import '../../../models/residente_model.dart';
-import '../../../models/trabajador_model.dart';
-import '../../../models/comite_model.dart';
-import '../../../services/mensaje_service.dart';
-import '../../../services/firestore_service.dart';
-import '../../../services/unread_messages_service.dart';
-import '../../../widgets/unread_messages_badge.dart';
-import '../../chat_screen.dart';
-import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../models/user_model.dart';
+import '../../models/mensaje_model.dart';
+import '../../models/residente_model.dart';
+import '../../models/trabajador_model.dart';
+import '../../models/comite_model.dart';
+import '../../services/firestore_service.dart';
+import '../../services/mensaje_service.dart';
+import '../../services/unread_messages_service.dart';
+import '../../services/notification_service.dart';
+import '../chat_screen.dart';
+import '../../widgets/unread_messages_badge.dart';
 
-class MensajesAdminScreen extends StatefulWidget {
+class MensajesTrabajadorScreen extends StatefulWidget {
   final UserModel currentUser;
 
-  const MensajesAdminScreen({super.key, required this.currentUser});
+  const MensajesTrabajadorScreen({
+    super.key,
+    required this.currentUser,
+  });
 
   @override
-  _MensajesAdminScreenState createState() => _MensajesAdminScreenState();
+  State<MensajesTrabajadorScreen> createState() => _MensajesTrabajadorScreenState();
 }
 
-class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
-  final MensajeService _mensajeService = MensajeService();
-  final NotificationService _notificationService = NotificationService();
-  final UnreadMessagesService _unreadService = UnreadMessagesService();
+class _MensajesTrabajadorScreenState extends State<MensajesTrabajadorScreen> {
   final FirestoreService _firestoreService = FirestoreService();
-  bool _comunicacionEntreResidentesHabilitada = false;
-  
-  // IDs de chats específicos
+  final MensajeService _mensajeService = MensajeService();
+  final UnreadMessagesService _unreadService = UnreadMessagesService();
+  final NotificationService _notificationService = NotificationService();
+
   String? _chatGrupalId;
   String? _chatConserjeriaId;
+  String? _chatAdministradorId;
 
   @override
   void initState() {
     super.initState();
-    _cargarConfiguraciones();
     _cargarChatsIds();
   }
 
   @override
   void dispose() {
-    _unreadService.dispose();
     super.dispose();
   }
 
   Future<void> _cargarChatsIds() async {
     try {
-      // Cargar ID del chat grupal
+      // Cargar chat grupal
       final chatGrupalId = await _mensajeService.crearOObtenerChatGrupal(
         condominioId: widget.currentUser.condominioId.toString(),
       );
-      
-      // Cargar ID del chat de conserjería
-      final chatConserjeriaId = await _mensajeService.crearOObtenerChatConserjeria(
+
+      // Cargar chat conserjería
+      final chatConserjeriaId = await _mensajeService.crearOObtenerChatPrivado(
         condominioId: widget.currentUser.condominioId.toString(),
-        residenteId: widget.currentUser.uid,
+        usuario1Id: widget.currentUser.uid,
+        usuario2Id: 'conserjeria',
+        tipo: 'trabajador-conserjeria',
       );
-      
+
+      // Cargar chat administrador
+      final administrador = await _firestoreService.getAdministradorData(
+        widget.currentUser.condominioId.toString(),
+      );
+
+      String? chatAdministradorId;
+      if (administrador != null) {
+        chatAdministradorId = await _mensajeService.crearOObtenerChatPrivado(
+          condominioId: widget.currentUser.condominioId.toString(),
+          usuario1Id: widget.currentUser.uid,
+          usuario2Id: administrador.uid,
+          tipo: 'admin-trabajador',
+        );
+      }
+
       if (mounted) {
         setState(() {
           _chatGrupalId = chatGrupalId;
           _chatConserjeriaId = chatConserjeriaId;
+          _chatAdministradorId = chatAdministradorId;
         });
       }
     } catch (e) {
       print('❌ Error al cargar IDs de chats: $e');
-    }
-  }
-
-  Future<void> _cargarConfiguraciones() async {
-    try {
-      final comunicacionHabilitada = await _mensajeService
-          .esComunicacionEntreResidentesHabilitada(
-            widget.currentUser.condominioId.toString(),
-          );
-
-      if (mounted) {
-        setState(() {
-          _comunicacionEntreResidentesHabilitada = comunicacionHabilitada;
-        });
-      }
-    } catch (e) {
-      print('❌ Error al cargar configuraciones: $e');
     }
   }
 
@@ -106,6 +106,10 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
             _buildChatConserjeriaCard(),
             const SizedBox(height: 4),
 
+            // Chat con Administrador
+            _buildChatAdministradorCard(),
+            const SizedBox(height: 4),
+
             // Historial de Chats
             _buildHistorialChats(),
           ],
@@ -120,17 +124,17 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
   }
 
   Widget _buildChatCondominioCard() {
-    if (_chatGrupalId == null) {
+    if (_chatGrupalId == null || _chatGrupalId!.isEmpty) {
       return const SizedBox.shrink();
     }
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Card(
-        elevation: 4,
+        elevation: 6,
         color: Colors.blue.shade50,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           side: BorderSide(color: Colors.blue.shade200, width: 2),
         ),
         child: UnreadMessagesListTile(
@@ -138,31 +142,39 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
           chatId: _chatGrupalId!,
           usuarioId: widget.currentUser.uid,
           unreadService: _unreadService,
-          contentPadding: const EdgeInsets.all(16),
           leading: Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.blue.shade600,
-              borderRadius: BorderRadius.circular(12),
+              gradient: LinearGradient(
+                colors: [Colors.blue.shade600, Colors.blue.shade800],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
             ),
-            child: const Icon(Icons.apartment, color: Colors.white, size: 28),
+            child: const Icon(
+              Icons.home,
+              color: Colors.white,
+              size: 32,
+            ),
           ),
           title: const Text(
             'Chat del Condominio',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           subtitle: const Text(
-            'Chat general con todos los residentes',
-            style: TextStyle(fontSize: 14),
+            'Conversación general del condominio',
+            style: TextStyle(fontSize: 14, color: Colors.grey),
           ),
-          onTap: () => _abrirChatCondominio(),
+          contentPadding: const EdgeInsets.all(20),
+          onTap: _abrirChatCondominio,
         ),
       ),
     );
   }
 
   Widget _buildChatConserjeriaCard() {
-    if (_chatConserjeriaId == null) {
+    if (_chatConserjeriaId == null || _chatConserjeriaId!.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -173,31 +185,81 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
         color: Colors.orange.shade50,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: Colors.orange.shade200, width: 2),
+          side: BorderSide(color: Colors.orange.shade200, width: 1),
         ),
         child: UnreadMessagesListTile(
           condominioId: widget.currentUser.condominioId.toString(),
           chatId: _chatConserjeriaId!,
           usuarioId: widget.currentUser.uid,
           unreadService: _unreadService,
-          contentPadding: const EdgeInsets.all(12),
           leading: Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.orange.shade600,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.security, color: Colors.white, size: 24),
+            child: const Icon(
+              Icons.support_agent,
+              color: Colors.white,
+              size: 28,
+            ),
           ),
           title: const Text(
             'Conserjería',
-            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           subtitle: const Text(
-            'Chat con el personal de conserjería',
-            style: TextStyle(fontSize: 13),
+            'Chat con el servicio de conserjería',
+            style: TextStyle(fontSize: 14, color: Colors.grey),
           ),
-          onTap: () => _abrirChatConserjeria(),
+          contentPadding: const EdgeInsets.all(16),
+          onTap: _abrirChatConserjeria,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChatAdministradorCard() {
+    if (_chatAdministradorId == null || _chatAdministradorId!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Card(
+        elevation: 4,
+        color: Colors.red.shade50,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: Colors.red.shade200, width: 1),
+        ),
+        child: UnreadMessagesListTile(
+          condominioId: widget.currentUser.condominioId.toString(),
+          chatId: _chatAdministradorId!,
+          usuarioId: widget.currentUser.uid,
+          unreadService: _unreadService,
+          leading: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.red.shade600,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.admin_panel_settings,
+              color: Colors.white,
+              size: 28,
+            ),
+          ),
+          title: const Text(
+            'Administrador',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          subtitle: const Text(
+            'Chat con el administrador del condominio',
+            style: TextStyle(fontSize: 14, color: Colors.grey),
+          ),
+          contentPadding: const EdgeInsets.all(16),
+          onTap: _abrirChatAdministrador,
         ),
       ),
     );
@@ -215,14 +277,14 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
         chatId: chatId,
         usuarioId: widget.currentUser.uid,
         nombreUsuario: widget.currentUser.nombre,
-        tipoUsuario: 'administrador',
+        tipoUsuario: 'trabajador',
       );
 
-      // ✅ NUEVO: Borrar notificaciones de mensajes del condominio para este chat
-        await _notificationService.borrarNotificacionesMensajeCondominio(
-          condominioId: widget.currentUser.condominioId.toString(),
-          chatId: chatId,
-        );
+      // Borrar notificaciones de mensajes del condominio para este chat
+      await _notificationService.borrarNotificacionesMensajeCondominio(
+        condominioId: widget.currentUser.condominioId.toString(),
+        chatId: chatId,
+      );
 
       if (mounted) {
         Navigator.push(
@@ -255,7 +317,7 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
         condominioId: widget.currentUser.condominioId.toString(),
         usuario1Id: widget.currentUser.uid,
         usuario2Id: 'conserjeria',
-        tipo: 'admin-conserjeria',
+        tipo: 'trabajador-conserjeria',
       );
 
       // Marcar mensajes como leídos
@@ -264,10 +326,10 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
         chatId: chatId,
         usuarioId: widget.currentUser.uid,
         nombreUsuario: widget.currentUser.nombre,
-        tipoUsuario: 'administrador',
+        tipoUsuario: 'trabajador',
       );
 
-      // ✅ NUEVO: Borrar notificaciones de mensajes del condominio para este chat
+      // Borrar notificaciones de mensajes del condominio para este chat
       await _notificationService.borrarNotificacionesMensajeCondominio(
         condominioId: widget.currentUser.condominioId.toString(),
         chatId: chatId,
@@ -298,13 +360,30 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
     }
   }
 
-  void _abrirChatPrivado(String residenteId, String nombreResidente) async {
+  void _abrirChatAdministrador() async {
     try {
+      // Obtener datos del administrador
+      final admin = await _firestoreService.getAdministradorData(
+        widget.currentUser.condominioId.toString(),
+      );
+
+      if (admin == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No se pudo encontrar al administrador'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
       final chatId = await _mensajeService.crearOObtenerChatPrivado(
         condominioId: widget.currentUser.condominioId.toString(),
         usuario1Id: widget.currentUser.uid,
-        usuario2Id: residenteId,
-        tipo: 'admin-residente',
+        usuario2Id: admin.uid,
+        tipo: 'admin-trabajador',
       );
 
       // Marcar mensajes como leídos
@@ -313,10 +392,209 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
         chatId: chatId,
         usuarioId: widget.currentUser.uid,
         nombreUsuario: widget.currentUser.nombre,
-        tipoUsuario: 'administrador',
+        tipoUsuario: 'trabajador',
       );
 
-      // ✅ NUEVO: Borrar notificaciones de mensajes del condominio para este chat
+      // Borrar notificaciones de mensajes del condominio para este chat
+      await _notificationService.borrarNotificacionesMensajeCondominio(
+        condominioId: widget.currentUser.condominioId.toString(),
+        chatId: chatId,
+      );
+
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatScreen(
+              currentUser: widget.currentUser,
+              chatId: chatId,
+              nombreChat: admin.nombre,
+              esGrupal: false,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al abrir chat con administrador: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Método para abrir chat con trabajador
+  Future<void> _abrirChatTrabajador(TrabajadorModel trabajador) async {
+    try {
+      final chatId = await _mensajeService.crearOObtenerChatPrivado(
+        condominioId: widget.currentUser.condominioId.toString(),
+        usuario1Id: widget.currentUser.uid,
+        usuario2Id: trabajador.uid,
+        tipo: 'trabajador-trabajador',
+      );
+
+      // Marcar mensajes como leídos
+      await _unreadService.markMessagesAsRead(
+        condominioId: widget.currentUser.condominioId.toString(),
+        chatId: chatId,
+        usuarioId: widget.currentUser.uid,
+        nombreUsuario: widget.currentUser.nombre,
+        tipoUsuario: 'trabajador',
+      );
+
+      // Borrar notificaciones de mensajes del condominio para este chat
+      await _notificationService.borrarNotificacionesMensajeCondominio(
+        condominioId: widget.currentUser.condominioId.toString(),
+        chatId: chatId,
+      );
+
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatScreen(
+              currentUser: widget.currentUser,
+              chatId: chatId,
+              nombreChat: trabajador.nombre,
+              esGrupal: false,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al abrir chat con trabajador: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Método para abrir chat con comité
+  Future<void> _abrirChatComite(ComiteModel comite) async {
+    try {
+      final chatId = await _mensajeService.crearOObtenerChatPrivado(
+        condominioId: widget.currentUser.condominioId.toString(),
+        usuario1Id: widget.currentUser.uid,
+        usuario2Id: comite.uid,
+        tipo: 'trabajador-comite',
+      );
+
+      // Marcar mensajes como leídos
+      await _unreadService.markMessagesAsRead(
+        condominioId: widget.currentUser.condominioId.toString(),
+        chatId: chatId,
+        usuarioId: widget.currentUser.uid,
+        nombreUsuario: widget.currentUser.nombre,
+        tipoUsuario: 'trabajador',
+      );
+
+      // Borrar notificaciones de mensajes del condominio para este chat
+      await _notificationService.borrarNotificacionesMensajeCondominio(
+        condominioId: widget.currentUser.condominioId.toString(),
+        chatId: chatId,
+      );
+
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatScreen(
+              currentUser: widget.currentUser,
+              chatId: chatId,
+              nombreChat: comite.nombre,
+              esGrupal: false,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al abrir chat con miembro del comité: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Método para abrir chat privado con residente
+  Future<void> _abrirChatPrivadoConResidente(ResidenteModel residente) async {
+    try {
+      final chatId = await _mensajeService.crearOObtenerChatPrivado(
+        condominioId: widget.currentUser.condominioId.toString(),
+        usuario1Id: widget.currentUser.uid,
+        usuario2Id: residente.uid,
+        tipo: 'trabajador-residente',
+      );
+
+      // Marcar mensajes como leídos
+      await _unreadService.markMessagesAsRead(
+        condominioId: widget.currentUser.condominioId.toString(),
+        chatId: chatId,
+        usuarioId: widget.currentUser.uid,
+        nombreUsuario: widget.currentUser.nombre,
+        tipoUsuario: 'trabajador',
+      );
+
+      // Borrar notificaciones de mensajes del condominio para este chat
+      await _notificationService.borrarNotificacionesMensajeCondominio(
+        condominioId: widget.currentUser.condominioId.toString(),
+        chatId: chatId,
+      );
+
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatScreen(
+              currentUser: widget.currentUser,
+              chatId: chatId,
+              nombreChat: residente.nombre,
+              esGrupal: false,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al abrir chat con residente: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _abrirChatPrivado(String residenteId, String nombreResidente) async {
+    try {
+      final chatId = await _mensajeService.crearOObtenerChatPrivado(
+        condominioId: widget.currentUser.condominioId.toString(),
+        usuario1Id: widget.currentUser.uid,
+        usuario2Id: residenteId,
+        tipo: 'trabajador-residente',
+      );
+
+      // Marcar mensajes como leídos
+      await _unreadService.markMessagesAsRead(
+        condominioId: widget.currentUser.condominioId.toString(),
+        chatId: chatId,
+        usuarioId: widget.currentUser.uid,
+        nombreUsuario: widget.currentUser.nombre,
+        tipoUsuario: 'trabajador',
+      );
+
+      // Borrar notificaciones de mensajes del condominio para este chat
       await _notificationService.borrarNotificacionesMensajeCondominio(
         condominioId: widget.currentUser.condominioId.toString(),
         chatId: chatId,
@@ -347,105 +625,8 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
     }
   }
 
-  void _abrirChatTrabajador(String trabajadorId, String nombreTrabajador) async {
-    try {
-      final chatId = await _mensajeService.crearOObtenerChatPrivado(
-        condominioId: widget.currentUser.condominioId.toString(),
-        usuario1Id: widget.currentUser.uid,
-        usuario2Id: trabajadorId,
-        tipo: 'admin-trabajador',
-      );
-
-      // Marcar mensajes como leídos
-      await _unreadService.markMessagesAsRead(
-        condominioId: widget.currentUser.condominioId.toString(),
-        chatId: chatId,
-        usuarioId: widget.currentUser.uid,
-        nombreUsuario: widget.currentUser.nombre,
-        tipoUsuario: 'administrador',
-      );
-
-      // ✅ NUEVO: Borrar notificaciones de mensajes del condominio para este chat
-      await _notificationService.borrarNotificacionesMensajeCondominio(
-        condominioId: widget.currentUser.condominioId.toString(),
-        chatId: chatId,
-      );
-
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ChatScreen(
-              currentUser: widget.currentUser,
-              chatId: chatId,
-              nombreChat: nombreTrabajador,
-              esGrupal: false,
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al abrir chat: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  void _abrirChatComite(String comiteId, String nombreComite) async {
-    try {
-      final chatId = await _mensajeService.crearOObtenerChatPrivado(
-        condominioId: widget.currentUser.condominioId.toString(),
-        usuario1Id: widget.currentUser.uid,
-        usuario2Id: comiteId,
-        tipo: 'admin-comite',
-      );
-
-      // Marcar mensajes como leídos
-      await _unreadService.markMessagesAsRead(
-        condominioId: widget.currentUser.condominioId.toString(),
-        chatId: chatId,
-        usuarioId: widget.currentUser.uid,
-        nombreUsuario: widget.currentUser.nombre,
-        tipoUsuario: 'administrador',
-      );
-
-      // ✅ NUEVO: Borrar notificaciones de mensajes del condominio para este chat
-      await _notificationService.borrarNotificacionesMensajeCondominio(
-        condominioId: widget.currentUser.condominioId.toString(),
-        chatId: chatId,
-      );
-
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ChatScreen(
-              currentUser: widget.currentUser,
-              chatId: chatId,
-              nombreChat: nombreComite,
-              esGrupal: false,
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al abrir chat: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  void _mostrarModalBuscarUsuarios() {
+  // Método para mostrar modal unificado de búsqueda
+  Future<void> _mostrarModalBuscarUsuarios() async {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -454,15 +635,15 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
         currentUser: widget.currentUser,
         onTrabajadorSeleccionado: (trabajador) {
           Navigator.pop(context);
-          _abrirChatTrabajador(trabajador.uid, trabajador.nombre);
+          _abrirChatTrabajador(trabajador);
         },
         onResidenteSeleccionado: (residente) {
           Navigator.pop(context);
-          _abrirChatPrivado(residente.uid, residente.nombre);
+          _abrirChatPrivadoConResidente(residente);
         },
         onComiteSeleccionado: (comite) {
           Navigator.pop(context);
-          _abrirChatComite(comite.uid, comite.nombre);
+          _abrirChatComite(comite);
         },
       ),
     );
@@ -501,9 +682,13 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
 
             final chats = snapshot.data ?? [];
             
-            // Filtrar chats para ocultar grupal (está anclado)
+            // Filtrar chats para ocultar grupal y administrador (están anclados)
             final filteredChats = chats.where((chat) => 
-              chat.tipo != 'grupal'
+              chat.tipo != 'grupal' && 
+              chat.tipo != 'administrador' &&
+              chat.tipo != 'admin-trabajador' &&
+              chat.tipo != 'trabajador-admin' &&
+              chat.tipo != 'admin-conserjeria'
             ).toList();
             
             if (filteredChats.isEmpty) {
@@ -568,43 +753,62 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
   }
 
   Widget _buildChatTitle(MensajeModel chat) {
+    print('🔍 [DEBUG] _buildChatTitle - Iniciando');
+    print('🔍 [DEBUG] chat.tipo: ${chat.tipo}');
+    print('🔍 [DEBUG] chat.participantes: ${chat.participantes}');
+    print('🔍 [DEBUG] widget.currentUser.uid: ${widget.currentUser.uid}');
+    
     switch (chat.tipo) {
       case 'grupal':
+        print('🔍 [DEBUG] ✅ Chat grupal detectado');
         return const Text('Chat del Condominio');
       case 'conserjeria':
       case 'admin-conserjeria':
+        print('🔍 [DEBUG] ✅ Chat conserjería detectado');
         return const Text('Conserjería');
       case 'privado':
       case 'trabajador-residente':
       case 'admin-trabajador':
       case 'residente-trabajador':
       case 'trabajador-admin':
-      case 'admin-residente':
-      case 'residente-admin':
+        print('🔍 [DEBUG] ✅ Chat privado detectado');
         // Obtener el nombre del otro participante
         final otherUserId = chat.participantes.firstWhere(
           (id) => id != widget.currentUser.uid,
           orElse: () => 'Usuario desconocido',
         );
         
+        print('🔍 [DEBUG] otherUserId encontrado: $otherUserId');
+        
         return FutureBuilder<String>(
           future: _obtenerNombreUsuario(otherUserId),
           builder: (context, snapshot) {
+            print('🔍 [DEBUG] FutureBuilder - connectionState: ${snapshot.connectionState}');
+            print('🔍 [DEBUG] FutureBuilder - hasError: ${snapshot.hasError}');
+            print('🔍 [DEBUG] FutureBuilder - data: ${snapshot.data}');
+            
             if (snapshot.connectionState == ConnectionState.waiting) {
+              print('🔍 [DEBUG] ⏳ Mostrando "Cargando..."');
               return const Text('Cargando...');
             }
             if (snapshot.hasError) {
+              print('🔍 [DEBUG] ❌ Error en FutureBuilder: ${snapshot.error}');
               return Text('Chat con $otherUserId');
             }
-            return Text(snapshot.data ?? 'Usuario desconocido');
+            final resultado = snapshot.data ?? 'Usuario desconocido';
+            print('🔍 [DEBUG] ✅ Resultado final: $resultado');
+            return Text(resultado);
           },
         );
       default:
+        print('🔍 [DEBUG] ⚠️ Tipo de chat desconocido: ${chat.tipo}');
         // Para tipos desconocidos, tratarlos como chats privados
         final otherUserId = chat.participantes.firstWhere(
           (id) => id != widget.currentUser.uid,
           orElse: () => 'Usuario desconocido',
         );
+        
+        print('🔍 [DEBUG] Tratando tipo desconocido como privado - otherUserId: $otherUserId');
         
         return FutureBuilder<String>(
           future: _obtenerNombreUsuario(otherUserId),
@@ -618,69 +822,6 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
             return Text(snapshot.data ?? 'Usuario desconocido');
           },
         );
-    }
-  }
-
-  // Método para obtener información del usuario
-  Future<String> _obtenerNombreUsuario(String usuarioId) async {
-    try {
-      final condominioId = widget.currentUser.condominioId.toString();
-      
-      // Verificar si es el administrador
-      final adminDoc = await FirebaseFirestore.instance
-          .collection(condominioId)
-          .doc('administrador')
-          .get();
-
-      if (adminDoc.exists) {
-        final adminData = adminDoc.data() as Map<String, dynamic>;
-        if (adminData['uid'] == usuarioId) {
-          return adminData['nombre'] ?? 'Administrador';
-        }
-      }
-
-      // Verificar si es un trabajador
-      final trabajadoresSnapshot = await FirebaseFirestore.instance
-          .collection(condominioId)
-          .doc('usuarios')
-          .collection('trabajadores')
-          .where('uid', isEqualTo: usuarioId)
-          .get();
-
-      if (trabajadoresSnapshot.docs.isNotEmpty) {
-        final trabajadorData = trabajadoresSnapshot.docs.first.data();
-        return trabajadorData['nombre'] ?? 'Trabajador';
-      }
-
-      // Verificar si es un miembro del comité
-      final comiteSnapshot = await FirebaseFirestore.instance
-          .collection(condominioId)
-          .doc('usuarios')
-          .collection('comite')
-          .where('uid', isEqualTo: usuarioId)
-          .get();
-
-      if (comiteSnapshot.docs.isNotEmpty) {
-        final comiteData = comiteSnapshot.docs.first.data();
-        return comiteData['nombre'] ?? 'Comité';
-      }
-
-      // Verificar si es un residente
-      final residentesSnapshot = await FirebaseFirestore.instance
-          .collection(condominioId)
-          .doc('usuarios')
-          .collection('residentes')
-          .where('uid', isEqualTo: usuarioId)
-          .get();
-
-      if (residentesSnapshot.docs.isNotEmpty) {
-        final residenteData = residentesSnapshot.docs.first.data();
-        return residenteData['nombre'] ?? 'Residente';
-      }
-
-      return 'Usuario desconocido';
-    } catch (e) {
-      return 'Error al cargar';
     }
   }
 
@@ -696,9 +837,100 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
           (id) => id != widget.currentUser.uid,
           orElse: () => 'Usuario desconocido',
         );
-        return 'Chat con $otherUserId';
+        // Usar FutureBuilder para obtener el nombre del usuario
+        return otherUserId; // Temporalmente devolver el ID, luego lo cambiaremos
       default:
         return 'Chat';
+    }
+  }
+
+  // Método para obtener información del usuario
+  Future<String> _obtenerNombreUsuario(String usuarioId) async {
+    try {
+      final condominioId = widget.currentUser.condominioId.toString();
+      
+      print('🔍 [DEBUG] _obtenerNombreUsuario - Iniciando búsqueda');
+      print('🔍 [DEBUG] usuarioId: $usuarioId');
+      print('🔍 [DEBUG] condominioId: $condominioId');
+      
+      // Verificar si es el administrador
+      print('🔍 [DEBUG] Verificando administrador...');
+      final adminDoc = await FirebaseFirestore.instance
+          .collection(condominioId)
+          .doc('administrador')
+          .get();
+
+      print('🔍 [DEBUG] adminDoc.exists: ${adminDoc.exists}');
+      if (adminDoc.exists) {
+        final adminData = adminDoc.data() as Map<String, dynamic>;
+        print('🔍 [DEBUG] adminData: $adminData');
+        print('🔍 [DEBUG] adminData[uid]: ${adminData['uid']}');
+        if (adminData['uid'] == usuarioId) {
+          final nombre = adminData['nombre'] ?? 'Administrador';
+          print('🔍 [DEBUG] ✅ Encontrado como administrador: $nombre');
+          return nombre;
+        }
+      }
+
+      // Verificar si es un trabajador
+      print('🔍 [DEBUG] Verificando trabajadores...');
+      final trabajadoresSnapshot = await FirebaseFirestore.instance
+          .collection(condominioId)
+          .doc('usuarios')
+          .collection('trabajadores')
+          .where('uid', isEqualTo: usuarioId)
+          .get();
+
+      print('🔍 [DEBUG] trabajadoresSnapshot.docs.length: ${trabajadoresSnapshot.docs.length}');
+      if (trabajadoresSnapshot.docs.isNotEmpty) {
+        final trabajadorData = trabajadoresSnapshot.docs.first.data();
+        print('🔍 [DEBUG] trabajadorData: $trabajadorData');
+        final nombre = trabajadorData['nombre'] ?? 'Trabajador';
+        print('🔍 [DEBUG] ✅ Encontrado como trabajador: $nombre');
+        return nombre;
+      }
+
+      // Verificar si es un miembro del comité
+      print('🔍 [DEBUG] Verificando comité...');
+      final comiteSnapshot = await FirebaseFirestore.instance
+          .collection(condominioId)
+          .doc('usuarios')
+          .collection('comite')
+          .where('uid', isEqualTo: usuarioId)
+          .get();
+
+      print('🔍 [DEBUG] comiteSnapshot.docs.length: ${comiteSnapshot.docs.length}');
+      if (comiteSnapshot.docs.isNotEmpty) {
+        final comiteData = comiteSnapshot.docs.first.data();
+        print('🔍 [DEBUG] comiteData: $comiteData');
+        final nombre = comiteData['nombre'] ?? 'Comité';
+        print('🔍 [DEBUG] ✅ Encontrado como comité: $nombre');
+        return nombre;
+      }
+
+      // Verificar si es un residente
+      print('🔍 [DEBUG] Verificando residentes...');
+      final residentesSnapshot = await FirebaseFirestore.instance
+          .collection(condominioId)
+          .doc('usuarios')
+          .collection('residentes')
+          .where('uid', isEqualTo: usuarioId)
+          .get();
+
+      print('🔍 [DEBUG] residentesSnapshot.docs.length: ${residentesSnapshot.docs.length}');
+      if (residentesSnapshot.docs.isNotEmpty) {
+        final residenteData = residentesSnapshot.docs.first.data();
+        print('🔍 [DEBUG] residenteData: $residenteData');
+        final nombre = residenteData['nombre'] ?? 'Residente';
+        print('🔍 [DEBUG] ✅ Encontrado como residente: $nombre');
+        return nombre;
+      }
+
+      print('🔍 [DEBUG] ❌ Usuario no encontrado en ninguna colección');
+      return 'Usuario desconocido';
+    } catch (e) {
+      print('🔍 [DEBUG] ❌ Error en _obtenerNombreUsuario: $e');
+      return 'Error al cargar';
     }
   }
 
@@ -764,16 +996,23 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
   }
 
   Future<void> _abrirChatConTitulo(MensajeModel chat) async {
+    print('🔍 [DEBUG] _abrirChatConTitulo - Iniciando');
+    print('🔍 [DEBUG] chat.id: ${chat.id}');
+    print('🔍 [DEBUG] chat.tipo: ${chat.tipo}');
+    print('🔍 [DEBUG] chat.participantes: ${chat.participantes}');
+    
     String nombreChat;
     bool esGrupal = false;
     
     switch (chat.tipo) {
       case 'grupal':
+        print('🔍 [DEBUG] ✅ Chat grupal detectado');
         nombreChat = 'Chat del Condominio';
         esGrupal = true;
         break;
       case 'conserjeria':
       case 'admin-conserjeria':
+        print('🔍 [DEBUG] ✅ Chat conserjería detectado');
         nombreChat = 'Conserjería';
         break;
       case 'privado':
@@ -781,33 +1020,41 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
       case 'admin-trabajador':
       case 'residente-trabajador':
       case 'trabajador-admin':
-      case 'admin-residente':
-      case 'residente-admin':
+        print('🔍 [DEBUG] ✅ Chat privado detectado');
         // Obtener el nombre del otro participante
         final otherUserId = chat.participantes.firstWhere(
           (id) => id != widget.currentUser.uid,
           orElse: () => 'Usuario desconocido',
         );
         
-        // Obtener el nombre real del usuario
+        print('🔍 [DEBUG] otherUserId encontrado: $otherUserId');
+        print('🔍 [DEBUG] Llamando a _obtenerNombreUsuario...');
+        
         nombreChat = await _obtenerNombreUsuario(otherUserId);
+        print('🔍 [DEBUG] Nombre obtenido: $nombreChat');
         break;
       default:
+        print('🔍 [DEBUG] ⚠️ Tipo de chat desconocido: ${chat.tipo}');
         // Para tipos desconocidos, tratarlos como chats privados
         final otherUserId = chat.participantes.firstWhere(
           (id) => id != widget.currentUser.uid,
           orElse: () => 'Usuario desconocido',
         );
+        
+        print('🔍 [DEBUG] Tratando tipo desconocido como privado - otherUserId: $otherUserId');
         nombreChat = await _obtenerNombreUsuario(otherUserId);
+        print('🔍 [DEBUG] Nombre obtenido para tipo desconocido: $nombreChat');
         break;
     }
+    
+    print('🔍 [DEBUG] Navegando a ChatScreen con nombre: $nombreChat');
     
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ChatScreen(
-          currentUser: widget.currentUser,
           chatId: chat.id,
+          currentUser: widget.currentUser,
           nombreChat: nombreChat,
           esGrupal: esGrupal,
         ),
@@ -818,69 +1065,75 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
 
 class _ModalBuscarUsuarios extends StatefulWidget {
   final UserModel currentUser;
-  final Function(TrabajadorModel) onTrabajadorSeleccionado;
-  final Function(ResidenteModel) onResidenteSeleccionado;
-  final Function(ComiteModel) onComiteSeleccionado;
+  final Function(TrabajadorModel)? onTrabajadorSeleccionado;
+  final Function(ResidenteModel)? onResidenteSeleccionado;
+  final Function(ComiteModel)? onComiteSeleccionado;
 
   const _ModalBuscarUsuarios({
     required this.currentUser,
-    required this.onTrabajadorSeleccionado,
-    required this.onResidenteSeleccionado,
-    required this.onComiteSeleccionado,
+    this.onTrabajadorSeleccionado,
+    this.onResidenteSeleccionado,
+    this.onComiteSeleccionado,
   });
 
   @override
   _ModalBuscarUsuariosState createState() => _ModalBuscarUsuariosState();
 }
 
-class _ModalBuscarUsuariosState extends State<_ModalBuscarUsuarios> {
+class _ModalBuscarUsuariosState extends State<_ModalBuscarUsuarios>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
   final FirestoreService _firestoreService = FirestoreService();
   
   List<TrabajadorModel> _trabajadores = [];
-  List<ResidenteModel> _residentes = [];
-  List<ComiteModel> _comite = [];
-  
   List<TrabajadorModel> _trabajadoresFiltrados = [];
+  List<ResidenteModel> _residentes = [];
   List<ResidenteModel> _residentesFiltrados = [];
+  List<ComiteModel> _comite = [];
   List<ComiteModel> _comiteFiltrado = [];
   
   bool _isLoading = true;
-  int _selectedTab = 0; // 0: Trabajadores, 1: Residentes, 2: Comité
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
     _cargarDatos();
-    _searchController.addListener(_filtrarDatos);
+    _searchController.addListener(_filtrarUsuarios);
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
   Future<void> _cargarDatos() async {
     try {
-      final condominioId = widget.currentUser.condominioId.toString();
-      
-      final futures = await Future.wait([
-        _firestoreService.obtenerTrabajadoresCondominio(condominioId),
-        _firestoreService.obtenerResidentesCondominio(condominioId),
-        _firestoreService.obtenerMiembrosComite(condominioId),
+      final futures = Future.wait([
+        _firestoreService.obtenerTrabajadoresCondominio(
+          widget.currentUser.condominioId.toString(),
+        ),
+        _firestoreService.obtenerResidentesCondominio(
+          widget.currentUser.condominioId.toString(),
+        ),
+        _firestoreService.obtenerMiembrosComite(
+          widget.currentUser.condominioId.toString(),
+        ),
       ]);
+
+      final results = await futures;
 
       if (mounted) {
         setState(() {
-          _trabajadores = futures[0] as List<TrabajadorModel>;
-          _residentes = futures[1] as List<ResidenteModel>;
-          _comite = futures[2] as List<ComiteModel>;
-          
+          _trabajadores = results[0] as List<TrabajadorModel>;
           _trabajadoresFiltrados = _trabajadores;
+          _residentes = results[1] as List<ResidenteModel>;
           _residentesFiltrados = _residentes;
+          _comite = results[2] as List<ComiteModel>;
           _comiteFiltrado = _comite;
-          
           _isLoading = false;
         });
       }
@@ -893,13 +1146,13 @@ class _ModalBuscarUsuariosState extends State<_ModalBuscarUsuarios> {
     }
   }
 
-  void _filtrarDatos() {
+  void _filtrarUsuarios() {
     final query = _searchController.text.toLowerCase();
     setState(() {
       _trabajadoresFiltrados = _trabajadores.where((trabajador) {
         final nombre = trabajador.nombre.toLowerCase();
-        final tipoTrabajador = trabajador.tipoTrabajador.toLowerCase();
-        return nombre.contains(query) || tipoTrabajador.contains(query);
+        final tipo = trabajador.tipoTrabajador.toLowerCase();
+        return nombre.contains(query) || tipo.contains(query);
       }).toList();
 
       _residentesFiltrados = _residentes.where((residente) {
@@ -908,10 +1161,9 @@ class _ModalBuscarUsuariosState extends State<_ModalBuscarUsuarios> {
         return nombre.contains(query) || vivienda.contains(query);
       }).toList();
 
-      _comiteFiltrado = _comite.where((comite) {
-        final nombre = comite.nombre.toLowerCase();
-        final email = comite.email.toLowerCase();
-        return nombre.contains(query) || email.contains(query);
+      _comiteFiltrado = _comite.where((miembro) {
+        final nombre = miembro.nombre.toLowerCase();
+        return nombre.contains(query);
       }).toList();
     });
   }
@@ -937,63 +1189,30 @@ class _ModalBuscarUsuariosState extends State<_ModalBuscarUsuarios> {
     }
   }
 
-  Widget _buildTabButton(String title, int index, IconData icon) {
-    final isSelected = _selectedTab == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _selectedTab = index),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.blue.shade600 : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                color: isSelected ? Colors.white : Colors.grey.shade600,
-                size: 18,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                title,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.grey.shade600,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildListContent() {
+  Widget _buildTrabajadoresList() {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    List<Widget> items = [];
-    
-    switch (_selectedTab) {
-      case 0: // Trabajadores
-        if (_trabajadoresFiltrados.isEmpty) {
-          return const Center(
-            child: Text(
-              'No se encontraron trabajadores',
-              style: TextStyle(color: Colors.grey),
-            ),
-          );
-        }
-        items = _trabajadoresFiltrados.map((trabajador) => Card(
+    if (_trabajadoresFiltrados.isEmpty) {
+      return const Center(
+        child: Text(
+          'No se encontraron trabajadores',
+          style: TextStyle(color: Colors.grey),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: _trabajadoresFiltrados.length,
+      itemBuilder: (context, index) {
+        final trabajador = _trabajadoresFiltrados[index];
+        return Card(
           margin: const EdgeInsets.symmetric(vertical: 4),
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: Colors.purple.shade600,
+              backgroundColor: Colors.blue.shade600,
               child: Text(
                 trabajador.nombre.isNotEmpty
                     ? trabajador.nombre[0].toUpperCase()
@@ -1010,21 +1229,33 @@ class _ModalBuscarUsuariosState extends State<_ModalBuscarUsuarios> {
               style: TextStyle(color: Colors.grey[600]),
             ),
             trailing: const Icon(Icons.chat),
-            onTap: () => widget.onTrabajadorSeleccionado(trabajador),
+            onTap: () => widget.onTrabajadorSeleccionado?.call(trabajador),
           ),
-        )).toList();
-        break;
-        
-      case 1: // Residentes
-        if (_residentesFiltrados.isEmpty) {
-          return const Center(
-            child: Text(
-              'No se encontraron residentes',
-              style: TextStyle(color: Colors.grey),
-            ),
-          );
-        }
-        items = _residentesFiltrados.map((residente) => Card(
+        );
+      },
+    );
+  }
+
+  Widget _buildResidentesList() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_residentesFiltrados.isEmpty) {
+      return const Center(
+        child: Text(
+          'No se encontraron residentes',
+          style: TextStyle(color: Colors.grey),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: _residentesFiltrados.length,
+      itemBuilder: (context, index) {
+        final residente = _residentesFiltrados[index];
+        return Card(
           margin: const EdgeInsets.symmetric(vertical: 4),
           child: ListTile(
             leading: CircleAvatar(
@@ -1045,50 +1276,57 @@ class _ModalBuscarUsuariosState extends State<_ModalBuscarUsuarios> {
               style: TextStyle(color: Colors.grey[600]),
             ),
             trailing: const Icon(Icons.chat),
-            onTap: () => widget.onResidenteSeleccionado(residente),
+            onTap: () => widget.onResidenteSeleccionado?.call(residente),
           ),
-        )).toList();
-        break;
-        
-      case 2: // Comité
-        if (_comiteFiltrado.isEmpty) {
-          return const Center(
-            child: Text(
-              'No se encontraron miembros del comité',
-              style: TextStyle(color: Colors.grey),
-            ),
-          );
-        }
-        items = _comiteFiltrado.map((comite) => Card(
+        );
+      },
+    );
+  }
+
+  Widget _buildComiteList() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_comiteFiltrado.isEmpty) {
+      return const Center(
+        child: Text(
+          'No se encontraron miembros del comité',
+          style: TextStyle(color: Colors.grey),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: _comiteFiltrado.length,
+      itemBuilder: (context, index) {
+        final miembro = _comiteFiltrado[index];
+        return Card(
           margin: const EdgeInsets.symmetric(vertical: 4),
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: Colors.green.shade600,
+              backgroundColor: Colors.blue.shade600,
               child: Text(
-                comite.nombre.isNotEmpty
-                    ? comite.nombre[0].toUpperCase()
+                miembro.nombre.isNotEmpty
+                    ? miembro.nombre[0].toUpperCase()
                     : 'C',
                 style: const TextStyle(color: Colors.white),
               ),
             ),
             title: Text(
-              comite.nombre,
+              miembro.nombre,
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
             subtitle: Text(
-              comite.email,
+              'Miembro del Comité',
               style: TextStyle(color: Colors.grey[600]),
             ),
             trailing: const Icon(Icons.chat),
-            onTap: () => widget.onComiteSeleccionado(comite),
+            onTap: () => widget.onComiteSeleccionado?.call(miembro),
           ),
-        )).toList();
-        break;
-    }
-
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      children: items,
+        );
+      },
     );
   }
 
@@ -1117,29 +1355,10 @@ class _ModalBuscarUsuariosState extends State<_ModalBuscarUsuarios> {
           const Padding(
             padding: EdgeInsets.all(16),
             child: Text(
-              'Buscar Usuarios',
+              'Buscar Usuario',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
           ),
-
-          // Tabs
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                _buildTabButton('Trabajadores', 0, Icons.work),
-                _buildTabButton('Residentes', 1, Icons.home),
-                _buildTabButton('Comité', 2, Icons.group),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 16),
 
           // Campo de búsqueda
           Padding(
@@ -1147,11 +1366,7 @@ class _ModalBuscarUsuariosState extends State<_ModalBuscarUsuarios> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: _selectedTab == 0 
-                    ? 'Buscar por nombre o tipo de trabajo...'
-                    : _selectedTab == 1
-                        ? 'Buscar por nombre o vivienda...'
-                        : 'Buscar por nombre o email...',
+                hintText: 'Buscar por nombre...',
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -1164,9 +1379,29 @@ class _ModalBuscarUsuariosState extends State<_ModalBuscarUsuarios> {
 
           const SizedBox(height: 16),
 
-          // Lista de usuarios
+          // Tabs
+          TabBar(
+            controller: _tabController,
+            labelColor: Colors.blue.shade600,
+            unselectedLabelColor: Colors.grey,
+            indicatorColor: Colors.blue.shade600,
+            tabs: const [
+              Tab(text: 'Trabajadores'),
+              Tab(text: 'Residentes'),
+              Tab(text: 'Comité'),
+            ],
+          ),
+
+          // Contenido de las tabs
           Expanded(
-            child: _buildListContent(),
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildTrabajadoresList(),
+                _buildResidentesList(),
+                _buildComiteList(),
+              ],
+            ),
           ),
         ],
       ),

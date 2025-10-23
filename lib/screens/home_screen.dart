@@ -35,6 +35,7 @@ import 'residente/r_config_screen.dart'; // Nueva importación
 import 'residente/comunicaciones/mensajes_residente_screen.dart';
 import 'residente/comunicaciones/publicaciones_residente_screen.dart';
 import 'admin/comunicaciones/mensajes_admin_screen.dart';
+import 'residente/mensajes_trabajador_screen.dart';
 import 'admin/comunicaciones/crear_publicacion_screen.dart';
 import 'admin/comunicaciones/gestion_publicaciones_screen.dart';
 import 'admin/espaciosComunes/espacios_comunes_screen.dart';
@@ -984,6 +985,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     (funcion) => trabajador.funcionesDisponibles[funcion] == true
                   );
                   
+                  // Verificar permisos de mensajes
+                  final funcionesMensajes = [
+                    'chatCondominio',
+                    'chatConserjeria',
+                    'chatResidentes',
+                    'chatAdministrador'
+                  ];
+                  
+                  bool tienePermisosMensajes = funcionesMensajes.any(
+                    (funcion) => trabajador.funcionesDisponibles[funcion] == true
+                  );
+                  
                   return Column(
                     children: [
                       if (tienePermisosCorrespondencia)
@@ -1152,6 +1165,22 @@ class _HomeScreenState extends State<HomeScreen> {
                               context,
                               MaterialPageRoute(
                                 builder: (context) => BloqueoVisitasScreen(currentUser: user),
+                              ),
+                            );
+                          },
+                        ),
+                      if (tienePermisosMensajes)
+                        ListTile(
+                          leading: const Icon(Icons.message),
+                          title: const Text('Mensajes'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => MensajesTrabajadorScreen(
+                                  currentUser: user,
+                                ),
                               ),
                             );
                           },
