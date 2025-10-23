@@ -251,17 +251,17 @@ class _ConfiguracionPermisosComiteScreenState
       'categoria': 'Gestión de Reclamos',
     },
     // Gestión de Publicaciones - Sub-funciones
-    'gestionPublicacionesAdmin': {
-      'titulo': 'Gestión de Publicaciones (Admin)',
-      'descripcion': 'Administrar publicaciones como administrador',
-      'icono': Icons.admin_panel_settings,
+    'gestionPublicaciones': {
+      'titulo': 'Gestión de Publicaciones',
+      'descripcion': 'Administrar publicaciones del condominio',
+      'icono': Icons.announcement,
       'color': Colors.purple,
       'categoria': 'Gestión de Publicaciones',
     },
-    'publicacionesTrabajadores': {
-      'titulo': 'Publicaciones de Trabajadores',
-      'descripcion': 'Gestionar publicaciones de trabajadores',
-      'icono': Icons.announcement,
+    'verPublicaciones': {
+      'titulo': 'Ver Publicaciones',
+      'descripcion': 'Ver publicaciones del condominio',
+      'icono': Icons.visibility,
       'color': Colors.purple,
       'categoria': 'Gestión de Publicaciones',
     },

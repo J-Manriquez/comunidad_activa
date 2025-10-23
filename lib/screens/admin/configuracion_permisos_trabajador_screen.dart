@@ -251,13 +251,6 @@ class _ConfiguracionPermisosTrabajadorScreenState
       'categoria': 'Gestión de Reclamos',
     },
     // Gestión de Publicaciones - Sub-funciones
-    'configuracionPublicaciones': {
-      'titulo': 'Configuración de Publicaciones',
-      'descripcion': 'Configurar parámetros de publicaciones',
-      'icono': Icons.settings,
-      'color': Colors.purple,
-      'categoria': 'Gestión de Publicaciones',
-    },
     'gestionPublicaciones': {
       'titulo': 'Gestión de Publicaciones',
       'descripcion': 'Administrar publicaciones del condominio',
@@ -265,18 +258,18 @@ class _ConfiguracionPermisosTrabajadorScreenState
       'color': Colors.purple,
       'categoria': 'Gestión de Publicaciones',
     },
-    'historialPublicaciones': {
-      'titulo': 'Historial de Publicaciones',
-      'descripcion': 'Ver historial de publicaciones realizadas',
-      'icono': Icons.history,
+    'verPublicaciones': {
+      'titulo': 'Ver Publicaciones',
+      'descripcion': 'Ver publicaciones del condominio',
+      'icono': Icons.visibility,
       'color': Colors.purple,
       'categoria': 'Gestión de Publicaciones',
     },
     // Registro Diario - Sub-funciones
-    'configuracionRegistroDiario': {
-      'titulo': 'Configuración de Registro Diario',
-      'descripcion': 'Configurar parámetros del registro diario',
-      'icono': Icons.settings,
+    'crearNuevoRegistro': {
+      'titulo': 'Crear Nuevo Registro',
+      'descripcion': 'Crear nuevos registros diarios',
+      'icono': Icons.add_circle_outline,
       'color': Colors.brown,
       'categoria': 'Registro Diario',
     },
@@ -295,24 +288,17 @@ class _ConfiguracionPermisosTrabajadorScreenState
       'categoria': 'Registro Diario',
     },
     // Bloqueo de Visitas - Sub-funciones
-    'configuracionBloqueoVisitas': {
-      'titulo': 'Configuración de Bloqueo de Visitas',
-      'descripcion': 'Configurar parámetros de bloqueo de visitas',
-      'icono': Icons.settings,
-      'color': Colors.orange,
-      'categoria': 'Bloqueo de Visitas',
-    },
-    'bloqueoVisitas': {
-      'titulo': 'Bloqueo de Visitas',
-      'descripcion': 'Gestionar bloqueo de visitas',
+    'crearBloqueoVisitas': {
+      'titulo': 'Crear Bloqueo de Visitas',
+      'descripcion': 'Crear nuevos bloqueos de visitas',
       'icono': Icons.block,
       'color': Colors.orange,
       'categoria': 'Bloqueo de Visitas',
     },
-    'historialBloqueoVisitas': {
-      'titulo': 'Historial de Bloqueo de Visitas',
-      'descripcion': 'Ver historial de bloqueos de visitas',
-      'icono': Icons.history,
+    'visualizarVisitasBloqueadas': {
+      'titulo': 'Visualizar Visitas Bloqueadas',
+      'descripcion': 'Ver lista de visitas bloqueadas',
+      'icono': Icons.visibility_off,
       'color': Colors.orange,
       'categoria': 'Bloqueo de Visitas',
     },

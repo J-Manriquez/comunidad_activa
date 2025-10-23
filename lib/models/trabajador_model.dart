@@ -96,7 +96,8 @@ class TrabajadorModel {
       'gestionTiposReclamos': false,
       'gestionReclamos': false,
       // Gestión de Publicaciones - Sub-funciones
-      'gestionPublicacionesAdmin': false,
+      'gestionPublicaciones': false,
+      'verPublicaciones': false,
       'publicacionesTrabajadores': false,
       // Registro Diario - Sub-funciones
       'crearNuevoRegistro': false,

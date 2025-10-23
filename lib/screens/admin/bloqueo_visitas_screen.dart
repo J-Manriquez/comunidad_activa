@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/user_model.dart';
 import '../../models/visita_bloqueada_model.dart';
 import '../../services/bloqueo_visitas_service.dart';
+import '../../services/firestore_service.dart';
 import '../../widgets/image_carousel_widget.dart';
 import '../../utils/image_fullscreen_helper.dart';
 import '../../utils/image_display_widget.dart';
@@ -21,10 +22,85 @@ class BloqueoVisitasScreen extends StatefulWidget {
 
 class _BloqueoVisitasScreenState extends State<BloqueoVisitasScreen> {
   final BloqueoVisitasService _bloqueoVisitasService = BloqueoVisitasService();
+  final FirestoreService _firestoreService = FirestoreService();
   String _filtroEstado = 'todos';
+  
+  bool _puedeCrearBloqueos = false;
+  bool _puedeVisualizarBloqueos = false;
+  bool _isLoadingPermisos = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _verificarPermisos();
+  }
+
+  Future<void> _verificarPermisos() async {
+    try {
+      // Si es administrador, tiene todos los permisos
+      if (widget.currentUser.tipoUsuario == UserType.administrador) {
+        setState(() {
+          _puedeCrearBloqueos = true;
+          _puedeVisualizarBloqueos = true;
+          _isLoadingPermisos = false;
+        });
+        return;
+      }
+
+      // Para trabajadores, verificar permisos específicos
+      if (widget.currentUser.tipoUsuario == UserType.trabajador) {
+        final trabajador = await _firestoreService.getTrabajadorData(
+          widget.currentUser.condominioId!,
+          widget.currentUser.uid
+        );
+        if (trabajador != null) {
+          setState(() {
+            _puedeCrearBloqueos = trabajador.funcionesDisponibles['crearBloqueoVisitas'] ?? false;
+            _puedeVisualizarBloqueos = trabajador.funcionesDisponibles['visualizarVisitasBloqueadas'] ?? false;
+            _isLoadingPermisos = false;
+          });
+        }
+      } 
+      // Para comité, verificar permisos específicos
+      else if (widget.currentUser.tipoUsuario == UserType.comite || 
+               (widget.currentUser.tipoUsuario == UserType.residente && widget.currentUser.esComite == true)) {
+        final comite = await _firestoreService.getComiteData(
+          widget.currentUser.condominioId!,
+          widget.currentUser.uid
+        );
+        if (comite != null) {
+          setState(() {
+            _puedeCrearBloqueos = comite.funcionesDisponibles['crearBloqueoVisitas'] ?? false;
+            _puedeVisualizarBloqueos = comite.funcionesDisponibles['visualizarVisitasBloqueadas'] ?? false;
+            _isLoadingPermisos = false;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error al verificar permisos: $e');
+      setState(() {
+        _puedeCrearBloqueos = false;
+        _puedeVisualizarBloqueos = false;
+        _isLoadingPermisos = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoadingPermisos) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Bloqueo de Visitas'),
+          backgroundColor: Colors.blue.shade600,
+          foregroundColor: Colors.white,
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Bloqueo de Visitas'),
@@ -57,85 +133,113 @@ class _BloqueoVisitasScreenState extends State<BloqueoVisitasScreen> {
       ),
       body: Column(
         children: [
-          // Botón para crear nuevo bloqueo
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16.0),
-            child: ElevatedButton.icon(
-              onPressed: () async {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CrearBloqueoVisitaScreen(
-                      currentUser: widget.currentUser,
+          // Botón para crear nuevo bloqueo - Solo mostrar si tiene permisos
+          if (_puedeCrearBloqueos)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16.0),
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CrearBloqueoVisitaScreen(
+                        currentUser: widget.currentUser,
+                      ),
                     ),
-                  ),
-                );
-                
-                // Si se creó exitosamente un bloqueo, actualizar la pantalla
-                if (result == true) {
-                  setState(() {
-                    // Esto forzará la reconstrucción del FutureBuilder
-                  });
-                }
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Crear Bloqueo de Visita'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue.shade600,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12.0),
+                  );
+                  
+                  // Si se creó exitosamente un bloqueo, actualizar la pantalla
+                  if (result == true) {
+                    setState(() {
+                      // Esto forzará la reconstrucción del FutureBuilder
+                    });
+                  }
+                },
+                icon: const Icon(Icons.add),
+                label: const Text('Crear Bloqueo de Visita'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.shade600,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12.0),
+                ),
               ),
             ),
-          ),
           
-          // Lista de visitas bloqueadas
-          Expanded(
-            child: FutureBuilder<List<VisitaBloqueadaModel>>(
-              future: _bloqueoVisitasService.obtenerVisitasBloqueadas(
-                widget.currentUser.condominioId ?? '',
+          // Lista de visitas bloqueadas - Solo mostrar si tiene permisos
+          if (_puedeVisualizarBloqueos)
+            Expanded(
+              child: FutureBuilder<List<VisitaBloqueadaModel>>(
+                future: _bloqueoVisitasService.obtenerVisitasBloqueadas(
+                  widget.currentUser.condominioId ?? '',
+                ),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text('Error: ${snapshot.error}'),
+                    );
+                  }
+
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(
+                      child: Text('No hay visitas bloqueadas'),
+                    );
+                  }
+
+                  List<VisitaBloqueadaModel> visitasFiltradas = snapshot.data!;
+                  
+                  if (_filtroEstado != 'todos') {
+                    visitasFiltradas = visitasFiltradas
+                        .where((visita) => visita.estado == _filtroEstado)
+                        .toList();
+                  }
+
+                  if (visitasFiltradas.isEmpty) {
+                    return Center(
+                      child: Text('No hay visitas con estado: $_filtroEstado'),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(16.0),
+                    itemCount: visitasFiltradas.length,
+                    itemBuilder: (context, index) {
+                      return _buildVisitaCard(visitasFiltradas[index]);
+                    },
+                  );
+                },
               ),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Text('Error: ${snapshot.error}'),
-                  );
-                }
-
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Center(
-                    child: Text('No hay visitas bloqueadas'),
-                  );
-                }
-
-                List<VisitaBloqueadaModel> visitasFiltradas = snapshot.data!;
-                
-                if (_filtroEstado != 'todos') {
-                  visitasFiltradas = visitasFiltradas
-                      .where((visita) => visita.estado == _filtroEstado)
-                      .toList();
-                }
-
-                if (visitasFiltradas.isEmpty) {
-                  return Center(
-                    child: Text('No hay visitas con estado: $_filtroEstado'),
-                  );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16.0),
-                  itemCount: visitasFiltradas.length,
-                  itemBuilder: (context, index) {
-                    return _buildVisitaCard(visitasFiltradas[index]);
-                  },
-                );
-              },
             ),
-          ),
+          
+          // Mensaje cuando no tiene permisos
+          if (!_puedeCrearBloqueos && !_puedeVisualizarBloqueos)
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.lock,
+                      size: 64,
+                      color: Colors.grey,
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'No tienes permisos para acceder a esta funcionalidad',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );

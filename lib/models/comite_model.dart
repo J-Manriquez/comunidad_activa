@@ -91,8 +91,8 @@ class ComiteModel {
       'gestionTiposReclamos': false,
       'gestionReclamos': false,
       // Gestión de Publicaciones - Sub-funciones
-      'gestionPublicacionesAdmin': false,
-      'publicacionesTrabajadores': false,
+      'gestionPublicaciones': false,
+      'verPublicaciones': false,
       // Registro Diario - Sub-funciones
       'crearNuevoRegistro': false,
       'registrosDelDia': false,

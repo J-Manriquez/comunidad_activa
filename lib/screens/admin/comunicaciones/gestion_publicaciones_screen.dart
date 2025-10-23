@@ -24,6 +24,7 @@ class _GestionPublicacionesScreenState extends State<GestionPublicacionesScreen>
   List<PublicacionModel> _publicaciones = [];
   bool _isLoading = true;
   String _filtroTipo = 'todas';
+  bool _mostrarActivas = true; // Nueva variable para el toggle
 
   @override
   void initState() {
@@ -160,10 +161,81 @@ class _GestionPublicacionesScreenState extends State<GestionPublicacionesScreen>
   }
 
   List<PublicacionModel> get _publicacionesFiltradas {
-    if (_filtroTipo == 'todas') {
-      return _publicaciones;
+    List<PublicacionModel> publicacionesPorEstado;
+    
+    // Filtrar por estado (activas/inactivas)
+    if (_mostrarActivas) {
+      publicacionesPorEstado = _publicaciones.where((p) => p.estado == 'activa').toList();
+    } else {
+      publicacionesPorEstado = _publicaciones.where((p) => p.estado == 'inactiva').toList();
     }
-    return _publicaciones.where((p) => p.tipoPublicacion == _filtroTipo).toList();
+    
+    // Filtrar por tipo
+    if (_filtroTipo == 'todas') {
+      return publicacionesPorEstado;
+    }
+    return publicacionesPorEstado.where((p) => p.tipoPublicacion == _filtroTipo).toList();
+  }
+
+  // Método para mostrar el menú de filtros
+  void _mostrarMenuFiltros() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Filtros',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Tipo de publicación:',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...['todas', 'residentes', 'trabajadores'].map((tipo) => 
+              RadioListTile<String>(
+                title: Text(_getTipoDisplayName(tipo)),
+                value: tipo,
+                groupValue: _filtroTipo,
+                onChanged: (value) {
+                  setState(() {
+                    _filtroTipo = value!;
+                  });
+                  Navigator.pop(context);
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getTipoDisplayName(String tipo) {
+    switch (tipo) {
+      case 'todas':
+        return 'Todas las publicaciones';
+      case 'residentes':
+        return 'Para residentes';
+      case 'trabajadores':
+        return 'Para trabajadores';
+      default:
+        return tipo;
+    }
   }
 
   Future<void> _eliminarPublicacion(PublicacionModel publicacion) async {
@@ -294,6 +366,9 @@ class _GestionPublicacionesScreenState extends State<GestionPublicacionesScreen>
 
   @override
   Widget build(BuildContext context) {
+    final publicacionesActivas = _publicaciones.where((p) => p.estado == 'activa').length;
+    final publicacionesInactivas = _publicaciones.where((p) => p.estado == 'inactiva').length;
+    
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
@@ -306,9 +381,9 @@ class _GestionPublicacionesScreenState extends State<GestionPublicacionesScreen>
         elevation: 0,
         actions: [
           IconButton(
-            onPressed: _cargarPublicaciones,
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Actualizar',
+            onPressed: _mostrarMenuFiltros,
+            icon: const Icon(Icons.filter_list),
+            tooltip: 'Filtros',
           ),
         ],
       ),
@@ -321,83 +396,68 @@ class _GestionPublicacionesScreenState extends State<GestionPublicacionesScreen>
       ),
       body: Column(
         children: [
-          // Header con estadísticas y filtros
+          // Toggle para activas/inactivas
           Container(
-            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.blue[700],
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
-            ),
-            child: Column(
-              children: [
-                // Estadísticas
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildEstadisticaCard(
-                        'Total',
-                        _publicaciones.length.toString(),
-                        Icons.article,
-                        Colors.white,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildEstadisticaCard(
-                        'Activas',
-                        _publicaciones.where((p) => p.estado == 'activa').length.toString(),
-                        Icons.visibility,
-                        Colors.green[100]!,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildEstadisticaCard(
-                        'Inactivas',
-                        _publicaciones.where((p) => p.estado == 'inactiva').length.toString(),
-                        Icons.visibility_off,
-                        Colors.red[100]!,
-                      ),
-                    ),
-                  ],
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(25),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  spreadRadius: 1,
+                  blurRadius: 5,
+                  offset: const Offset(0, 2),
                 ),
-                const SizedBox(height: 16),
-                
-                // Filtros
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(25),
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _mostrarActivas = true;
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: _mostrarActivas ? Colors.green[500] : Colors.transparent,
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      child: Text(
+                        'Activas ($publicacionesActivas)',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: _mostrarActivas ? Colors.white : Colors.grey[600],
+                          fontWeight: _mostrarActivas ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                    ),
                   ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _filtroTipo,
-                      dropdownColor: Colors.blue[700],
-                      style: const TextStyle(color: Colors.white),
-                      icon: const Icon(Icons.filter_list, color: Colors.white),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'todas',
-                          child: Text('Todas las publicaciones', style: TextStyle(color: Colors.white)),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _mostrarActivas = false;
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: !_mostrarActivas ? Colors.red[500] : Colors.transparent,
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      child: Text(
+                        'Inactivas ($publicacionesInactivas)',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: !_mostrarActivas ? Colors.white : Colors.grey[600],
+                          fontWeight: !_mostrarActivas ? FontWeight.bold : FontWeight.normal,
                         ),
-                        DropdownMenuItem(
-                          value: 'residentes',
-                          child: Text('Para residentes', style: TextStyle(color: Colors.white)),
-                        ),
-                        DropdownMenuItem(
-                          value: 'trabajadores',
-                          child: Text('Para trabajadores', style: TextStyle(color: Colors.white)),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          _filtroTipo = value!;
-                        });
-                      },
+                      ),
                     ),
                   ),
                 ),

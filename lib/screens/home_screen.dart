@@ -690,7 +690,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   context,
                   MaterialPageRoute(
                     builder: (context) =>
-                        RegistroDiarioScreen(condominioId: user.condominioId!),
+                        RegistroDiarioScreen(
+                          condominioId: user.condominioId!,
+                          currentUser: user,
+                        ),
                   ),
                 );
               },
@@ -954,6 +957,33 @@ class _HomeScreenState extends State<HomeScreen> {
                     (funcion) => trabajador.funcionesDisponibles[funcion] == true
                   );
                   
+                  // Verificar permisos de registro diario
+                  final funcionesRegistroDiario = [
+                    'crearNuevoRegistro',
+                    'registrosDelDia',
+                    'historialRegistros'
+                  ];
+                  
+                  bool tienePermisosRegistroDiario = funcionesRegistroDiario.any(
+                    (funcion) => trabajador.funcionesDisponibles[funcion] == true
+                  );
+                  
+                  // Verificar permisos de gestión de publicaciones
+                  bool tieneGestionPublicaciones = trabajador.funcionesDisponibles['gestionPublicaciones'] == true;
+                  
+                  // Verificar permisos de ver publicaciones
+                  bool tieneVerPublicaciones = trabajador.funcionesDisponibles['verPublicaciones'] == true;
+                  
+                  // Verificar permisos de bloqueo de visitas
+                  final funcionesBloqueoVisitas = [
+                    'crearBloqueoVisitas',
+                    'visualizarVisitasBloqueadas'
+                  ];
+                  
+                  bool tienePermisosBloqueoVisitas = funcionesBloqueoVisitas.any(
+                    (funcion) => trabajador.funcionesDisponibles[funcion] == true
+                  );
+                  
                   return Column(
                     children: [
                       if (tienePermisosCorrespondencia)
@@ -1064,6 +1094,69 @@ class _HomeScreenState extends State<HomeScreen> {
                             );
                           },
                         ),
+                      if (tienePermisosRegistroDiario)
+                        ListTile(
+                          leading: const Icon(Icons.assignment),
+                          title: const Text('Registro Diario'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => RegistroDiarioScreen(
+                                  condominioId: user.condominioId!,
+                                  currentUser: user,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      
+                      if (tieneGestionPublicaciones)
+                        ListTile(
+                          leading: const Icon(Icons.article),
+                          title: const Text('Gestión de Publicaciones'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            // TODO: Navegar a la pantalla de gestión de publicaciones
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => GestionPublicacionesScreen(currentUser: user),
+                              ),
+                            );
+                          },
+                        ),
+                      if (tieneVerPublicaciones)
+                        ListTile(
+                          leading: const Icon(Icons.visibility),
+                          title: const Text('Ver Publicaciones'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            // TODO: Navegar a la pantalla de ver publicaciones
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => PublicacionesResidenteScreen(currentUser: user),
+                              ),
+                            );
+                          },
+                        ),
+                      if (tienePermisosBloqueoVisitas)
+                        ListTile(
+                          leading: const Icon(Icons.block),
+                          title: const Text('Bloqueo de Visitas'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => BloqueoVisitasScreen(currentUser: user),
+                              ),
+                            );
+                          },
+                        ),
+                        
                     ],
                   );
                 }
@@ -1162,6 +1255,33 @@ class _HomeScreenState extends State<HomeScreen> {
                   ];
                   
                   bool tienePermisosReclamos = funcionesReclamos.any(
+                    (funcion) => comite.funcionesDisponibles[funcion] == true
+                  );
+                  
+                  // Verificar permisos de registro diario
+                  final funcionesRegistroDiario = [
+                    'crearNuevoRegistro',
+                    'registrosDelDia',
+                    'historialRegistros'
+                  ];
+                  
+                  bool tienePermisosRegistroDiario = funcionesRegistroDiario.any(
+                    (funcion) => comite.funcionesDisponibles[funcion] == true
+                  );
+                  
+                  // Verificar permisos de gestión de publicaciones
+                  bool tieneGestionPublicaciones = comite.funcionesDisponibles['gestionPublicaciones'] == true;
+                  
+                  // Verificar permisos de ver publicaciones
+                  bool tieneVerPublicaciones = comite.funcionesDisponibles['verPublicaciones'] == true;
+                  
+                  // Verificar permisos de bloqueo de visitas
+                  final funcionesBloqueoVisitas = [
+                    'crearBloqueoVisitas',
+                    'visualizarVisitasBloqueadas'
+                  ];
+                  
+                  bool tienePermisosBloqueoVisitas = funcionesBloqueoVisitas.any(
                     (funcion) => comite.funcionesDisponibles[funcion] == true
                   );
                   
@@ -1269,6 +1389,66 @@ class _HomeScreenState extends State<HomeScreen> {
                               context,
                               MaterialPageRoute(
                                 builder: (context) => AdminReclamosScreen(currentUser: user),
+                              ),
+                            );
+                          },
+                        ),
+                      if (tieneGestionPublicaciones)
+                        ListTile(
+                          leading: const Icon(Icons.article),
+                          title: const Text('Gestión de Publicaciones'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            // TODO: Navegar a la pantalla de gestión de publicaciones
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => GestionPublicacionesScreen(currentUser: user),
+                              ),
+                            );
+                          },
+                        ),
+                      if (tieneVerPublicaciones)
+                        ListTile(
+                          leading: const Icon(Icons.visibility),
+                          title: const Text('Ver Publicaciones'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            // TODO: Navegar a la pantalla de ver publicaciones
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => PublicacionesResidenteScreen(currentUser: user),
+                              ),
+                            );
+                          },
+                        ),
+                        if (tienePermisosRegistroDiario)
+                        ListTile(
+                          leading: const Icon(Icons.assignment),
+                          title: const Text('Registro Diario'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => RegistroDiarioScreen(
+                                  condominioId: user.condominioId!,
+                                  currentUser: user,
+                                ),
+                              ),
+                            );
+                          },
+                        ),if (tienePermisosBloqueoVisitas)
+                        ListTile(
+                          leading: const Icon(Icons.block),
+                          title: const Text('Bloqueo de Visitas'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => BloqueoVisitasScreen(currentUser: user),
                               ),
                             );
                           },
