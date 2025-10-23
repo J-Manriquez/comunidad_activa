@@ -90,6 +90,9 @@ class CondominioModel {
   
   // Configuración para cobrar espacios comunes junto con gastos comunes
   final bool? cobrarEspaciosConGastos;
+  
+  // Mapa de tipos de trabajadores del condominio
+  final Map<String, String>? tiposTrabajadores;
 
   CondominioModel({
     required this.id,
@@ -115,6 +118,7 @@ class CondominioModel {
     this.gestionReclamos,
     this.cobrarMultasConGastos,
     this.cobrarEspaciosConGastos,
+    this.tiposTrabajadores,
   });
 
   // Método para calcular el total de inmuebles
@@ -164,6 +168,7 @@ class CondominioModel {
       'gestionReclamos': gestionReclamos?.map((e) => e.toMap()).toList(),
       'cobrarMultasConGastos': cobrarMultasConGastos,
       'cobrarEspaciosConGastos': cobrarEspaciosConGastos,
+      'tiposTrabajadores': tiposTrabajadores,
     };
   }
 
@@ -228,6 +233,9 @@ class CondominioModel {
       gestionReclamos: gestionReclamosList,
       cobrarMultasConGastos: map['cobrarMultasConGastos'],
       cobrarEspaciosConGastos: map['cobrarEspaciosConGastos'],
+      tiposTrabajadores: map['tiposTrabajadores'] != null 
+          ? Map<String, String>.from(map['tiposTrabajadores'])
+          : null,
     );
   }
 

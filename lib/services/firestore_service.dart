@@ -535,6 +535,17 @@ class FirestoreService {
     }
   }
 
+  // Obtener el condominioId del usuario actual
+  Future<String?> getCondominioId() async {
+    try {
+      final userData = await getCurrentUserData();
+      return userData?.condominioId;
+    } catch (e) {
+      debugPrint('Error al obtener condominioId: $e');
+      return null;
+    }
+  }
+
   Future<ResidenteModel?> getResidenteData(String uid) async {
     try {
       // Primero obtener el condominioId del usuario actual

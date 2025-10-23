@@ -5,6 +5,7 @@ import 'admin/bloqueo_visitas_screen.dart';
 import 'admin/controlAcceso/control_acceso_screen.dart';
 import 'admin/gestion_trabajadores_screen.dart';
 import 'admin/gestion_comite_screen.dart';
+import 'admin/gestion_turnos_screen.dart';
 import 'package:comunidad_activa/screens/residente/comunicaciones/r_reclamos_screen.dart';
 import 'package:comunidad_activa/screens/residente/gastos_comunes_residente_screen.dart';
 import 'package:comunidad_activa/screens/residente/residente_screen.dart';
@@ -19,6 +20,7 @@ import '../services/bloqueo_service.dart';
 import '../services/bloqueo_visitas_service.dart';
 import '../services/firestore_service.dart';
 import '../services/estacionamiento_service.dart';
+import '../services/turnos_service.dart';
 import 'cuenta/welcome_screen.dart';
 import '../models/user_model.dart';
 import 'package:comunidad_activa/screens/admin/admin_screen.dart';
@@ -54,6 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final EstacionamientoService _estacionamientoService = EstacionamientoService();
   final BloqueoVisitasService _bloqueoVisitasService = BloqueoVisitasService();
   final FirestoreService _firestoreService = FirestoreService();
+  final TurnosService _turnosService = TurnosService();
   bool _estacionamientosActivos = false;
   int _visitasBloqueadasCount = 0;
   Stream<int>? _visitasBloqueadasStream;
@@ -455,29 +458,109 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: Colors.white,
-                  child: Icon(
-                    user.tipoUsuario == UserType.administrador
-                        ? Icons.admin_panel_settings
-                        : Icons.person,
-                    size: 40,
-                    color: user.tipoUsuario == UserType.administrador
-                        ? Colors.blue.shade600
-                        : Colors.green.shade600,
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 25,
+                      backgroundColor: Colors.white,
+                      child: Icon(
+                        user.tipoUsuario == UserType.administrador
+                            ? Icons.admin_panel_settings
+                            : Icons.person,
+                        size: 30,
+                        color: user.tipoUsuario == UserType.administrador
+                            ? Colors.blue.shade600
+                            : Colors.green.shade600,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            user.nombre,
+                            style: const TextStyle(color: Colors.white, fontSize: 16),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            user.email,
+                            style: const TextStyle(color: Colors.white70, fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                // Botón de turno para trabajadores
+                if (user.tipoUsuario == UserType.trabajador) ...[
+                  const SizedBox(height: 8),
+                  FutureBuilder<TrabajadorModel?>(
+                    future: _firestoreService.getTrabajadorData(user.condominioId!, user.uid),
+                    builder: (context, trabajadorSnapshot) {
+                      if (trabajadorSnapshot.hasData && trabajadorSnapshot.data != null) {
+                        final trabajador = trabajadorSnapshot.data!;
+                        
+                        return FutureBuilder<String>(
+                          future: _turnosService.obtenerAccionTurno(user.condominioId!, user.uid),
+                          builder: (context, accionSnapshot) {
+                            if (accionSnapshot.hasData) {
+                              final accion = accionSnapshot.data!;
+                              final esInicio = accion == 'inicio';
+                              
+                              return SizedBox(
+                                width: double.infinity,
+                                height: 32,
+                                child: ElevatedButton.icon(
+                                  onPressed: () => _manejarTurno(
+                                    context,
+                                    user,
+                                    trabajador,
+                                    esInicio,
+                                  ),
+                                  icon: Icon(
+                                    esInicio ? Icons.play_arrow : Icons.stop,
+                                    size: 16,
+                                  ),
+                                  label: Text(
+                                    esInicio ? 'Inicio de turno' : 'Término de turno',
+                                    style: const TextStyle(fontSize: 11),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: esInicio ? Colors.green : Colors.red,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                  ),
+                                ),
+                              );
+                            }
+                            
+                            return SizedBox(
+                              width: double.infinity,
+                              height: 32,
+                              child: ElevatedButton(
+                                onPressed: null,
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                ),
+                                child: const Text(
+                                  'Cargando...',
+                                  style: TextStyle(fontSize: 11),
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      }
+                      
+                      return const SizedBox.shrink();
+                    },
                   ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  user.nombre,
-                  style: const TextStyle(color: Colors.white, fontSize: 18),
-                ),
-                Text(
-                  user.email,
-                  style: const TextStyle(color: Colors.white70, fontSize: 14),
-                ),
+                ],
               ],
             ),
           ),
@@ -677,6 +760,21 @@ class _HomeScreenState extends State<HomeScreen> {
                   MaterialPageRoute(
                     builder: (context) =>
                         GestionComiteScreen(currentUser: user),
+                  ),
+                );
+              },
+            ),
+            // Nueva opción para administradores - Gestión de Turnos
+            ListTile(
+              leading: const Icon(Icons.schedule),
+              title: const Text('Gestión de Turnos'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        const GestionTurnosScreen(),
                   ),
                 );
               },
@@ -1559,5 +1657,73 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildTrabajadorContent(String condominioId) {
     // Contenido del TrabajadorScreen sin AppBar ni Drawer
     return TrabajadorScreen(condominioId: condominioId);
+  }
+
+  // Método para manejar el inicio/término de turno
+  Future<void> _manejarTurno(
+    BuildContext context,
+    UserModel user,
+    TrabajadorModel trabajador,
+    bool esInicio,
+  ) async {
+    try {
+      // Mostrar indicador de carga
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      if (esInicio) {
+        await _turnosService.iniciarTurno(
+          user.condominioId!,
+          user.uid,
+          trabajador.nombre,
+          trabajador.tipoTrabajador,
+        );
+      } else {
+        await _turnosService.terminarTurno(
+          user.condominioId!,
+          user.uid,
+          trabajador.nombre,
+          trabajador.tipoTrabajador,
+        );
+      }
+
+      // Cerrar indicador de carga
+      if (context.mounted) {
+        Navigator.pop(context);
+        
+        // Mostrar mensaje de éxito
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              esInicio 
+                ? 'Turno iniciado exitosamente' 
+                : 'Turno terminado exitosamente',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // Refrescar la pantalla para actualizar el botón
+        setState(() {});
+      }
+    } catch (e) {
+      // Cerrar indicador de carga
+      if (context.mounted) {
+        Navigator.pop(context);
+        
+        // Mostrar mensaje de error
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al ${esInicio ? 'iniciar' : 'terminar'} turno: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }

@@ -1,5 +1,6 @@
 import 'package:comunidad_activa/screens/admin/vivienda/config_viviendas_screen.dart';
 import 'package:comunidad_activa/screens/admin/codigos_registro_screen.dart';
+import 'package:comunidad_activa/screens/admin/gestion_tipos_trabajadores_screen.dart';
 import 'package:flutter/material.dart';
 import '../../models/condominio_model.dart';
 import '../../services/firestore_service.dart';
@@ -349,6 +350,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   builder: (context) => ViviendasScreen(condominioId: widget.condominioId),
                 ),
               ).then((_) => _loadCondominioData());
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.work, color: Colors.deepOrange),
+            title: const Text('Tipos de Trabajadores'),
+            subtitle: const Text('Gestionar tipos de trabajadores del condominio'),
+            trailing: const Icon(Icons.arrow_forward_ios),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => GestionTiposTrabajadoresScreen(condominioId: widget.condominioId),
+                ),
+              );
             },
           ),
           const Divider(),

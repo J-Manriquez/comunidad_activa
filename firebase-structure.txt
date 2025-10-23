@@ -13,6 +13,27 @@ cada vez que un adimistrador se registra crea una nueva colección principal:
     │        │       │   ├── fecha: String 
 
 {condominioId} (Collection - formato: nombre_condominio_XXX) (ya creado)
+    ├──── turnosTrabajadores (Document) 
+    │        ├── turnosRegistrados(formato dd-mm-aaaa) (Collection) 
+    │        │       ├── {id} (Document)  
+    │        │       │      ├── id: string 
+    │        │       │      ├── hora: String
+    │        │       │      ├── fecha: String
+    │        │       │      ├── estado: String (inicio o termino)
+    │        │       │      ├── nombre: String 
+    │        │       │      ├── uidUsuario: String
+    │        │       │      └── tipoTrabajador: String (debe indicar el cargo)
+    │        │       └── ...
+    │        └── turnos: map  
+    │               ├── {id}   
+    │               │      ├── id: string 
+    │               │      ├── tipoTrabajador: String (debe indicar el cargo)
+    │               │      ├── tipoTurno: string (semana, fin de semana, toda la semana)
+    │               │      ├── horaInicio: String
+    │               │      └── horaTermino: String
+    │               └──...
+
+
     ├──── registros (Document) 
     │        ├── fecha(formato dd-mm-aaaa) (Collection) 
     │        │       ├── {id} (Document)  
