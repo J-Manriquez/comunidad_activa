@@ -51,19 +51,18 @@ class _MensajesResidenteScreenState extends State<MensajesResidenteScreen> {
 
   Future<void> _cargarConfiguraciones() async {
     try {
-      final comunicacionHabilitada = await _mensajeService
-          .esComunicacionEntreResidentesHabilitada(
-            widget.currentUser.condominioId.toString(),
-          );
+      final condominio = await _firestoreService.getCondominioData(
+        widget.currentUser.condominioId.toString(),
+      );
 
       final permiteMensajes = await _mensajeService.residentePermiteMensajes(
         condominioId: widget.currentUser.condominioId.toString(),
         residenteId: widget.currentUser.uid,
       );
 
-      if (mounted) {
+      if (mounted && condominio != null) {
         setState(() {
-          _comunicacionEntreResidentesHabilitada = comunicacionHabilitada;
+          _comunicacionEntreResidentesHabilitada = condominio.gestionFunciones.chatEntreRes;
           _permitirMensajesResidentes = permiteMensajes;
         });
       }

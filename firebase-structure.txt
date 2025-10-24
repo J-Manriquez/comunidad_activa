@@ -254,7 +254,25 @@ cada vez que un adimistrador se registra crea una nueva colección principal:
     │      │   ├── fecha-hora: Array<Map> 
     │      │   │   ├── id: String
     │      │   │   └── tipoMulta: String
-    │          └── ... 
+    │      │   └── ... 
+    │      ├── gestionFuciones: map
+    │      │          ├── correspondencia: boolean
+    │      │          ├── controlAcceso: boolean
+    │      │          ├── espaciosComunes: boolean
+    │      │          ├── multas: boolean
+    │      │          ├── reclamos: boolean
+    │      │          ├── publicaciones: boolean
+    │      │          ├── registroDiario: boolean
+    │      │          ├── bloqueoVisitas: boolean
+    │      │          ├── gastosComunes: boolean
+    │      │          ├── turnosTrabajadores: boolean
+    │      │          ├── chatEntreRes: boolean       
+    │      │          ├── chatGrupal: boolean       
+    │      │          ├── chatAdministrador: boolean       
+    │      │          ├── chatConserjeria: boolean       
+    │      │          └── chatPrivado: boolean       
+   
+
     │
     ├──── administrador (Document)
     │       ├── uid: String

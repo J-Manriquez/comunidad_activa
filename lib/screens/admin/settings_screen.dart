@@ -1,8 +1,10 @@
 import 'package:comunidad_activa/screens/admin/vivienda/config_viviendas_screen.dart';
 import 'package:comunidad_activa/screens/admin/codigos_registro_screen.dart';
 import 'package:comunidad_activa/screens/admin/gestion_tipos_trabajadores_screen.dart';
+import 'package:comunidad_activa/screens/admin/funciones_permisos_screen.dart';
 import 'package:flutter/material.dart';
 import '../../models/condominio_model.dart';
+import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
 import '../../services/mensaje_service.dart';
 import '../../services/estacionamiento_service.dart';
@@ -11,8 +13,13 @@ import 'dart:async';
 
 class SettingsScreen extends StatefulWidget {
   final String condominioId;
+  final UserModel currentUser;
   
-  const SettingsScreen({super.key, required this.condominioId});
+  const SettingsScreen({
+    super.key, 
+    required this.condominioId,
+    required this.currentUser,
+  });
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -25,7 +32,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final ControlAccesoService _controlAccesoService = ControlAccesoService();
   CondominioModel? _condominio;
   bool _isLoading = true;
-  bool _comunicacionEntreResidentes = false;
   bool _cobrarMultasConGastos = false;
   bool _cobrarEspaciosConGastos = false;
   bool _estacionamientosActivos = false;
@@ -63,13 +69,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadMensajeSettings() async {
     try {
-      final comunicacionHabilitada = await _mensajeService
-          .esComunicacionEntreResidentesHabilitada(widget.condominioId);
+      final condominio = await _firestoreService.getCondominioData(widget.condominioId);
       
-      if (mounted) {
-        setState(() {
-          _comunicacionEntreResidentes = comunicacionHabilitada;
-        });
+      if (mounted && condominio != null) {
+        // Removed resident communication loading as it's now handled in permissions
       }
     } catch (e) {
       print('Error al cargar configuración de mensajes: $e');
@@ -99,41 +102,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     } catch (e) {
       // Error al cargar configuración de control de acceso
-    }
-  }
-
-  Future<void> _toggleComunicacionResidentes(bool value) async {
-    try {
-      await _mensajeService.actualizarComunicacionEntreResidentes(
-        condominioId: widget.condominioId,
-        permitir: value,
-      );
-      
-      if (mounted) {
-        setState(() {
-          _comunicacionEntreResidentes = value;
-        });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              value 
-                  ? 'Comunicación entre residentes habilitada'
-                  : 'Comunicación entre residentes deshabilitada',
-            ),
-            backgroundColor: value ? Colors.green : Colors.orange,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al actualizar configuración: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     }
   }
 
@@ -354,6 +322,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const Divider(),
           ListTile(
+            leading: const Icon(Icons.security, color: Colors.blue),
+            title: const Text('Funciones y Permisos'),
+            subtitle: const Text('Configurar permisos generales del condominio'),
+            trailing: const Icon(Icons.arrow_forward_ios),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => FuncionesPermisosScreen(
+                    condominioId: widget.condominioId,
+                    currentUser: widget.currentUser,
+                  ),
+                ),
+              );
+            },
+          ),
+          const Divider(),
+          ListTile(
             leading: const Icon(Icons.work, color: Colors.deepOrange),
             title: const Text('Tipos de Trabajadores'),
             subtitle: const Text('Gestionar tipos de trabajadores del condominio'),
@@ -381,21 +367,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               );
             },
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.message, color: Colors.blue),
-            title: const Text('Comunicación entre Residentes'),
-            subtitle: Text(
-              _comunicacionEntreResidentes
-                  ? 'Los residentes pueden enviarse mensajes entre ellos'
-                  : 'Solo pueden comunicarse con administración y conserjería',
-            ),
-            trailing: Switch(
-              value: _comunicacionEntreResidentes,
-              onChanged: _toggleComunicacionResidentes,
-              activeColor: Colors.blue,
-            ),
           ),
           const Divider(),
           ListTile(

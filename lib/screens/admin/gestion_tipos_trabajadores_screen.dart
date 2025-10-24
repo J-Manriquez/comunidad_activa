@@ -64,7 +64,7 @@ class _GestionTiposTrabajadoresScreenState
           fechaCreacion: condominio.fechaCreacion,
           pruebaActiva: condominio.pruebaActiva,
           fechaFinPrueba: condominio.fechaFinPrueba,
-          comunicacionEntreResidentes: condominio.comunicacionEntreResidentes,
+          comunicacionEntreResidentes: condominio.gestionFunciones.chatEntreRes,
           tipoCondominio: condominio.tipoCondominio,
           numeroCasas: condominio.numeroCasas,
           rangoCasas: condominio.rangoCasas,

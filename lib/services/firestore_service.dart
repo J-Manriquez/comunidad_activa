@@ -764,6 +764,41 @@ class FirestoreService {
     }
   }
 
+  // Actualizar gestión de funciones del condominio
+  Future<bool> updateGestionFunciones(
+    String condominioId,
+    Map<String, bool> gestionFunciones,
+  ) async {
+    try {
+      await _firestore
+          .collection(condominioId)
+          .doc('condominio')
+          .update({'gestionFunciones': gestionFunciones});
+      return true;
+    } catch (e) {
+      print('Error al actualizar gestión de funciones: $e');
+      return false;
+    }
+  }
+
+  // Actualizar una función específica de la gestión
+  Future<bool> updateFuncionEspecifica(
+    String condominioId,
+    String nombreFuncion,
+    bool valor,
+  ) async {
+    try {
+      await _firestore
+          .collection(condominioId)
+          .doc('condominio')
+          .update({'gestionFunciones.$nombreFuncion': valor});
+      return true;
+    } catch (e) {
+      print('Error al actualizar función específica: $e');
+      return false;
+    }
+  }
+
   // Obtener residentes por descripción completa de vivienda (para notificaciones de bloqueo)
   Future<List<ResidenteModel>> getResidentesByViviendaDescripcion(
     String condominioId,

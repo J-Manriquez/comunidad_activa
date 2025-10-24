@@ -734,36 +734,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
-            // Nueva opción para administradores - Gestión de Trabajadores
-            ListTile(
-              leading: const Icon(Icons.engineering),
-              title: const Text('Gestión de Trabajadores'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        GestionTrabajadoresScreen(currentUser: user),
-                  ),
-                );
-              },
-            ),
-            // Nueva opción para administradores - Gestión de Comité
-            ListTile(
-              leading: const Icon(Icons.group),
-              title: const Text('Gestión de Comité'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        GestionComiteScreen(currentUser: user),
-                  ),
-                );
-              },
-            ),
             // Nueva opción para administradores - Gestión de Turnos
             ListTile(
               leading: const Icon(Icons.schedule),
@@ -806,7 +776,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   context,
                   MaterialPageRoute(
                     builder: (context) =>
-                        SettingsScreen(condominioId: user.condominioId!),
+                        SettingsScreen(
+                          condominioId: user.condominioId!,
+                          currentUser: user,
+                        ),
                   ),
                 );
               },

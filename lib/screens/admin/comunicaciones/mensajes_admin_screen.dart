@@ -72,14 +72,13 @@ class _MensajesAdminScreenState extends State<MensajesAdminScreen> {
 
   Future<void> _cargarConfiguraciones() async {
     try {
-      final comunicacionHabilitada = await _mensajeService
-          .esComunicacionEntreResidentesHabilitada(
-            widget.currentUser.condominioId.toString(),
-          );
+      final condominio = await _firestoreService.getCondominioData(
+        widget.currentUser.condominioId.toString(),
+      );
 
-      if (mounted) {
+      if (mounted && condominio != null) {
         setState(() {
-          _comunicacionEntreResidentesHabilitada = comunicacionHabilitada;
+          _comunicacionEntreResidentesHabilitada = condominio.gestionFunciones.chatEntreRes;
         });
       }
     } catch (e) {
