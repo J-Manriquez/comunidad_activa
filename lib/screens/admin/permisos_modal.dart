@@ -20,7 +20,6 @@ class PermisosModal extends StatefulWidget {
 
 class _PermisosModalState extends State<PermisosModal> {
   final FirestoreService _firestoreService = FirestoreService();
-  late GestionFunciones _currentPermissions;
   bool _isUpdating = false;
 
   // Definición de las funciones con sus metadatos
@@ -38,6 +37,13 @@ class _PermisosModalState extends State<PermisosModal> {
       'description': 'Registro de ingresos y salidas',
       'icon': Icons.security,
       'color': Colors.green,
+    },
+    {
+      'key': 'gestionEstacionamientos',
+      'title': 'Gestión de Estacionamientos',
+      'description': 'Administración de estacionamientos y solicitudes',
+      'icon': Icons.local_parking,
+      'color': Colors.indigo,
     },
     {
       'key': 'espaciosComunes',
@@ -135,41 +141,42 @@ class _PermisosModalState extends State<PermisosModal> {
   @override
   void initState() {
     super.initState();
-    _currentPermissions = widget.gestionFunciones;
   }
 
-  bool _getPermissionValue(String key) {
+  bool _getPermissionValue(String key, GestionFunciones gestionFunciones) {
     switch (key) {
       case 'correspondencia':
-        return _currentPermissions.correspondencia;
+        return gestionFunciones.correspondencia;
       case 'controlAcceso':
-        return _currentPermissions.controlAcceso;
+        return gestionFunciones.controlAcceso;
+      case 'gestionEstacionamientos':
+        return gestionFunciones.gestionEstacionamientos;
       case 'espaciosComunes':
-        return _currentPermissions.espaciosComunes;
+        return gestionFunciones.espaciosComunes;
       case 'multas':
-        return _currentPermissions.multas;
+        return gestionFunciones.multas;
       case 'reclamos':
-        return _currentPermissions.reclamos;
+        return gestionFunciones.reclamos;
       case 'publicaciones':
-        return _currentPermissions.publicaciones;
+        return gestionFunciones.publicaciones;
       case 'registroDiario':
-        return _currentPermissions.registroDiario;
+        return gestionFunciones.registroDiario;
       case 'bloqueoVisitas':
-        return _currentPermissions.bloqueoVisitas;
+        return gestionFunciones.bloqueoVisitas;
       case 'gastosComunes':
-        return _currentPermissions.gastosComunes;
+        return gestionFunciones.gastosComunes;
       case 'turnosTrabajadores':
-        return _currentPermissions.turnosTrabajadores;
+        return gestionFunciones.turnosTrabajadores;
       case 'chatEntreRes':
-        return _currentPermissions.chatEntreRes;
+        return gestionFunciones.chatEntreRes;
       case 'chatGrupal':
-        return _currentPermissions.chatGrupal;
+        return gestionFunciones.chatGrupal;
       case 'chatAdministrador':
-        return _currentPermissions.chatAdministrador;
+        return gestionFunciones.chatAdministrador;
       case 'chatConserjeria':
-        return _currentPermissions.chatConserjeria;
+        return gestionFunciones.chatConserjeria;
       case 'chatPrivado':
-        return _currentPermissions.chatPrivado;
+        return gestionFunciones.chatPrivado;
       default:
         return false;
     }
@@ -177,96 +184,254 @@ class _PermisosModalState extends State<PermisosModal> {
 
   Future<void> _updatePermission(String key, bool value) async {
     if (_isUpdating) return;
-
+    
     setState(() {
       _isUpdating = true;
     });
 
     try {
-      // Actualizar el permiso específico en Firestore
-      await _firestoreService.updateFuncionEspecifica(
-        widget.condominioId,
+      final userData = await FirestoreService().getCurrentUserData();
+      if (userData?.condominioId == null) {
+        throw Exception('No se encontró el condominio del usuario');
+      }
+
+      final condominioId = userData!.condominioId!;
+      
+      // Actualizar el permiso general en el condominio
+      bool success = await FirestoreService().updateFuncionEspecifica(
+        condominioId,
         key,
         value,
       );
 
-      // Actualizar el estado local
-      setState(() {
-        _currentPermissions = _updatePermissionInModel(key, value);
-      });
+      if (success) {
+        // Si es correspondencia, solo desactivar permisos masivamente cuando se desactiva
+        if (key == 'correspondencia') {
+          if (!value) {
+            // Desactivar permisos de correspondencia para todos
+            await FirestoreService().desactivarPermisosCorrespondenciaTrabajadores(condominioId);
+            await FirestoreService().desactivarPermisosCorrespondenciaComite(condominioId);
+          }
+        }
 
-      // Notificar al widget padre
-      widget.onPermissionsUpdated(_currentPermissions);
+        // Manejar permisos de control de acceso - solo desactivar cuando se desactiva
+        if (key == 'controlAcceso') {
+          if (!value) {
+            // Desactivar permisos de control de acceso para todos
+            await FirestoreService().desactivarPermisosControlAccesoTrabajadores(condominioId);
+            await FirestoreService().desactivarPermisosControlAccesoComite(condominioId);
+          }
+        }
 
-      // Mostrar mensaje de éxito
-      if (mounted) {
+        // Manejar permisos de gestión de estacionamientos - solo desactivar cuando se desactiva
+        if (key == 'gestionEstacionamientos') {
+          if (!value) {
+            // Desactivar permisos de gestión de estacionamientos para todos
+            await FirestoreService().desactivarPermisosGestionEstacionamientosTrabajadores(condominioId);
+            await FirestoreService().desactivarPermisosGestionEstacionamientosComite(condominioId);
+          }
+        }
+
+        // Manejar permisos de espacios comunes - solo desactivar cuando se desactiva
+        if (key == 'espaciosComunes') {
+          if (!value) {
+            // Desactivar permisos de espacios comunes para todos
+            await FirestoreService().desactivarPermisosEspaciosComunesTrabajadores(condominioId);
+            await FirestoreService().desactivarPermisosEspaciosComunesComite(condominioId);
+          }
+        }
+
+        // Manejar permisos de gastos comunes - solo desactivar cuando se desactiva
+        if (key == 'gastosComunes') {
+          if (!value) {
+            // Desactivar permisos de gastos comunes para todos
+            await FirestoreService().desactivarPermisosGastosComunesTrabajadores(condominioId);
+            await FirestoreService().desactivarPermisosGastosComunesComite(condominioId);
+          }
+        }
+
+        // Manejar permisos de multas - solo desactivar cuando se desactiva
+        if (key == 'multas') {
+          if (!value) {
+            // Desactivar permisos de multas para todos
+            await FirestoreService().desactivarPermisosMultasTrabajadores(condominioId);
+            await FirestoreService().desactivarPermisosMultasComite(condominioId);
+          }
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               value 
-                  ? 'Función activada correctamente'
-                  : 'Función desactivada correctamente',
+                ? 'Función activada correctamente' 
+                : 'Función desactivada correctamente',
             ),
-            backgroundColor: value ? Colors.green : Colors.orange,
+            backgroundColor: Colors.green,
             duration: const Duration(seconds: 2),
           ),
         );
+      } else {
+        throw Exception('Error al actualizar la función');
       }
     } catch (e) {
-      // Mostrar mensaje de error
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al actualizar permiso: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     } finally {
-      if (mounted) {
-        setState(() {
-          _isUpdating = false;
-        });
-      }
+      setState(() {
+        _isUpdating = false;
+      });
     }
   }
 
-  GestionFunciones _updatePermissionInModel(String key, bool value) {
-    switch (key) {
-      case 'correspondencia':
-        return _currentPermissions.copyWith(correspondencia: value);
-      case 'controlAcceso':
-        return _currentPermissions.copyWith(controlAcceso: value);
-      case 'espaciosComunes':
-        return _currentPermissions.copyWith(espaciosComunes: value);
-      case 'multas':
-        return _currentPermissions.copyWith(multas: value);
-      case 'reclamos':
-        return _currentPermissions.copyWith(reclamos: value);
-      case 'publicaciones':
-        return _currentPermissions.copyWith(publicaciones: value);
-      case 'registroDiario':
-        return _currentPermissions.copyWith(registroDiario: value);
-      case 'bloqueoVisitas':
-        return _currentPermissions.copyWith(bloqueoVisitas: value);
-      case 'gastosComunes':
-        return _currentPermissions.copyWith(gastosComunes: value);
-      case 'turnosTrabajadores':
-        return _currentPermissions.copyWith(turnosTrabajadores: value);
-      case 'chatEntreRes':
-        return _currentPermissions.copyWith(chatEntreRes: value);
-      case 'chatGrupal':
-        return _currentPermissions.copyWith(chatGrupal: value);
-      case 'chatAdministrador':
-        return _currentPermissions.copyWith(chatAdministrador: value);
-      case 'chatConserjeria':
-        return _currentPermissions.copyWith(chatConserjeria: value);
-      case 'chatPrivado':
-        return _currentPermissions.copyWith(chatPrivado: value);
-      default:
-        return _currentPermissions;
-    }
+  Widget _buildPermisosContent(GestionFunciones gestionFunciones) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header
+        Row(
+          children: [
+            Icon(
+              Icons.security,
+              color: Colors.blue[700],
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Configurar Permisos',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+            IconButton(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.close),
+              color: Colors.grey[600],
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Activa o desactiva las funcionalidades disponibles en el condominio',
+          style: TextStyle(
+            fontSize: 16,
+            color: Colors.grey[600],
+          ),
+        ),
+        const SizedBox(height: 20),
+        const Divider(),
+        const SizedBox(height: 16),
+        
+        // Lista de permisos
+        Expanded(
+          child: ListView.builder(
+            itemCount: _funcionesData.length,
+            itemBuilder: (context, index) {
+              final funcion = _funcionesData[index];
+              final key = funcion['key'] as String;
+              final isActive = _getPermissionValue(key, gestionFunciones);
+              
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: (funcion['color'] as Color).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          funcion['icon'] as IconData,
+                          color: funcion['color'] as Color,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              funcion['title'] as String,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              funcion['description'] as String,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Switch(
+                        value: isActive,
+                        onChanged: _isUpdating 
+                            ? null 
+                            : (value) => _updatePermission(key, value),
+                        activeColor: funcion['color'] as Color,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        
+        // Footer con información
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.blue[50],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.blue[200]!),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.info_outline,
+                color: Colors.blue[700],
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Los cambios se aplican inmediatamente a todos los usuarios',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -279,148 +444,57 @@ class _PermisosModalState extends State<PermisosModal> {
         width: MediaQuery.of(context).size.width * 0.9,
         height: MediaQuery.of(context).size.height * 0.8,
         padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
-              children: [
-                Icon(
-                  Icons.security,
-                  color: Colors.blue[700],
-                  size: 28,
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'Configurar Permisos',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+        child: StreamBuilder<CondominioModel?>(
+          stream: _firestoreService.getCondominioStream(widget.condominioId),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (snapshot.hasError) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      color: Colors.red[400],
+                      size: 48,
                     ),
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close),
-                  color: Colors.grey[600],
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Activa o desactiva las funcionalidades disponibles en el condominio',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Divider(),
-            const SizedBox(height: 16),
-            
-            // Lista de permisos
-            Expanded(
-              child: ListView.builder(
-                itemCount: _funcionesData.length,
-                itemBuilder: (context, index) {
-                  final funcion = _funcionesData[index];
-                  final key = funcion['key'] as String;
-                  final isActive = _getPermissionValue(key);
-                  
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: (funcion['color'] as Color).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Icon(
-                              funcion['icon'] as IconData,
-                              color: funcion['color'] as Color,
-                              size: 24,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  funcion['title'] as String,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  funcion['description'] as String,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Switch(
-                            value: isActive,
-                            onChanged: _isUpdating 
-                                ? null 
-                                : (value) => _updatePermission(key, value),
-                            activeColor: funcion['color'] as Color,
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            
-            // Footer con información
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue[200]!),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    color: Colors.blue[700],
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'Los cambios se aplican inmediatamente a todos los usuarios',
+                    const SizedBox(height: 16),
+                    Text(
+                      'Error al cargar permisos',
                       style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.black87,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red[700],
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+                    const SizedBox(height: 8),
+                    Text(
+                      'Por favor, intenta nuevamente',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            if (!snapshot.hasData || snapshot.data == null) {
+              return const Center(
+                child: Text(
+                  'No se encontraron datos del condominio',
+                  style: TextStyle(fontSize: 16),
+                ),
+              );
+            }
+
+            final condominio = snapshot.data!;
+            return _buildPermisosContent(condominio.gestionFunciones);
+          },
         ),
       ),
     );

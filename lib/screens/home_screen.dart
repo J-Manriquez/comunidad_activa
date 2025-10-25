@@ -939,8 +939,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // Opciones específicas para trabajadores
           if (user.tipoUsuario == UserType.trabajador) ...[
-            FutureBuilder<TrabajadorModel?>(
-              future: _firestoreService.getTrabajadorData(user.condominioId!, user.uid),
+            StreamBuilder<TrabajadorModel?>(
+              stream: _firestoreService.getTrabajadorStream(user.condominioId!, user.uid),
               builder: (context, snapshot) {
                 if (snapshot.hasData && snapshot.data != null) {
                   final trabajador = snapshot.data!;
@@ -1268,8 +1268,8 @@ class _HomeScreenState extends State<HomeScreen> {
           // Opciones específicas para comité (residentes que son comité o usuarios tipo comité)
           if ((user.tipoUsuario == UserType.residente && user.esComite == true) || 
               user.tipoUsuario == UserType.comite) ...[
-            FutureBuilder<ComiteModel?>(
-              future: _firestoreService.getComiteData(user.condominioId!, user.uid),
+            StreamBuilder<ComiteModel?>(
+              stream: _firestoreService.getComiteStream(user.condominioId!, user.uid),
               builder: (context, snapshot) {
                 if (snapshot.hasData && snapshot.data != null) {
                   final comite = snapshot.data!;

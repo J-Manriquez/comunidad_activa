@@ -7,6 +7,7 @@ enum TipoCondominio { casas, edificio, mixto }
 class GestionFunciones {
   final bool correspondencia;
   final bool controlAcceso;
+  final bool gestionEstacionamientos;
   final bool espaciosComunes;
   final bool multas;
   final bool reclamos;
@@ -24,6 +25,7 @@ class GestionFunciones {
   GestionFunciones({
     this.correspondencia = false,
     this.controlAcceso = false,
+    this.gestionEstacionamientos = false,
     this.espaciosComunes = false,
     this.multas = false,
     this.reclamos = false,
@@ -43,6 +45,7 @@ class GestionFunciones {
     return {
       'correspondencia': correspondencia,
       'controlAcceso': controlAcceso,
+      'gestionEstacionamientos': gestionEstacionamientos,
       'espaciosComunes': espaciosComunes,
       'multas': multas,
       'reclamos': reclamos,
@@ -63,6 +66,7 @@ class GestionFunciones {
     return GestionFunciones(
       correspondencia: map['correspondencia'] ?? false,
       controlAcceso: map['controlAcceso'] ?? false,
+      gestionEstacionamientos: map['gestionEstacionamientos'] ?? false,
       espaciosComunes: map['espaciosComunes'] ?? false,
       multas: map['multas'] ?? false,
       reclamos: map['reclamos'] ?? false,
@@ -82,6 +86,7 @@ class GestionFunciones {
   GestionFunciones copyWith({
     bool? correspondencia,
     bool? controlAcceso,
+    bool? gestionEstacionamientos,
     bool? espaciosComunes,
     bool? multas,
     bool? reclamos,
@@ -99,6 +104,7 @@ class GestionFunciones {
     return GestionFunciones(
       correspondencia: correspondencia ?? this.correspondencia,
       controlAcceso: controlAcceso ?? this.controlAcceso,
+      gestionEstacionamientos: gestionEstacionamientos ?? this.gestionEstacionamientos,
       espaciosComunes: espaciosComunes ?? this.espaciosComunes,
       multas: multas ?? this.multas,
       reclamos: reclamos ?? this.reclamos,

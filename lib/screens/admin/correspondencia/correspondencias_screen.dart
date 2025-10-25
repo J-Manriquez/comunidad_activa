@@ -33,8 +33,12 @@ class _CorrespondenciasScreenState extends State<CorrespondenciasScreen> {
 
   Future<void> _cargarPermisos() async {
     try {
+      setState(() {
+        _isLoading = true;
+      });
+
       if (widget.currentUser.tipoUsuario == UserType.administrador) {
-        // Los administradores tienen todos los permisos
+        // El administrador tiene todos los permisos
         _permisos = {
           'configuracionCorrespondencias': true,
           'ingresarCorrespondencia': true,
@@ -88,19 +92,74 @@ class _CorrespondenciasScreenState extends State<CorrespondenciasScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Correspondencias'),
-          backgroundColor: Colors.blue.shade600,
-          foregroundColor: Colors.white,
+    // Usar StreamBuilder para actualizaciones en tiempo real de permisos
+    if (widget.currentUser.tipoUsuario == UserType.trabajador) {
+      return StreamBuilder<TrabajadorModel?>(
+        stream: _firestoreService.getTrabajadorStream(
+          widget.currentUser.condominioId!,
+          widget.currentUser.uid,
         ),
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
 
+          Map<String, bool> permisos = {};
+          if (snapshot.hasData && snapshot.data != null) {
+            final trabajador = snapshot.data!;
+            permisos = {
+              'configuracionCorrespondencias': trabajador.funcionesDisponibles['configuracionCorrespondencias'] ?? false,
+              'ingresarCorrespondencia': trabajador.funcionesDisponibles['ingresarCorrespondencia'] ?? false,
+              'correspondenciasActivas': trabajador.funcionesDisponibles['correspondenciasActivas'] ?? false,
+              'historialCorrespondencias': trabajador.funcionesDisponibles['historialCorrespondencias'] ?? false,
+            };
+          }
+
+          return _buildCorrespondenciasScreen(permisos);
+        },
+      );
+    } else if (widget.currentUser.tipoUsuario == UserType.residente && widget.currentUser.esComite == true) {
+      return StreamBuilder<ComiteModel?>(
+        stream: _firestoreService.getComiteStream(
+          widget.currentUser.condominioId!,
+          widget.currentUser.uid,
+        ),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          Map<String, bool> permisos = {};
+          if (snapshot.hasData && snapshot.data != null) {
+            final comite = snapshot.data!;
+            permisos = {
+              'configuracionCorrespondencias': comite.funcionesDisponibles['configuracionCorrespondencias'] ?? false,
+              'ingresarCorrespondencia': comite.funcionesDisponibles['ingresarCorrespondencia'] ?? false,
+              'correspondenciasActivas': comite.funcionesDisponibles['correspondenciasActivas'] ?? false,
+              'historialCorrespondencias': comite.funcionesDisponibles['historialCorrespondencias'] ?? false,
+            };
+          }
+
+          return _buildCorrespondenciasScreen(permisos);
+        },
+      );
+    } else {
+      // Para administradores, usar permisos completos
+      final permisos = {
+        'configuracionCorrespondencias': true,
+        'ingresarCorrespondencia': true,
+        'correspondenciasActivas': true,
+        'historialCorrespondencias': true,
+      };
+      return _buildCorrespondenciasScreen(permisos);
+    }
+  }
+
+  Widget _buildCorrespondenciasScreen(Map<String, bool> permisos) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Correspondencias'),
@@ -108,7 +167,7 @@ class _CorrespondenciasScreenState extends State<CorrespondenciasScreen> {
         foregroundColor: Colors.white,
         actions: [
           // Solo mostrar el botón de agregar si tiene permiso para ingresar correspondencia
-          if (_permisos['ingresarCorrespondencia'] == true)
+          if (permisos['ingresarCorrespondencia'] == true)
             IconButton(
               icon: const Icon(Icons.add),
               onPressed: () {
@@ -129,7 +188,7 @@ class _CorrespondenciasScreenState extends State<CorrespondenciasScreen> {
         child: Column(
           children: [
             // Card de configuración (solo visible si tiene permiso)
-            if (_permisos['configuracionCorrespondencias'] == true) ...[
+            if (permisos['configuracionCorrespondencias'] == true) ...[
               Card(
                 elevation: 4,
                 child: ListTile(
@@ -166,7 +225,7 @@ class _CorrespondenciasScreenState extends State<CorrespondenciasScreen> {
             
             // Cards para correspondencias activas e historial
             Expanded(
-              child: _buildCorrespondenciasCards(),
+              child: _buildCorrespondenciasCards(permisos),
             ),
           ],
         ),
@@ -174,11 +233,11 @@ class _CorrespondenciasScreenState extends State<CorrespondenciasScreen> {
     );
   }
 
-  Widget _buildCorrespondenciasCards() {
+  Widget _buildCorrespondenciasCards(Map<String, bool> permisos) {
     List<Widget> cards = [];
     
     // Card de correspondencias activas (solo si tiene permiso)
-    if (_permisos['correspondenciasActivas'] == true) {
+    if (permisos['correspondenciasActivas'] == true) {
       cards.add(
         Expanded(
           child: Card(
@@ -235,12 +294,12 @@ class _CorrespondenciasScreenState extends State<CorrespondenciasScreen> {
     }
     
     // Agregar separador si hay más de una card
-    if (cards.isNotEmpty && _permisos['historialCorrespondencias'] == true) {
+    if (cards.isNotEmpty && permisos['historialCorrespondencias'] == true) {
       cards.add(const SizedBox(height: 16));
     }
     
     // Card de historial de correspondencias (solo si tiene permiso)
-    if (_permisos['historialCorrespondencias'] == true) {
+    if (permisos['historialCorrespondencias'] == true) {
       cards.add(
         Expanded(
           child: Card(
