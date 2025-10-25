@@ -106,6 +106,9 @@ class TrabajadorModel {
       // Bloqueo de Visitas - Sub-funciones
       'crearBloqueoVisitas': false,
       'visualizarVisitasBloqueadas': false,
+      // Gestión de Turnos de Trabajadores - Sub-funciones
+      'crearEditarTurno': false,
+      'registroTurnosRealizados': false,
       // Gestión de Mensajes - Sub-funciones
       'chatCondominio': false,
       'chatConserjeria': false,

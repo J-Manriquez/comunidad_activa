@@ -42,6 +42,7 @@ class _ConfiguracionPermisosComiteScreenState
     'Gestión de Publicaciones': false,
     'Registro Diario': false,
     'Bloqueo de Visitas': false,
+    'Gestión de Turnos de Trabajadores': false,
     'Gestión de Mensajes': false,
   };
 
@@ -301,6 +302,21 @@ class _ConfiguracionPermisosComiteScreenState
       'icono': Icons.visibility_off,
       'color': Colors.orange,
       'categoria': 'Bloqueo de Visitas',
+    },
+    // Gestión de Turnos de Trabajadores - Sub-funciones
+    'crearEditarTurno': {
+      'titulo': 'Crear/Editar Turno',
+      'descripcion': 'Crear y editar turnos de trabajadores',
+      'icono': Icons.schedule,
+      'color': Colors.indigo,
+      'categoria': 'Gestión de Turnos de Trabajadores',
+    },
+    'registroTurnosRealizados': {
+      'titulo': 'Registro de Turnos Realizados',
+      'descripcion': 'Ver y gestionar turnos realizados',
+      'icono': Icons.assignment_turned_in,
+      'color': Colors.indigo,
+      'categoria': 'Gestión de Turnos de Trabajadores',
     },
     // Gestión de Mensajes - Sub-funciones
     'chatCondominio': {
@@ -1174,6 +1190,74 @@ class _ConfiguracionPermisosComiteScreenState
             }
           }
 
+          
+          // Lista de permisos de turnos de trabajadores que requieren validación
+          final permisosTurnosTrabajadores = [
+            'crearEditarTurno',
+            'registroTurnosRealizados',
+          ];
+
+          // Si se está intentando activar un permiso de turnos de trabajadores
+          if (!isActive && permisosTurnosTrabajadores.contains(key)) {
+            try {
+              // Verificar que el condominioId no sea null
+              final condominioId = widget.currentUser.condominioId;
+              
+              if (condominioId == null) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Error: No se pudo obtener el ID del condominio.',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      backgroundColor: Colors.red,
+                      duration: Duration(seconds: 3),
+                    ),
+                  );
+                }
+                return;
+              }
+
+              // Obtener los datos del condominio para verificar si la función de turnos de trabajadores está activa
+              final condominioData = await _firestoreService.getCondominioData(condominioId);
+              
+              // Verificar si la función de turnos de trabajadores está desactivada
+              if (condominioData?.gestionFunciones?.turnosTrabajadores != true) {
+                // Mostrar mensaje de error y no permitir la activación
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'No se puede activar este permiso porque la función de Turnos de Trabajadores está desactivada en la configuración de permisos del condominio.',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      backgroundColor: Colors.red,
+                      duration: Duration(seconds: 4),
+                    ),
+                  );
+                }
+                return; // No actualizar el estado
+              }
+            } catch (e) {
+              print('Error al verificar permisos del condominio: $e');
+              // En caso de error, mostrar mensaje y no permitir la activación
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Error al verificar los permisos del condominio. Inténtalo de nuevo.',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    backgroundColor: Colors.red,
+                    duration: Duration(seconds: 3),
+                  ),
+                );
+              }
+              return;
+            }
+          }
+
           setState(() {
             _funcionesDisponibles[key] = !isActive;
             _hasChanges = true;
@@ -1910,6 +1994,74 @@ class _ConfiguracionPermisosComiteScreenState
                     }
                   }
 
+                  
+
+                  // Lista de permisos de turnos de trabajadores que requieren validación
+                  final permisosTurnosTrabajadores = [
+                    'crearEditarTurno',
+                    'registroTurnosRealizados',
+                  ];
+
+                  // Si se está intentando activar un permiso de turnos de trabajadores
+                  if (value && permisosTurnosTrabajadores.contains(key)) {
+                    try {
+                      // Verificar que el condominioId no sea null
+                      final condominioId = widget.currentUser.condominioId;
+                      if (condominioId == null) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Error: No se pudo obtener el ID del condominio.',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                              backgroundColor: Colors.red,
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                        return;
+                      }
+
+                      // Obtener los datos del condominio para verificar si la función de turnos de trabajadores está activa
+                      final condominioData = await _firestoreService.getCondominioData(condominioId);
+                      
+                      // Verificar si la función de turnos de trabajadores está desactivada
+                      if (condominioData?.gestionFunciones?.turnosTrabajadores != true) {
+                        // Mostrar mensaje de error y no permitir la activación
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'No se puede activar este permiso porque la función de Turnos de Trabajadores está desactivada en la configuración de permisos del condominio.',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                              backgroundColor: Colors.red,
+                              duration: Duration(seconds: 4),
+                            ),
+                          );
+                        }
+                        return; // No actualizar el estado
+                      }
+                    } catch (e) {
+                      print('Error al verificar permisos del condominio: $e');
+                      // En caso de error, mostrar mensaje y no permitir la activación
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Error al verificar los permisos del condominio. Inténtalo de nuevo.',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            backgroundColor: Colors.red,
+                            duration: Duration(seconds: 3),
+                          ),
+                        );
+                      }
+                      return;
+                    }
+                  }
+
                   setState(() {
                     _funcionesDisponibles[key] = value;
                     _hasChanges = true;
@@ -2187,6 +2339,12 @@ class _ConfiguracionPermisosComiteScreenState
                   _buildSeccionHeader('Bloqueo de Visitas'),
                   if (_seccionesVisibles['Bloqueo de Visitas'] == true)
                     ..._buildFuncionesPorCategoria('Bloqueo de Visitas'),
+                  const SizedBox(height: 16),
+                
+                  // Sección de Gestión de Turnos de Trabajadores
+                  _buildSeccionHeader('Gestión de Turnos de Trabajadores'),
+                  if (_seccionesVisibles['Gestión de Turnos de Trabajadores'] == true)
+                    ..._buildFuncionesPorCategoria('Gestión de Turnos de Trabajadores'),
                   const SizedBox(height: 16),
                 
                   // Sección de Gestión de Mensajes

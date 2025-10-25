@@ -2039,4 +2039,148 @@ class FirestoreService {
     }
   }
 
+  // Desactivar permisos de gestión de turnos para todos los trabajadores
+  Future<bool> desactivarPermisosGestionTurnosTrabajadores(
+    String condominioId,
+  ) async {
+    try {
+      // Obtener todos los trabajadores
+      final trabajadores = await obtenerTrabajadoresCondominio(condominioId);
+      
+      // Lista de permisos de gestión de turnos a desactivar
+      final permisosGestionTurnos = [
+        'crearEditarTurno',
+        'registroTurnosRealizados',
+      ];
+
+      // Actualizar cada trabajador
+      for (final trabajador in trabajadores) {
+        // Crear una copia de los permisos actuales
+        final nuevosPermisos = Map<String, bool>.from(trabajador.funcionesDisponibles);
+        
+        // Desactivar los permisos de gestión de turnos
+        for (final permiso in permisosGestionTurnos) {
+          nuevosPermisos[permiso] = false;
+        }
+        
+        // Actualizar en Firestore
+        await updateTrabajadorPermisos(condominioId, trabajador.uid, nuevosPermisos);
+      }
+      
+      print('✅ Permisos de gestión de turnos desactivados para ${trabajadores.length} trabajadores');
+      return true;
+    } catch (e) {
+      print('❌ Error al desactivar permisos de gestión de turnos para trabajadores: $e');
+      return false;
+    }
+  }
+
+  // Desactivar permisos de gestión de turnos para todos los miembros del comité
+  Future<bool> desactivarPermisosGestionTurnosComite(
+    String condominioId,
+  ) async {
+    try {
+      // Obtener todos los miembros del comité
+      final miembrosComite = await obtenerMiembrosComite(condominioId);
+      
+      // Lista de permisos de gestión de turnos a desactivar
+      final permisosGestionTurnos = [
+        'crearEditarTurno',
+        'registroTurnosRealizados',
+      ];
+
+      // Actualizar cada miembro del comité
+      for (final miembro in miembrosComite) {
+        // Crear una copia de los permisos actuales
+        final nuevosPermisos = Map<String, bool>.from(miembro.funcionesDisponibles);
+        
+        // Desactivar los permisos de gestión de turnos
+        for (final permiso in permisosGestionTurnos) {
+          nuevosPermisos[permiso] = false;
+        }
+        
+        // Actualizar en Firestore
+        await updateComitePermisos(condominioId, miembro.uid, nuevosPermisos);
+      }
+      
+      print('✅ Permisos de gestión de turnos desactivados para ${miembrosComite.length} miembros del comité');
+      return true;
+    } catch (e) {
+      print('❌ Error al desactivar permisos de gestión de turnos para comité: $e');
+      return false;
+    }
+  }
+
+  // Activar permisos de gestión de turnos para todos los trabajadores
+  Future<bool> activarPermisosGestionTurnosTrabajadores(
+    String condominioId,
+  ) async {
+    try {
+      // Obtener todos los trabajadores
+      final trabajadores = await obtenerTrabajadoresCondominio(condominioId);
+      
+      // Lista de permisos de gestión de turnos a activar
+      final permisosGestionTurnos = [
+        'crearEditarTurno',
+        'registroTurnosRealizados',
+      ];
+
+      // Actualizar cada trabajador
+      for (final trabajador in trabajadores) {
+        // Crear una copia de los permisos actuales
+        final nuevosPermisos = Map<String, bool>.from(trabajador.funcionesDisponibles);
+        
+        // Activar los permisos de gestión de turnos
+        for (final permiso in permisosGestionTurnos) {
+          nuevosPermisos[permiso] = true;
+        }
+        
+        // Actualizar en Firestore
+        await updateTrabajadorPermisos(condominioId, trabajador.uid, nuevosPermisos);
+      }
+      
+      print('✅ Permisos de gestión de turnos activados para ${trabajadores.length} trabajadores');
+      return true;
+    } catch (e) {
+      print('❌ Error al activar permisos de gestión de turnos para trabajadores: $e');
+      return false;
+    }
+  }
+
+  // Activar permisos de gestión de turnos para todos los miembros del comité
+  Future<bool> activarPermisosGestionTurnosComite(
+    String condominioId,
+  ) async {
+    try {
+      // Obtener todos los miembros del comité
+      final miembrosComite = await obtenerMiembrosComite(condominioId);
+      
+      // Lista de permisos de gestión de turnos a activar
+      final permisosGestionTurnos = [
+        'crearEditarTurno',
+        'registroTurnosRealizados',
+      ];
+
+      // Actualizar cada miembro del comité
+      for (final miembro in miembrosComite) {
+        // Crear una copia de los permisos actuales
+        final nuevosPermisos = Map<String, bool>.from(miembro.funcionesDisponibles);
+        
+        // Activar los permisos de gestión de turnos
+        for (final permiso in permisosGestionTurnos) {
+          nuevosPermisos[permiso] = true;
+        }
+        
+        // Actualizar en Firestore
+        await updateComitePermisos(condominioId, miembro.uid, nuevosPermisos);
+      }
+      
+      print('✅ Permisos de gestión de turnos activados para ${miembrosComite.length} miembros del comité');
+      return true;
+    } catch (e) {
+      print('❌ Error al activar permisos de gestión de turnos para comité: $e');
+      return false;
+    }
+  }
+
 }

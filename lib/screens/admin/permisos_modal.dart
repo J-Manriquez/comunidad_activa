@@ -295,6 +295,15 @@ class _PermisosModalState extends State<PermisosModal> {
           }
         }
 
+        // Manejar permisos de turnos de trabajadores - solo desactivar cuando se desactiva
+        if (key == 'turnosTrabajadores') {
+          if (!value) {
+            // Desactivar permisos de turnos de trabajadores para todos
+            await FirestoreService().desactivarPermisosGestionTurnosTrabajadores(condominioId);
+            await FirestoreService().desactivarPermisosGestionTurnosComite(condominioId);
+          }
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
