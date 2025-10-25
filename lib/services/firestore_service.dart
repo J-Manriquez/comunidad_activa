@@ -1748,4 +1748,295 @@ class FirestoreService {
     }
   }
 
+  // Desactivar permisos de reclamos para todos los trabajadores
+  Future<bool> desactivarPermisosReclamosTrabajadores(
+    String condominioId,
+  ) async {
+    try {
+      // Obtener todos los trabajadores
+      final trabajadores = await obtenerTrabajadoresCondominio(condominioId);
+      
+      // Lista de permisos de reclamos a desactivar
+      final permisosReclamos = [
+        'gestionReclamos',
+        'gestionTiposReclamos',
+      ];
+
+      // Actualizar cada trabajador
+      for (final trabajador in trabajadores) {
+        // Crear una copia de los permisos actuales
+        final nuevosPermisos = Map<String, bool>.from(trabajador.funcionesDisponibles);
+        
+        // Desactivar los permisos de reclamos
+        for (final permiso in permisosReclamos) {
+          nuevosPermisos[permiso] = false;
+        }
+        
+        // Actualizar en Firestore
+        await updateTrabajadorPermisos(condominioId, trabajador.uid, nuevosPermisos);
+      }
+      
+      print('✅ Permisos de reclamos desactivados para ${trabajadores.length} trabajadores');
+      return true;
+    } catch (e) {
+      print('❌ Error al desactivar permisos de reclamos para trabajadores: $e');
+      return false;
+    }
+  }
+
+  // Desactivar permisos de reclamos para todos los miembros del comité
+  Future<bool> desactivarPermisosReclamosComite(
+    String condominioId,
+  ) async {
+    try {
+      // Obtener todos los miembros del comité
+      final miembrosComite = await obtenerMiembrosComite(condominioId);
+      
+      // Lista de permisos de reclamos a desactivar
+      final permisosReclamos = [
+        'gestionReclamos',
+        'gestionTiposReclamos',
+      ];
+
+      // Actualizar cada miembro del comité
+      for (final miembro in miembrosComite) {
+        // Crear una copia de los permisos actuales
+        final nuevosPermisos = Map<String, bool>.from(miembro.funcionesDisponibles);
+        
+        // Desactivar los permisos de reclamos
+        for (final permiso in permisosReclamos) {
+          nuevosPermisos[permiso] = false;
+        }
+        
+        // Actualizar en Firestore
+        await updateComitePermisos(condominioId, miembro.uid, nuevosPermisos);
+      }
+      
+      print('✅ Permisos de reclamos desactivados para ${miembrosComite.length} miembros del comité');
+      return true;
+    } catch (e) {
+      print('❌ Error al desactivar permisos de reclamos para comité: $e');
+      return false;
+    }
+  }
+
+  // Desactivar permisos de publicaciones para todos los trabajadores
+  Future<bool> desactivarPermisosPublicacionesTrabajadores(
+    String condominioId,
+  ) async {
+    try {
+      // Obtener todos los trabajadores
+      final trabajadores = await obtenerTrabajadoresCondominio(condominioId);
+      
+      // Lista de permisos de publicaciones a desactivar
+      final permisosPublicaciones = [
+        'gestionPublicaciones',
+        'verPublicaciones',
+        'publicacionesTrabajadores',
+      ];
+
+      // Actualizar cada trabajador
+      for (final trabajador in trabajadores) {
+        // Crear una copia de los permisos actuales
+        final nuevosPermisos = Map<String, bool>.from(trabajador.funcionesDisponibles);
+        
+        // Desactivar los permisos de publicaciones
+        for (final permiso in permisosPublicaciones) {
+          nuevosPermisos[permiso] = false;
+        }
+        
+        // Actualizar en Firestore
+        await updateTrabajadorPermisos(condominioId, trabajador.uid, nuevosPermisos);
+      }
+      
+      print('✅ Permisos de publicaciones desactivados para ${trabajadores.length} trabajadores');
+      return true;
+    } catch (e) {
+      print('❌ Error al desactivar permisos de publicaciones para trabajadores: $e');
+      return false;
+    }
+  }
+
+  // Desactivar permisos de publicaciones para todos los miembros del comité
+  Future<bool> desactivarPermisosPublicacionesComite(
+    String condominioId,
+  ) async {
+    try {
+      // Obtener todos los miembros del comité
+      final miembrosComite = await obtenerMiembrosComite(condominioId);
+      
+      // Lista de permisos de publicaciones a desactivar
+      final permisosPublicaciones = [
+        'gestionPublicaciones',
+        'verPublicaciones',
+      ];
+
+      // Actualizar cada miembro del comité
+      for (final miembro in miembrosComite) {
+        // Crear una copia de los permisos actuales
+        final nuevosPermisos = Map<String, bool>.from(miembro.funcionesDisponibles);
+        
+        // Desactivar los permisos de publicaciones
+        for (final permiso in permisosPublicaciones) {
+          nuevosPermisos[permiso] = false;
+        }
+        
+        // Actualizar en Firestore
+        await updateComitePermisos(condominioId, miembro.uid, nuevosPermisos);
+      }
+      
+      print('✅ Permisos de publicaciones desactivados para ${miembrosComite.length} miembros del comité');
+      return true;
+    } catch (e) {
+      print('❌ Error al desactivar permisos de publicaciones para comité: $e');
+      return false;
+    }
+  }
+
+  // Desactivar permisos de registro diario para todos los trabajadores
+  Future<bool> desactivarPermisosRegistroDiarioTrabajadores(
+    String condominioId,
+  ) async {
+    try {
+      // Obtener todos los trabajadores
+      final trabajadores = await obtenerTrabajadoresCondominio(condominioId);
+      
+      // Lista de permisos de registro diario a desactivar
+      final permisosRegistroDiario = [
+        'crearNuevoRegistro',
+        'registroDiario',
+        'historialRegistroDiario',
+      ];
+
+      // Actualizar cada trabajador
+      for (final trabajador in trabajadores) {
+        // Crear una copia de los permisos actuales
+        final nuevosPermisos = Map<String, bool>.from(trabajador.funcionesDisponibles);
+        
+        // Desactivar los permisos de registro diario
+        for (final permiso in permisosRegistroDiario) {
+          nuevosPermisos[permiso] = false;
+        }
+        
+        // Actualizar en Firestore
+        await updateTrabajadorPermisos(condominioId, trabajador.uid, nuevosPermisos);
+      }
+      
+      print('✅ Permisos de registro diario desactivados para ${trabajadores.length} trabajadores');
+      return true;
+    } catch (e) {
+      print('❌ Error al desactivar permisos de registro diario para trabajadores: $e');
+      return false;
+    }
+  }
+
+  // Desactivar permisos de registro diario para todos los miembros del comité
+  Future<bool> desactivarPermisosRegistroDiarioComite(
+    String condominioId,
+  ) async {
+    try {
+      // Obtener todos los miembros del comité
+      final miembrosComite = await obtenerMiembrosComite(condominioId);
+      
+      // Lista de permisos de registro diario a desactivar
+      final permisosRegistroDiario = [
+        'crearNuevoRegistro',
+        'registrosDelDia',
+        'historialRegistros',
+      ];
+
+      // Actualizar cada miembro del comité
+      for (final miembro in miembrosComite) {
+        // Crear una copia de los permisos actuales
+        final nuevosPermisos = Map<String, bool>.from(miembro.funcionesDisponibles);
+        
+        // Desactivar los permisos de registro diario
+        for (final permiso in permisosRegistroDiario) {
+          nuevosPermisos[permiso] = false;
+        }
+        
+        // Actualizar en Firestore
+        await updateComitePermisos(condominioId, miembro.uid, nuevosPermisos);
+      }
+      
+      print('✅ Permisos de registro diario desactivados para ${miembrosComite.length} miembros del comité');
+      return true;
+    } catch (e) {
+      print('❌ Error al desactivar permisos de registro diario para comité: $e');
+      return false;
+    }
+  }
+
+  // Desactivar permisos de bloqueo de visitas para todos los trabajadores
+  Future<bool> desactivarPermisosBloqueoVisitasTrabajadores(
+    String condominioId,
+  ) async {
+    try {
+      // Obtener todos los trabajadores
+      final trabajadores = await obtenerTrabajadoresCondominio(condominioId);
+      
+      // Lista de permisos de bloqueo de visitas a desactivar
+      final permisosBloqueoVisitas = [
+        'crearBloqueoVisitas',
+        'visualizarVisitasBloqueadas',
+      ];
+
+      // Actualizar cada trabajador
+      for (final trabajador in trabajadores) {
+        // Crear una copia de los permisos actuales
+        final nuevosPermisos = Map<String, bool>.from(trabajador.funcionesDisponibles);
+        
+        // Desactivar los permisos de bloqueo de visitas
+        for (final permiso in permisosBloqueoVisitas) {
+          nuevosPermisos[permiso] = false;
+        }
+        
+        // Actualizar en Firestore
+        await updateTrabajadorPermisos(condominioId, trabajador.uid, nuevosPermisos);
+      }
+      
+      print('✅ Permisos de bloqueo de visitas desactivados para ${trabajadores.length} trabajadores');
+      return true;
+    } catch (e) {
+      print('❌ Error al desactivar permisos de bloqueo de visitas para trabajadores: $e');
+      return false;
+    }
+  }
+
+  // Desactivar permisos de bloqueo de visitas para todos los miembros del comité
+  Future<bool> desactivarPermisosBloqueoVisitasComite(
+    String condominioId,
+  ) async {
+    try {
+      // Obtener todos los miembros del comité
+      final miembrosComite = await obtenerMiembrosComite(condominioId);
+      
+      // Lista de permisos de bloqueo de visitas a desactivar
+      final permisosBloqueoVisitas = [
+        'crearBloqueoVisitas',
+        'visualizarVisitasBloqueadas',
+      ];
+
+      // Actualizar cada miembro del comité
+      for (final miembro in miembrosComite) {
+        // Crear una copia de los permisos actuales
+        final nuevosPermisos = Map<String, bool>.from(miembro.funcionesDisponibles);
+        
+        // Desactivar los permisos de bloqueo de visitas
+        for (final permiso in permisosBloqueoVisitas) {
+          nuevosPermisos[permiso] = false;
+        }
+        
+        // Actualizar en Firestore
+        await updateComitePermisos(condominioId, miembro.uid, nuevosPermisos);
+      }
+      
+      print('✅ Permisos de bloqueo de visitas desactivados para ${miembrosComite.length} miembros del comité');
+      return true;
+    } catch (e) {
+      print('❌ Error al desactivar permisos de bloqueo de visitas para comité: $e');
+      return false;
+    }
+  }
+
 }

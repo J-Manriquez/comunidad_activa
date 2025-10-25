@@ -259,6 +259,42 @@ class _PermisosModalState extends State<PermisosModal> {
           }
         }
 
+        // Manejar permisos de reclamos - solo desactivar cuando se desactiva
+        if (key == 'reclamos') {
+          if (!value) {
+            // Desactivar permisos de reclamos para todos
+            await FirestoreService().desactivarPermisosReclamosTrabajadores(condominioId);
+            await FirestoreService().desactivarPermisosReclamosComite(condominioId);
+          }
+        }
+
+        // Manejar permisos de publicaciones - solo desactivar cuando se desactiva
+        if (key == 'publicaciones') {
+          if (!value) {
+            // Desactivar permisos de publicaciones para todos
+            await FirestoreService().desactivarPermisosPublicacionesTrabajadores(condominioId);
+            await FirestoreService().desactivarPermisosPublicacionesComite(condominioId);
+          }
+        }
+
+        // Manejar permisos de registro diario - solo desactivar cuando se desactiva
+        if (key == 'registroDiario') {
+          if (!value) {
+            // Desactivar permisos de registro diario para todos
+            await FirestoreService().desactivarPermisosRegistroDiarioTrabajadores(condominioId);
+            await FirestoreService().desactivarPermisosRegistroDiarioComite(condominioId);
+          }
+        }
+
+        // Manejar permisos de bloqueo de visitas - solo desactivar cuando se desactiva
+        if (key == 'bloqueoVisitas') {
+          if (!value) {
+            // Desactivar permisos de bloqueo de visitas para todos
+            await FirestoreService().desactivarPermisosBloqueoVisitasTrabajadores(condominioId);
+            await FirestoreService().desactivarPermisosBloqueoVisitasComite(condominioId);
+          }
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(

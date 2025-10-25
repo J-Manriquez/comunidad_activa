@@ -905,6 +905,275 @@ class _ConfiguracionPermisosComiteScreenState
             }
           }
 
+          // Lista de permisos de reclamos que requieren validación
+          final permisosReclamos = [
+            'gestionReclamos',
+            'gestionTiposReclamos',
+          ];
+
+          // Si se está intentando activar un permiso de reclamos
+          if (!isActive && permisosReclamos.contains(key)) {
+            try {
+              // Verificar que el condominioId no sea null
+              final condominioId = widget.currentUser.condominioId;
+              
+              if (condominioId == null) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Error: No se pudo obtener el ID del condominio.',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      backgroundColor: Colors.red,
+                      duration: Duration(seconds: 3),
+                    ),
+                  );
+                }
+                return;
+              }
+
+              // Obtener los datos del condominio para verificar si la función de reclamos está activa
+              final condominioData = await _firestoreService.getCondominioData(condominioId);
+              
+              // Verificar si la función de reclamos está desactivada
+              if (condominioData?.gestionFunciones?.reclamos != true) {
+                // Mostrar mensaje de error y no permitir la activación
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'No se puede activar este permiso porque la función de Reclamos está desactivada en la configuración de permisos del condominio.',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      backgroundColor: Colors.red,
+                      duration: Duration(seconds: 4),
+                    ),
+                  );
+                }
+                return; // No actualizar el estado
+              }
+            } catch (e) {
+              print('Error al verificar permisos del condominio: $e');
+              // En caso de error, mostrar mensaje y no permitir la activación
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Error al verificar los permisos del condominio. Inténtalo de nuevo.',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    backgroundColor: Colors.red,
+                    duration: Duration(seconds: 3),
+                  ),
+                );
+              }
+              return;
+            }
+          }
+
+          // Lista de permisos de publicaciones que requieren validación
+          final permisosPublicaciones = [
+            'gestionPublicaciones',
+            'verPublicaciones',
+          ];
+
+          // Si se está intentando activar un permiso de publicaciones
+          if (!isActive && permisosPublicaciones.contains(key)) {
+            try {
+              // Verificar que el condominioId no sea null
+              final condominioId = widget.currentUser.condominioId;
+              
+              if (condominioId == null) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Error: No se pudo obtener el ID del condominio.',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      backgroundColor: Colors.red,
+                      duration: Duration(seconds: 3),
+                    ),
+                  );
+                }
+                return;
+              }
+
+              // Obtener los datos del condominio para verificar si la función de publicaciones está activa
+              final condominioData = await _firestoreService.getCondominioData(condominioId);
+              
+              // Verificar si la función de publicaciones está desactivada
+              if (condominioData?.gestionFunciones?.publicaciones != true) {
+                // Mostrar mensaje de error y no permitir la activación
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'No se puede activar este permiso porque la función de Publicaciones está desactivada en la configuración de permisos del condominio.',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      backgroundColor: Colors.red,
+                      duration: Duration(seconds: 4),
+                    ),
+                  );
+                }
+                return; // No actualizar el estado
+              }
+            } catch (e) {
+              print('Error al verificar permisos del condominio: $e');
+              // En caso de error, mostrar mensaje y no permitir la activación
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Error al verificar los permisos del condominio. Inténtalo de nuevo.',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    backgroundColor: Colors.red,
+                    duration: Duration(seconds: 3),
+                  ),
+                );
+              }
+              return;
+            }
+          }
+
+          // Lista de permisos de registro diario que requieren validación
+          final permisosRegistroDiario = [
+            'crearNuevoRegistro',
+            'registrosDelDia',
+            'historialRegistros',
+          ];
+
+          // Si se está intentando activar un permiso de registro diario
+          if (!isActive && permisosRegistroDiario.contains(key)) {
+            try {
+              // Verificar que el condominioId no sea null
+              final condominioId = widget.currentUser.condominioId;
+              
+              if (condominioId == null) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Error: No se pudo obtener el ID del condominio.',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      backgroundColor: Colors.red,
+                      duration: Duration(seconds: 3),
+                    ),
+                  );
+                }
+                return;
+              }
+
+              // Obtener los datos del condominio para verificar si la función de registro diario está activa
+              final condominioData = await _firestoreService.getCondominioData(condominioId);
+              
+              // Verificar si la función de registro diario está desactivada
+              if (condominioData?.gestionFunciones?.registroDiario != true) {
+                // Mostrar mensaje de error y no permitir la activación
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'No se puede activar este permiso porque la función de Registro Diario está desactivada en la configuración de permisos del condominio.',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      backgroundColor: Colors.red,
+                      duration: Duration(seconds: 4),
+                    ),
+                  );
+                }
+                return; // No actualizar el estado
+              }
+            } catch (e) {
+              print('Error al verificar permisos del condominio: $e');
+              // En caso de error, mostrar mensaje y no permitir la activación
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Error al verificar los permisos del condominio. Inténtalo de nuevo.',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    backgroundColor: Colors.red,
+                    duration: Duration(seconds: 3),
+                  ),
+                );
+              }
+              return;
+            }
+          }
+
+          // Lista de permisos de bloqueo de visitas que requieren validación
+          final permisosBloqueoVisitas = [
+            'crearBloqueoVisitas',
+            'visualizarVisitasBloqueadas',
+          ];
+
+          // Si se está intentando activar un permiso de bloqueo de visitas
+          if (!isActive && permisosBloqueoVisitas.contains(key)) {
+            try {
+              // Verificar que el condominioId no sea null
+              final condominioId = widget.currentUser.condominioId;
+              
+              if (condominioId == null) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Error: No se pudo obtener el ID del condominio.',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      backgroundColor: Colors.red,
+                      duration: Duration(seconds: 3),
+                    ),
+                  );
+                }
+                return;
+              }
+
+              // Obtener los datos del condominio para verificar si la función de bloqueo de visitas está activa
+              final condominioData = await _firestoreService.getCondominioData(condominioId);
+              
+              // Verificar si la función de bloqueo de visitas está desactivada
+              if (condominioData?.gestionFunciones?.bloqueoVisitas != true) {
+                // Mostrar mensaje de error y no permitir la activación
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'No se puede activar este permiso porque la función de Bloqueo de Visitas está desactivada en la configuración de permisos del condominio.',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      backgroundColor: Colors.red,
+                      duration: Duration(seconds: 4),
+                    ),
+                  );
+                }
+                return; // No actualizar el estado
+              }
+            } catch (e) {
+              print('Error al verificar permisos del condominio: $e');
+              // En caso de error, mostrar mensaje y no permitir la activación
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Error al verificar los permisos del condominio. Inténtalo de nuevo.',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    backgroundColor: Colors.red,
+                    duration: Duration(seconds: 3),
+                  ),
+                );
+              }
+              return;
+            }
+          }
+
           setState(() {
             _funcionesDisponibles[key] = !isActive;
             _hasChanges = true;
@@ -1376,6 +1645,271 @@ class _ConfiguracionPermisosComiteScreenState
                     }
                   }
 
+                  // Lista de permisos de reclamos que requieren validación
+                  final permisosReclamos = [
+                    'gestionReclamos',
+                    'gestionTiposReclamos',
+                  ];
+
+                  // Si se está intentando activar un permiso de reclamos
+                  if (value && permisosReclamos.contains(key)) {
+                    try {
+                      // Verificar que el condominioId no sea null
+                      final condominioId = widget.currentUser.condominioId;
+                      if (condominioId == null) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Error: No se pudo obtener el ID del condominio.',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                              backgroundColor: Colors.red,
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                        return;
+                      }
+
+                      // Obtener los datos del condominio para verificar si la función de reclamos está activa
+                      final condominioData = await _firestoreService.getCondominioData(condominioId);
+                      
+                      // Verificar si la función de reclamos está desactivada
+                      if (condominioData?.gestionFunciones?.reclamos != true) {
+                        // Mostrar mensaje de error y no permitir la activación
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'No se puede activar este permiso porque la función de Reclamos está desactivada en la configuración de permisos del condominio.',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                              backgroundColor: Colors.red,
+                              duration: Duration(seconds: 4),
+                            ),
+                          );
+                        }
+                        return; // No actualizar el estado
+                      }
+                    } catch (e) {
+                      print('Error al verificar permisos del condominio: $e');
+                      // En caso de error, mostrar mensaje y no permitir la activación
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Error al verificar los permisos del condominio. Inténtalo de nuevo.',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            backgroundColor: Colors.red,
+                            duration: Duration(seconds: 3),
+                          ),
+                        );
+                      }
+                      return;
+                    }
+                  }
+
+                  // Lista de permisos de publicaciones que requieren validación
+                  final permisosPublicaciones = [
+                    'gestionPublicaciones',
+                    'verPublicaciones',
+                  ];
+
+                  // Si se está intentando activar un permiso de publicaciones
+                  if (value && permisosPublicaciones.contains(key)) {
+                    try {
+                      // Verificar que el condominioId no sea null
+                      final condominioId = widget.currentUser.condominioId;
+                      if (condominioId == null) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Error: No se pudo obtener el ID del condominio.',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                              backgroundColor: Colors.red,
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                        return;
+                      }
+
+                      // Obtener los datos del condominio para verificar si la función de publicaciones está activa
+                      final condominioData = await _firestoreService.getCondominioData(condominioId);
+                      
+                      // Verificar si la función de publicaciones está desactivada
+                      if (condominioData?.gestionFunciones?.publicaciones != true) {
+                        // Mostrar mensaje de error y no permitir la activación
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'No se puede activar este permiso porque la función de Publicaciones está desactivada en la configuración de permisos del condominio.',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                              backgroundColor: Colors.red,
+                              duration: Duration(seconds: 4),
+                            ),
+                          );
+                        }
+                        return; // No actualizar el estado
+                      }
+                    } catch (e) {
+                      print('Error al verificar permisos del condominio: $e');
+                      // En caso de error, mostrar mensaje y no permitir la activación
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Error al verificar los permisos del condominio. Inténtalo de nuevo.',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            backgroundColor: Colors.red,
+                            duration: Duration(seconds: 3),
+                          ),
+                        );
+                      }
+                      return;
+                    }
+                  }
+
+                  // Lista de permisos de registro diario que requieren validación
+                  final permisosRegistroDiario = [
+                    'crearNuevoRegistro',
+                    'registrosDelDia',
+                    'historialRegistros',
+                  ];
+
+                  // Si se está intentando activar un permiso de registro diario
+                  if (value && permisosRegistroDiario.contains(key)) {
+                    try {
+                      // Verificar que el condominioId no sea null
+                      final condominioId = widget.currentUser.condominioId;
+                      if (condominioId == null) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Error: No se pudo obtener el ID del condominio.',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                              backgroundColor: Colors.red,
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                        return;
+                      }
+
+                      // Obtener los datos del condominio para verificar si la función de registro diario está activa
+                      final condominioData = await _firestoreService.getCondominioData(condominioId);
+                      
+                      // Verificar si la función de registro diario está desactivada
+                      if (condominioData?.gestionFunciones?.registroDiario != true) {
+                        // Mostrar mensaje de error y no permitir la activación
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'No se puede activar este permiso porque la función de Registro Diario está desactivada en la configuración de permisos del condominio.',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                              backgroundColor: Colors.red,
+                              duration: Duration(seconds: 4),
+                            ),
+                          );
+                        }
+                        return; // No actualizar el estado
+                      }
+                    } catch (e) {
+                      print('Error al verificar permisos del condominio: $e');
+                      // En caso de error, mostrar mensaje y no permitir la activación
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Error al verificar los permisos del condominio. Inténtalo de nuevo.',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            backgroundColor: Colors.red,
+                            duration: Duration(seconds: 3),
+                          ),
+                        );
+                      }
+                      return;
+                    }
+                  }
+
+                  // Lista de permisos de bloqueo de visitas que requieren validación
+                  final permisosBloqueoVisitas = [
+                    'crearBloqueoVisitas',
+                    'visualizarVisitasBloqueadas',
+                  ];
+
+                  // Si se está intentando activar un permiso de bloqueo de visitas
+                  if (value && permisosBloqueoVisitas.contains(key)) {
+                    try {
+                      // Verificar que el condominioId no sea null
+                      final condominioId = widget.currentUser.condominioId;
+                      if (condominioId == null) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Error: No se pudo obtener el ID del condominio.',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                              backgroundColor: Colors.red,
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                        return;
+                      }
+
+                      // Obtener los datos del condominio para verificar si la función de bloqueo de visitas está activa
+                      final condominioData = await _firestoreService.getCondominioData(condominioId);
+                      
+                      // Verificar si la función de bloqueo de visitas está desactivada
+                      if (condominioData?.gestionFunciones?.bloqueoVisitas != true) {
+                        // Mostrar mensaje de error y no permitir la activación
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'No se puede activar este permiso porque la función de Bloqueo de Visitas está desactivada en la configuración de permisos del condominio.',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                              backgroundColor: Colors.red,
+                              duration: Duration(seconds: 4),
+                            ),
+                          );
+                        }
+                        return; // No actualizar el estado
+                      }
+                    } catch (e) {
+                      print('Error al verificar permisos del condominio: $e');
+                      // En caso de error, mostrar mensaje y no permitir la activación
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Error al verificar los permisos del condominio. Inténtalo de nuevo.',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            backgroundColor: Colors.red,
+                            duration: Duration(seconds: 3),
+                          ),
+                        );
+                      }
+                      return;
+                    }
+                  }
+
                   setState(() {
                     _funcionesDisponibles[key] = value;
                     _hasChanges = true;
@@ -1443,10 +1977,33 @@ class _ConfiguracionPermisosComiteScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Permisos - ${widget.miembroComite.nombre}'),
-        backgroundColor: Colors.purple.shade600,
+    return StreamBuilder<ComiteModel?>(
+      stream: _firestoreService.getComiteStream(
+        widget.currentUser.condominioId!,
+        widget.miembroComite.uid,
+      ),
+      builder: (context, snapshot) {
+        // Actualizar permisos cuando hay cambios desde el modal
+        if (snapshot.hasData && snapshot.data != null) {
+          final comiteActualizado = snapshot.data!;
+          
+          // Solo actualizar si los permisos han cambiado desde el servidor
+          // y no hay cambios locales pendientes
+          if (!_hasChanges) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                setState(() {
+                  _funcionesDisponibles = Map<String, bool>.from(comiteActualizado.funcionesDisponibles);
+                });
+              }
+            });
+          }
+        }
+
+        return Scaffold(
+          appBar: AppBar(
+            title: Text('Permisos - ${widget.miembroComite.nombre}'),
+            backgroundColor: Colors.purple.shade600,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
@@ -1643,6 +2200,8 @@ class _ConfiguracionPermisosComiteScreenState
           ],
         ),
       ),
+    );
+      },
     );
   }
 

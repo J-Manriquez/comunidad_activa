@@ -820,6 +820,264 @@ class _ConfiguracionPermisosTrabajadorScreenState
       }
     }
 
+    // Validación para permisos de reclamos
+    final permisosReclamos = [
+      'gestionReclamos',
+      'gestionTiposReclamos',
+    ];
+
+    if (valor && permisosReclamos.contains(funcion)) {
+      try {
+        final condominioId = widget.currentUser.condominioId;
+        if (condominioId == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Error: No se pudo obtener el ID del condominio.',
+                  style: TextStyle(color: Colors.white),
+                ),
+                backgroundColor: Colors.red,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+          return;
+        }
+
+        // Obtener los datos del condominio para verificar si la función de reclamos está activa
+        final condominioData = await _firestoreService.getCondominioData(condominioId);
+        
+        // Verificar si la función de reclamos está desactivada
+        if (condominioData?.gestionFunciones?.reclamos != true) {
+          // Mostrar mensaje de error y no permitir la activación
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'No se puede activar este permiso porque la función de Reclamos está desactivada en la configuración de permisos del condominio.',
+                  style: TextStyle(color: Colors.white),
+                ),
+                backgroundColor: Colors.red,
+                duration: Duration(seconds: 4),
+              ),
+            );
+          }
+          return; // No actualizar el estado
+        }
+      } catch (e) {
+        print('Error al verificar permisos del condominio: $e');
+        // En caso de error, mostrar mensaje y no permitir la activación
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Error al verificar los permisos del condominio. Inténtalo de nuevo.',
+                style: TextStyle(color: Colors.white),
+              ),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
+    }
+
+    // Validación para permisos de publicaciones
+    final permisosPublicaciones = [
+      'gestionPublicaciones',
+      'verPublicaciones',
+      'publicacionesTrabajadores',
+    ];
+
+    if (valor && permisosPublicaciones.contains(funcion)) {
+      try {
+        final condominioId = widget.currentUser.condominioId;
+        if (condominioId == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Error: No se pudo obtener el ID del condominio.',
+                  style: TextStyle(color: Colors.white),
+                ),
+                backgroundColor: Colors.red,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+          return;
+        }
+
+        // Obtener los datos del condominio para verificar si la función de publicaciones está activa
+        final condominioData = await _firestoreService.getCondominioData(condominioId);
+        
+        // Verificar si la función de publicaciones está desactivada
+        if (condominioData?.gestionFunciones?.publicaciones != true) {
+          // Mostrar mensaje de error y no permitir la activación
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'No se puede activar este permiso porque la función de Publicaciones está desactivada en la configuración de permisos del condominio.',
+                  style: TextStyle(color: Colors.white),
+                ),
+                backgroundColor: Colors.red,
+                duration: Duration(seconds: 4),
+              ),
+            );
+          }
+          return; // No actualizar el estado
+        }
+      } catch (e) {
+        print('Error al verificar permisos del condominio: $e');
+        // En caso de error, mostrar mensaje y no permitir la activación
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Error al verificar los permisos del condominio. Inténtalo de nuevo.',
+                style: TextStyle(color: Colors.white),
+              ),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
+    }
+
+    // Validación para permisos de registro diario
+    final permisosRegistroDiario = [
+      'crearNuevoRegistro',
+      'registroDiario',
+      'historialRegistroDiario',
+    ];
+
+    if (valor && permisosRegistroDiario.contains(funcion)) {
+      try {
+        final condominioId = widget.currentUser.condominioId;
+        if (condominioId == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Error: No se pudo obtener el ID del condominio.',
+                  style: TextStyle(color: Colors.white),
+                ),
+                backgroundColor: Colors.red,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+          return;
+        }
+
+        // Obtener los datos del condominio para verificar si la función de registro diario está activa
+        final condominioData = await _firestoreService.getCondominioData(condominioId);
+        
+        // Verificar si la función de registro diario está desactivada
+        if (condominioData?.gestionFunciones?.registroDiario != true) {
+          // Mostrar mensaje de error y no permitir la activación
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'No se puede activar este permiso porque la función de Registro Diario está desactivada en la configuración de permisos del condominio.',
+                  style: TextStyle(color: Colors.white),
+                ),
+                backgroundColor: Colors.red,
+                duration: Duration(seconds: 4),
+              ),
+            );
+          }
+          return; // No actualizar el estado
+        }
+      } catch (e) {
+        print('Error al verificar permisos del condominio: $e');
+        // En caso de error, mostrar mensaje y no permitir la activación
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Error al verificar los permisos del condominio. Inténtalo de nuevo.',
+                style: TextStyle(color: Colors.white),
+              ),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
+    }
+
+    // Validación para permisos de bloqueo de visitas
+    final permisosBloqueoVisitas = [
+      'crearBloqueoVisitas',
+      'visualizarVisitasBloqueadas',
+    ];
+
+    if (valor && permisosBloqueoVisitas.contains(funcion)) {
+      try {
+        final condominioId = widget.currentUser.condominioId;
+        if (condominioId == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Error: No se pudo obtener el ID del condominio.',
+                  style: TextStyle(color: Colors.white),
+                ),
+                backgroundColor: Colors.red,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+          return;
+        }
+
+        // Obtener los datos del condominio para verificar si la función de bloqueo de visitas está activa
+        final condominioData = await _firestoreService.getCondominioData(condominioId);
+        
+        // Verificar si la función de bloqueo de visitas está desactivada
+        if (condominioData?.gestionFunciones?.bloqueoVisitas != true) {
+          // Mostrar mensaje de error y no permitir la activación
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'No se puede activar este permiso porque la función de Bloqueo de Visitas está desactivada en la configuración de permisos del condominio.',
+                  style: TextStyle(color: Colors.white),
+                ),
+                backgroundColor: Colors.red,
+                duration: Duration(seconds: 4),
+              ),
+            );
+          }
+          return; // No actualizar el estado
+        }
+      } catch (e) {
+        print('Error al verificar permisos del condominio: $e');
+        // En caso de error, mostrar mensaje y no permitir la activación
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Error al verificar los permisos del condominio. Inténtalo de nuevo.',
+                style: TextStyle(color: Colors.white),
+              ),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
+    }
+
     setState(() {
       _funcionesDisponibles[funcion] = valor;
       _hasChanges = true;
@@ -899,35 +1157,58 @@ class _ConfiguracionPermisosTrabajadorScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Permisos Trabajadores'),
-        backgroundColor: Colors.blue.shade700,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          if (_hasChanges)
-            TextButton(
-              onPressed: _isLoading ? null : _guardarCambios,
-              child: _isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : const Text(
-                      'Guardar',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-            ),
-        ],
+    return StreamBuilder<TrabajadorModel?>(
+      stream: _firestoreService.getTrabajadorStream(
+        widget.currentUser.condominioId!,
+        widget.trabajador.uid,
       ),
+      builder: (context, snapshot) {
+        // Actualizar permisos cuando hay cambios desde el modal
+        if (snapshot.hasData && snapshot.data != null) {
+          final trabajadorActualizado = snapshot.data!;
+          
+          // Solo actualizar si los permisos han cambiado desde el servidor
+          // y no hay cambios locales pendientes
+          if (!_hasChanges) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                setState(() {
+                  _funcionesDisponibles = Map<String, bool>.from(trabajadorActualizado.funcionesDisponibles);
+                });
+              }
+            });
+          }
+        }
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Permisos Trabajadores'),
+            backgroundColor: Colors.blue.shade700,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            actions: [
+              if (_hasChanges)
+                TextButton(
+                  onPressed: _isLoading ? null : _guardarCambios,
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Text(
+                          'Guardar',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
+            ],
+          ),
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -1126,6 +1407,8 @@ class _ConfiguracionPermisosTrabajadorScreenState
           ],
         ),
       ),
+    );
+      },
     );
   }
 
