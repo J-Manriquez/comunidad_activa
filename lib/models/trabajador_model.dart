@@ -110,11 +110,11 @@ class TrabajadorModel {
       'crearEditarTurno': false,
       'registroTurnosRealizados': false,
       // Gestión de Mensajes - Sub-funciones
-      'chatCondominio': false,
-      'chatConserjeria': false,
-      'chatResidentes': false,
+      'chatEntreRes': false,
+      'chatGrupal': false,
       'chatAdministrador': false,
-      'gestionMensajes': false,
+      'chatConserjeria': false,
+      'chatPrivado': false,
   };
   }
 

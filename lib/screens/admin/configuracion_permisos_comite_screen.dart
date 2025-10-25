@@ -319,24 +319,17 @@ class _ConfiguracionPermisosComiteScreenState
       'categoria': 'Gestión de Turnos de Trabajadores',
     },
     // Gestión de Mensajes - Sub-funciones
-    'chatCondominio': {
-      'titulo': 'Chat del Condominio',
-      'descripcion': 'Chat general del condominio',
-      'icono': Icons.forum,
+    'chatEntreRes': {
+      'titulo': 'Chat Entre Residentes',
+      'descripcion': 'Chat entre residentes del condominio',
+      'icono': Icons.people_alt,
       'color': Colors.cyan,
       'categoria': 'Gestión de Mensajes',
     },
-    'chatConserjeria': {
-      'titulo': 'Chat de Conserjería',
-      'descripcion': 'Chat específico de conserjería',
-      'icono': Icons.support_agent,
-      'color': Colors.cyan,
-      'categoria': 'Gestión de Mensajes',
-    },
-    'chatResidentes': {
-      'titulo': 'Chat con Residentes',
-      'descripcion': 'Comunicación con residentes',
-      'icono': Icons.people,
+    'chatGrupal': {
+      'titulo': 'Chat Grupal',
+      'descripcion': 'Chat grupal del condominio',
+      'icono': Icons.group,
       'color': Colors.cyan,
       'categoria': 'Gestión de Mensajes',
     },
@@ -347,9 +340,16 @@ class _ConfiguracionPermisosComiteScreenState
       'color': Colors.cyan,
       'categoria': 'Gestión de Mensajes',
     },
-    'gestionMensajes': {
-      'titulo': 'Gestión de Mensajes',
-      'descripcion': 'Comunicación directa con residentes',
+    'chatConserjeria': {
+      'titulo': 'Chat de Conserjería',
+      'descripcion': 'Chat específico de conserjería',
+      'icono': Icons.support_agent,
+      'color': Colors.cyan,
+      'categoria': 'Gestión de Mensajes',
+    },
+    'chatPrivado': {
+      'titulo': 'Chat Privado',
+      'descripcion': 'Mensajes privados individuales',
       'icono': Icons.message,
       'color': Colors.cyan,
       'categoria': 'Gestión de Mensajes',
@@ -401,7 +401,7 @@ class _ConfiguracionPermisosComiteScreenState
   int _contarFuncionesActivas() {
     // Contar solo las funciones activas que están definidas en _funcionesInfo
     // Excluir las funciones vacías que aparecen en la pantalla principal
-    final funcionesVacias = ['gestionMensajes'];
+    final funcionesVacias = [];
     
     return _funcionesInfo.keys
         .where((key) => !funcionesVacias.contains(key) && 
@@ -415,7 +415,7 @@ class _ConfiguracionPermisosComiteScreenState
 
   int _contarFuncionesTotales() {
     // Contar el total de funciones disponibles excluyendo las funciones vacías
-    final funcionesVacias = ['gestionMensajes'];
+    final funcionesVacias = [];
     
     return _funcionesInfo.keys
         .where((key) => !funcionesVacias.contains(key) &&
@@ -429,17 +429,15 @@ class _ConfiguracionPermisosComiteScreenState
   void _activarTodas() {
     setState(() {
       for (String key in _funcionesInfo.keys) {
-        if (key != 'gestionMensajes') {
-          // Solo activar estacionamientosVisitas si estVisitas es true
-          if (key == 'estacionamientosVisitas' && !_estVisitas) {
-            continue;
-          }
-          // Solo activar solicitudesEstacionamientos si requiere aprobación es true
-          if (key == 'solicitudesEstacionamientos' && !_requiereAprobacion) {
-            continue;
-          }
-          _funcionesDisponibles[key] = true;
+        // Solo activar estacionamientosVisitas si estVisitas es true
+        if (key == 'estacionamientosVisitas' && !_estVisitas) {
+          continue;
         }
+        // Solo activar solicitudesEstacionamientos si requiere aprobación es true
+        if (key == 'solicitudesEstacionamientos' && !_requiereAprobacion) {
+          continue;
+        }
+        _funcionesDisponibles[key] = true;
       }
       _hasChanges = true;
     });
@@ -1258,6 +1256,102 @@ class _ConfiguracionPermisosComiteScreenState
             }
           }
 
+          // Lista de permisos de mensajes que requieren validación
+          final permisosMensajes = [
+            'chatEntreRes',
+            'chatGrupal',
+            'chatAdministrador',
+            'chatConserjeria',
+            'chatPrivado',
+          ];
+
+          // Si se está intentando activar un permiso de mensajes
+          if (!isActive && permisosMensajes.contains(key)) {
+            try {
+              // Verificar que el condominioId no sea null
+              final condominioId = widget.currentUser.condominioId;
+              
+              if (condominioId == null) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Error: No se pudo obtener el ID del condominio.',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      backgroundColor: Colors.red,
+                      duration: Duration(seconds: 3),
+                    ),
+                  );
+                }
+                return;
+              }
+
+              // Obtener los datos del condominio para verificar si la función de mensajes está activa
+              final condominioData = await _firestoreService.getCondominioData(condominioId);
+              
+              // Verificar si la función específica de mensaje está desactivada
+              bool funcionActiva = false;
+              String nombreFuncion = '';
+              
+              switch (key) {
+                case 'chatEntreRes':
+                  funcionActiva = condominioData?.gestionFunciones?.chatEntreRes == true;
+                  nombreFuncion = 'Chat Entre Residentes';
+                  break;
+                case 'chatGrupal':
+                  funcionActiva = condominioData?.gestionFunciones?.chatGrupal == true;
+                  nombreFuncion = 'Chat Grupal';
+                  break;
+                case 'chatAdministrador':
+                  funcionActiva = condominioData?.gestionFunciones?.chatAdministrador == true;
+                  nombreFuncion = 'Chat con Administrador';
+                  break;
+                case 'chatConserjeria':
+                  funcionActiva = condominioData?.gestionFunciones?.chatConserjeria == true;
+                  nombreFuncion = 'Chat con Conserjería';
+                  break;
+                case 'chatPrivado':
+                  funcionActiva = condominioData?.gestionFunciones?.chatPrivado == true;
+                  nombreFuncion = 'Chat Privado';
+                  break;
+              }
+              
+              if (!funcionActiva) {
+                // Mostrar mensaje de error y no permitir la activación
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'No se puede activar este permiso porque la función de $nombreFuncion está desactivada en la configuración de permisos del condominio.',
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      backgroundColor: Colors.red,
+                      duration: const Duration(seconds: 4),
+                    ),
+                  );
+                }
+                return; // No actualizar el estado
+              }
+            } catch (e) {
+              print('Error al verificar permisos del condominio: $e');
+              // En caso de error, mostrar mensaje y no permitir la activación
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Error al verificar los permisos del condominio. Inténtalo de nuevo.',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    backgroundColor: Colors.red,
+                    duration: Duration(seconds: 3),
+                  ),
+                );
+              }
+              return;
+            }
+          }
+
           setState(() {
             _funcionesDisponibles[key] = !isActive;
             _hasChanges = true;
@@ -2038,6 +2132,101 @@ class _ConfiguracionPermisosComiteScreenState
                               ),
                               backgroundColor: Colors.red,
                               duration: Duration(seconds: 4),
+                            ),
+                          );
+                        }
+                        return; // No actualizar el estado
+                      }
+                    } catch (e) {
+                      print('Error al verificar permisos del condominio: $e');
+                      // En caso de error, mostrar mensaje y no permitir la activación
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Error al verificar los permisos del condominio. Inténtalo de nuevo.',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            backgroundColor: Colors.red,
+                            duration: Duration(seconds: 3),
+                          ),
+                        );
+                      }
+                      return;
+                    }
+                  }
+
+                  // Lista de permisos de mensajes que requieren validación
+                  final permisosMensajes = [
+                    'chatEntreRes',
+                    'chatGrupal',
+                    'chatAdministrador',
+                    'chatConserjeria',
+                    'chatPrivado',
+                  ];
+
+                  // Si se está intentando activar un permiso de mensajes
+                  if (value && permisosMensajes.contains(key)) {
+                    try {
+                      // Verificar que el condominioId no sea null
+                      final condominioId = widget.currentUser.condominioId;
+                      if (condominioId == null) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Error: No se pudo obtener el ID del condominio.',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                              backgroundColor: Colors.red,
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                        return;
+                      }
+
+                      // Obtener los datos del condominio para verificar si la función de mensajes está activa
+                      final condominioData = await _firestoreService.getCondominioData(condominioId);
+                      
+                      // Verificar si la función específica de mensaje está desactivada
+                      bool funcionActiva = false;
+                      String nombreFuncion = '';
+                      
+                      switch (key) {
+                        case 'chatEntreRes':
+                          funcionActiva = condominioData?.gestionFunciones?.chatEntreRes == true;
+                          nombreFuncion = 'Chat Entre Residentes';
+                          break;
+                        case 'chatGrupal':
+                          funcionActiva = condominioData?.gestionFunciones?.chatGrupal == true;
+                          nombreFuncion = 'Chat Grupal';
+                          break;
+                        case 'chatAdministrador':
+                          funcionActiva = condominioData?.gestionFunciones?.chatAdministrador == true;
+                          nombreFuncion = 'Chat con Administrador';
+                          break;
+                        case 'chatConserjeria':
+                          funcionActiva = condominioData?.gestionFunciones?.chatConserjeria == true;
+                          nombreFuncion = 'Chat con Conserjería';
+                          break;
+                        case 'chatPrivado':
+                          funcionActiva = condominioData?.gestionFunciones?.chatPrivado == true;
+                          nombreFuncion = 'Chat Privado';
+                          break;
+                      }
+                      
+                      if (!funcionActiva) {
+                        // Mostrar mensaje de error y no permitir la activación
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'No se puede activar este permiso porque la función de $nombreFuncion está desactivada en la configuración de permisos del condominio.',
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                              backgroundColor: Colors.red,
+                              duration: const Duration(seconds: 4),
                             ),
                           );
                         }

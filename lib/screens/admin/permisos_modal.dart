@@ -304,6 +304,51 @@ class _PermisosModalState extends State<PermisosModal> {
           }
         }
 
+        // Manejar permisos de chat entre residentes - solo desactivar cuando se desactiva
+        if (key == 'chatEntreRes') {
+          if (!value) {
+            // Desactivar permisos de chat entre residentes para todos
+            await FirestoreService().desactivarPermisosChatEntreResTrabajadores(condominioId);
+            await FirestoreService().desactivarPermisosChatEntreResComite(condominioId);
+          }
+        }
+
+        // Manejar permisos de chat grupal - solo desactivar cuando se desactiva
+        if (key == 'chatGrupal') {
+          if (!value) {
+            // Desactivar permisos de chat grupal para todos
+            await FirestoreService().desactivarPermisosChatGrupalTrabajadores(condominioId);
+            await FirestoreService().desactivarPermisosChatGrupalComite(condominioId);
+          }
+        }
+
+        // Manejar permisos de chat administrador - solo desactivar cuando se desactiva
+        if (key == 'chatAdministrador') {
+          if (!value) {
+            // Desactivar permisos de chat administrador para todos
+            await FirestoreService().desactivarPermisosChatAdministradorTrabajadores(condominioId);
+            await FirestoreService().desactivarPermisosChatAdministradorComite(condominioId);
+          }
+        }
+
+        // Manejar permisos de chat conserjería - solo desactivar cuando se desactiva
+        if (key == 'chatConserjeria') {
+          if (!value) {
+            // Desactivar permisos de chat conserjería para todos
+            await FirestoreService().desactivarPermisosChatConserjeriaTrabajadores(condominioId);
+            await FirestoreService().desactivarPermisosChatConserjeriaComite(condominioId);
+          }
+        }
+
+        // Manejar permisos de chat privado - solo desactivar cuando se desactiva
+        if (key == 'chatPrivado') {
+          if (!value) {
+            // Desactivar permisos de chat privado para todos
+            await FirestoreService().desactivarPermisosChatPrivadoTrabajadores(condominioId);
+            await FirestoreService().desactivarPermisosChatPrivadoComite(condominioId);
+          }
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(

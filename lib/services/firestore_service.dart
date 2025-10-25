@@ -2183,4 +2183,356 @@ class FirestoreService {
     }
   }
 
+  // ========== MÉTODOS PARA DESACTIVAR PERMISOS DE MENSAJES ==========
+
+  // Desactivar permisos de chat entre residentes para todos los trabajadores
+  Future<bool> desactivarPermisosChatEntreResTrabajadores(
+    String condominioId,
+  ) async {
+    try {
+      // Obtener todos los trabajadores
+      final trabajadores = await obtenerTrabajadoresCondominio(condominioId);
+      
+      // Lista de permisos de chat entre residentes a desactivar
+      final permisosChatEntreRes = [
+        'chatEntreRes',
+      ];
+
+      // Actualizar cada trabajador
+      for (final trabajador in trabajadores) {
+        // Crear una copia de los permisos actuales
+        final nuevosPermisos = Map<String, bool>.from(trabajador.funcionesDisponibles);
+        
+        // Desactivar los permisos de chat entre residentes
+        for (final permiso in permisosChatEntreRes) {
+          nuevosPermisos[permiso] = false;
+        }
+        
+        // Actualizar en Firestore
+        await updateTrabajadorPermisos(condominioId, trabajador.uid, nuevosPermisos);
+      }
+      
+      print('✅ Permisos de chat entre residentes desactivados para ${trabajadores.length} trabajadores');
+      return true;
+    } catch (e) {
+      print('❌ Error al desactivar permisos de chat entre residentes para trabajadores: $e');
+      return false;
+    }
+  }
+
+  // Desactivar permisos de chat entre residentes para todos los miembros del comité
+  Future<bool> desactivarPermisosChatEntreResComite(
+    String condominioId,
+  ) async {
+    try {
+      // Obtener todos los miembros del comité
+      final miembrosComite = await obtenerMiembrosComite(condominioId);
+      
+      // Lista de permisos de chat entre residentes a desactivar
+      final permisosChatEntreRes = [
+        'chatEntreRes',
+      ];
+
+      // Actualizar cada miembro del comité
+      for (final miembro in miembrosComite) {
+        // Crear una copia de los permisos actuales
+        final nuevosPermisos = Map<String, bool>.from(miembro.funcionesDisponibles);
+        
+        // Desactivar los permisos de chat entre residentes
+        for (final permiso in permisosChatEntreRes) {
+          nuevosPermisos[permiso] = false;
+        }
+        
+        // Actualizar en Firestore
+        await updateComitePermisos(condominioId, miembro.uid, nuevosPermisos);
+      }
+      
+      print('✅ Permisos de chat entre residentes desactivados para ${miembrosComite.length} miembros del comité');
+      return true;
+    } catch (e) {
+      print('❌ Error al desactivar permisos de chat entre residentes para comité: $e');
+      return false;
+    }
+  }
+
+  // Desactivar permisos de chat grupal para todos los trabajadores
+  Future<bool> desactivarPermisosChatGrupalTrabajadores(
+    String condominioId,
+  ) async {
+    try {
+      // Obtener todos los trabajadores
+      final trabajadores = await obtenerTrabajadoresCondominio(condominioId);
+      
+      // Lista de permisos de chat grupal a desactivar
+      final permisosChatGrupal = [
+        'chatGrupal',
+      ];
+
+      // Actualizar cada trabajador
+      for (final trabajador in trabajadores) {
+        // Crear una copia de los permisos actuales
+        final nuevosPermisos = Map<String, bool>.from(trabajador.funcionesDisponibles);
+        
+        // Desactivar los permisos de chat grupal
+        for (final permiso in permisosChatGrupal) {
+          nuevosPermisos[permiso] = false;
+        }
+        
+        // Actualizar en Firestore
+        await updateTrabajadorPermisos(condominioId, trabajador.uid, nuevosPermisos);
+      }
+      
+      print('✅ Permisos de chat grupal desactivados para ${trabajadores.length} trabajadores');
+      return true;
+    } catch (e) {
+      print('❌ Error al desactivar permisos de chat grupal para trabajadores: $e');
+      return false;
+    }
+  }
+
+  // Desactivar permisos de chat grupal para todos los miembros del comité
+  Future<bool> desactivarPermisosChatGrupalComite(
+    String condominioId,
+  ) async {
+    try {
+      // Obtener todos los miembros del comité
+      final miembrosComite = await obtenerMiembrosComite(condominioId);
+      
+      // Lista de permisos de chat grupal a desactivar
+      final permisosChatGrupal = [
+        'chatGrupal',
+      ];
+
+      // Actualizar cada miembro del comité
+      for (final miembro in miembrosComite) {
+        // Crear una copia de los permisos actuales
+        final nuevosPermisos = Map<String, bool>.from(miembro.funcionesDisponibles);
+        
+        // Desactivar los permisos de chat grupal
+        for (final permiso in permisosChatGrupal) {
+          nuevosPermisos[permiso] = false;
+        }
+        
+        // Actualizar en Firestore
+        await updateComitePermisos(condominioId, miembro.uid, nuevosPermisos);
+      }
+      
+      print('✅ Permisos de chat grupal desactivados para ${miembrosComite.length} miembros del comité');
+      return true;
+    } catch (e) {
+      print('❌ Error al desactivar permisos de chat grupal para comité: $e');
+      return false;
+    }
+  }
+
+  // Desactivar permisos de chat administrador para todos los trabajadores
+  Future<bool> desactivarPermisosChatAdministradorTrabajadores(
+    String condominioId,
+  ) async {
+    try {
+      // Obtener todos los trabajadores
+      final trabajadores = await obtenerTrabajadoresCondominio(condominioId);
+      
+      // Lista de permisos de chat administrador a desactivar
+      final permisosChatAdministrador = [
+        'chatAdministrador',
+      ];
+
+      // Actualizar cada trabajador
+      for (final trabajador in trabajadores) {
+        // Crear una copia de los permisos actuales
+        final nuevosPermisos = Map<String, bool>.from(trabajador.funcionesDisponibles);
+        
+        // Desactivar los permisos de chat administrador
+        for (final permiso in permisosChatAdministrador) {
+          nuevosPermisos[permiso] = false;
+        }
+        
+        // Actualizar en Firestore
+        await updateTrabajadorPermisos(condominioId, trabajador.uid, nuevosPermisos);
+      }
+      
+      print('✅ Permisos de chat administrador desactivados para ${trabajadores.length} trabajadores');
+      return true;
+    } catch (e) {
+      print('❌ Error al desactivar permisos de chat administrador para trabajadores: $e');
+      return false;
+    }
+  }
+
+  // Desactivar permisos de chat administrador para todos los miembros del comité
+  Future<bool> desactivarPermisosChatAdministradorComite(
+    String condominioId,
+  ) async {
+    try {
+      // Obtener todos los miembros del comité
+      final miembrosComite = await obtenerMiembrosComite(condominioId);
+      
+      // Lista de permisos de chat administrador a desactivar
+      final permisosChatAdministrador = [
+        'chatAdministrador',
+      ];
+
+      // Actualizar cada miembro del comité
+      for (final miembro in miembrosComite) {
+        // Crear una copia de los permisos actuales
+        final nuevosPermisos = Map<String, bool>.from(miembro.funcionesDisponibles);
+        
+        // Desactivar los permisos de chat administrador
+        for (final permiso in permisosChatAdministrador) {
+          nuevosPermisos[permiso] = false;
+        }
+        
+        // Actualizar en Firestore
+        await updateComitePermisos(condominioId, miembro.uid, nuevosPermisos);
+      }
+      
+      print('✅ Permisos de chat administrador desactivados para ${miembrosComite.length} miembros del comité');
+      return true;
+    } catch (e) {
+      print('❌ Error al desactivar permisos de chat administrador para comité: $e');
+      return false;
+    }
+  }
+
+  // Desactivar permisos de chat conserjería para todos los trabajadores
+  Future<bool> desactivarPermisosChatConserjeriaTrabajadores(
+    String condominioId,
+  ) async {
+    try {
+      // Obtener todos los trabajadores
+      final trabajadores = await obtenerTrabajadoresCondominio(condominioId);
+      
+      // Lista de permisos de chat conserjería a desactivar
+      final permisosChatConserjeria = [
+        'chatConserjeria',
+      ];
+
+      // Actualizar cada trabajador
+      for (final trabajador in trabajadores) {
+        // Crear una copia de los permisos actuales
+        final nuevosPermisos = Map<String, bool>.from(trabajador.funcionesDisponibles);
+        
+        // Desactivar los permisos de chat conserjería
+        for (final permiso in permisosChatConserjeria) {
+          nuevosPermisos[permiso] = false;
+        }
+        
+        // Actualizar en Firestore
+        await updateTrabajadorPermisos(condominioId, trabajador.uid, nuevosPermisos);
+      }
+      
+      print('✅ Permisos de chat conserjería desactivados para ${trabajadores.length} trabajadores');
+      return true;
+    } catch (e) {
+      print('❌ Error al desactivar permisos de chat conserjería para trabajadores: $e');
+      return false;
+    }
+  }
+
+  // Desactivar permisos de chat conserjería para todos los miembros del comité
+  Future<bool> desactivarPermisosChatConserjeriaComite(
+    String condominioId,
+  ) async {
+    try {
+      // Obtener todos los miembros del comité
+      final miembrosComite = await obtenerMiembrosComite(condominioId);
+      
+      // Lista de permisos de chat conserjería a desactivar
+      final permisosChatConserjeria = [
+        'chatConserjeria',
+      ];
+
+      // Actualizar cada miembro del comité
+      for (final miembro in miembrosComite) {
+        // Crear una copia de los permisos actuales
+        final nuevosPermisos = Map<String, bool>.from(miembro.funcionesDisponibles);
+        
+        // Desactivar los permisos de chat conserjería
+        for (final permiso in permisosChatConserjeria) {
+          nuevosPermisos[permiso] = false;
+        }
+        
+        // Actualizar en Firestore
+        await updateComitePermisos(condominioId, miembro.uid, nuevosPermisos);
+      }
+      
+      print('✅ Permisos de chat conserjería desactivados para ${miembrosComite.length} miembros del comité');
+      return true;
+    } catch (e) {
+      print('❌ Error al desactivar permisos de chat conserjería para comité: $e');
+      return false;
+    }
+  }
+
+  // Desactivar permisos de chat privado para todos los trabajadores
+  Future<bool> desactivarPermisosChatPrivadoTrabajadores(
+    String condominioId,
+  ) async {
+    try {
+      // Obtener todos los trabajadores
+      final trabajadores = await obtenerTrabajadoresCondominio(condominioId);
+      
+      // Lista de permisos de chat privado a desactivar
+      final permisosChatPrivado = [
+        'chatPrivado',
+      ];
+
+      // Actualizar cada trabajador
+      for (final trabajador in trabajadores) {
+        // Crear una copia de los permisos actuales
+        final nuevosPermisos = Map<String, bool>.from(trabajador.funcionesDisponibles);
+        
+        // Desactivar los permisos de chat privado
+        for (final permiso in permisosChatPrivado) {
+          nuevosPermisos[permiso] = false;
+        }
+        
+        // Actualizar en Firestore
+        await updateTrabajadorPermisos(condominioId, trabajador.uid, nuevosPermisos);
+      }
+      
+      print('✅ Permisos de chat privado desactivados para ${trabajadores.length} trabajadores');
+      return true;
+    } catch (e) {
+      print('❌ Error al desactivar permisos de chat privado para trabajadores: $e');
+      return false;
+    }
+  }
+
+  // Desactivar permisos de chat privado para todos los miembros del comité
+  Future<bool> desactivarPermisosChatPrivadoComite(
+    String condominioId,
+  ) async {
+    try {
+      // Obtener todos los miembros del comité
+      final miembrosComite = await obtenerMiembrosComite(condominioId);
+      
+      // Lista de permisos de chat privado a desactivar
+      final permisosChatPrivado = [
+        'chatPrivado',
+      ];
+
+      // Actualizar cada miembro del comité
+      for (final miembro in miembrosComite) {
+        // Crear una copia de los permisos actuales
+        final nuevosPermisos = Map<String, bool>.from(miembro.funcionesDisponibles);
+        
+        // Desactivar los permisos de chat privado
+        for (final permiso in permisosChatPrivado) {
+          nuevosPermisos[permiso] = false;
+        }
+        
+        // Actualizar en Firestore
+        await updateComitePermisos(condominioId, miembro.uid, nuevosPermisos);
+      }
+      
+      print('✅ Permisos de chat privado desactivados para ${miembrosComite.length} miembros del comité');
+      return true;
+    } catch (e) {
+      print('❌ Error al desactivar permisos de chat privado para comité: $e');
+      return false;
+    }
+  }
+
 }

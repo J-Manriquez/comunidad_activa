@@ -272,16 +272,17 @@ class _GestionTrabajadoresScreenState extends State<GestionTrabajadoresScreen> {
     'bloqueoVisitas': {'categoria': 'Bloqueo de Visitas'},
     'historialBloqueoVisitas': {'categoria': 'Bloqueo de Visitas'},
     // Gestión de Mensajes
-    'chatCondominio': {'categoria': 'Gestión de Mensajes'},
-    'chatConserjeria': {'categoria': 'Gestión de Mensajes'},
-    'chatResidentes': {'categoria': 'Gestión de Mensajes'},
+    'chatEntreRes': {'categoria': 'Gestión de Mensajes'},
+    'chatGrupal': {'categoria': 'Gestión de Mensajes'},
     'chatAdministrador': {'categoria': 'Gestión de Mensajes'},
+    'chatConserjeria': {'categoria': 'Gestión de Mensajes'},
+    'chatPrivado': {'categoria': 'Gestión de Mensajes'},
   };
 
   int _contarFuncionesActivas(TrabajadorModel trabajador) {
     // Contar solo las funciones activas que están definidas en _funcionesInfo
     // Excluir las funciones vacías que aparecen en la pantalla principal
-    final funcionesVacias = ['gestionMensajes'];
+    final funcionesVacias = [];
     
     return _funcionesInfo.keys
         .where((key) => !funcionesVacias.contains(key) && (trabajador.funcionesDisponibles[key] ?? false))
