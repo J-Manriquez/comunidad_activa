@@ -8,6 +8,7 @@ import '../../services/firestore_service.dart';
 import '../../services/notification_service.dart';
 import '../../widgets/notification_card_widget.dart';
 import '../../widgets/modal_confirmacion_entrega_residente.dart';
+import '../../widgets/test/screen_navigator_widget.dart';
 import '../../models/correspondencia_config_model.dart';
 import '../../services/correspondencia_service.dart';
 import 'comunicaciones/r_notifications_screen.dart';
@@ -292,6 +293,35 @@ class _ResidenteScreenState extends State<ResidenteScreen> {
                                     ),
                                   );
                                 },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Widget de navegación de pantallas
+                      Card(
+                        elevation: 4,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Navegación de pantallas',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                height: 400,
+                                child: ScreenNavigatorWidget(
+                                  currentUser: _residente!.toUserModel(),
+                                ),
                               ),
                             ],
                           ),

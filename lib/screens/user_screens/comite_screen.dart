@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/comite_model.dart';
+import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
+import '../../widgets/test/screen_navigator_widget.dart';
 
 class ComiteScreen extends StatefulWidget {
   final String condominioId;
@@ -105,34 +107,118 @@ class _ComiteScreenState extends State<ComiteScreen> {
       );
     }
 
-    // Pantalla principal vacía - solo mostrará el contenido del drawer
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.home,
-            size: 80,
-            color: Colors.grey,
-          ),
-          SizedBox(height: 16),
-          Text(
-            'Bienvenido',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey,
+    // Pantalla principal con widget de navegación
+    return Scaffold(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Información del comité
+            Card(
+              elevation: 4,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.group,
+                          color: Colors.blue.shade600,
+                          size: 28,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _comite!.nombre,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Icon(Icons.email, color: Colors.grey.shade600, size: 20),
+                        const SizedBox(width: 8),
+                        Text('Email: ', style: const TextStyle(fontWeight: FontWeight.w500)),
+                        Expanded(child: Text(_comite!.email)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade100,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.star,
+                            color: Colors.blue.shade600,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Miembro del Comité',
+                            style: TextStyle(
+                              color: Colors.blue.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Utiliza el menú lateral para navegar',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey,
+
+            const SizedBox(height: 16),
+
+            // Widget de navegación de pantallas
+            Card(
+              elevation: 4,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Navegación de pantallas',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      height: 400,
+                      child: ScreenNavigatorWidget(
+                        currentUser: UserModel(
+                          uid: _comite!.uid,
+                          email: _comite!.email,
+                          nombre: _comite!.nombre,
+                          tipoUsuario: UserType.comite,
+                          condominioId: _comite!.condominioId,
+                          esComite: true,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

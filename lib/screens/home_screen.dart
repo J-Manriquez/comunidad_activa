@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:comunidad_activa/screens/admin/comunicaciones/admin_reclamos_screen.dart';
 import 'package:comunidad_activa/screens/admin/correspondencia/correspondencias_screen.dart';
 import 'package:comunidad_activa/screens/admin/settings_screen.dart';
@@ -21,6 +22,7 @@ import '../services/bloqueo_visitas_service.dart';
 import '../services/firestore_service.dart';
 import '../services/estacionamiento_service.dart';
 import '../services/turnos_service.dart';
+import '../services/permission_service.dart';
 import 'cuenta/welcome_screen.dart';
 import '../models/user_model.dart';
 import 'package:comunidad_activa/screens/admin/admin_screen.dart';
@@ -57,15 +59,48 @@ class _HomeScreenState extends State<HomeScreen> {
   final BloqueoVisitasService _bloqueoVisitasService = BloqueoVisitasService();
   final FirestoreService _firestoreService = FirestoreService();
   final TurnosService _turnosService = TurnosService();
+  final PermissionService _permissionService = PermissionService();
   bool _estacionamientosActivos = false;
   int _visitasBloqueadasCount = 0;
   Stream<int>? _visitasBloqueadasStream;
+  Map<String, bool>? _primaryPermissions;
+  StreamSubscription<Map<String, bool>?>? _primaryPermissionsSubscription;
 
   @override
   void initState() {
     super.initState();
     _verificarEstacionamientos();
     _inicializarStreamVisitasBloqueadas();
+    _loadPrimaryPermissions();
+    _initPrimaryPermissionsStream();
+  }
+
+  Future<void> _loadPrimaryPermissions() async {
+    try {
+      final permissions = await PermissionService.getPrimaryPermissions();
+      if (mounted) {
+        setState(() {
+          _primaryPermissions = permissions;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error al cargar permisos primarios: $e');
+    }
+  }
+
+  void _initPrimaryPermissionsStream() {
+    _primaryPermissionsSubscription = PermissionService.getPrimaryPermissionsStream().listen(
+      (permissions) {
+        if (mounted) {
+          setState(() {
+            _primaryPermissions = permissions;
+          });
+        }
+      },
+      onError: (error) {
+        debugPrint('Error en stream de permisos primarios: $error');
+      },
+    );
   }
 
   Future<void> _verificarEstacionamientos() async {
@@ -589,6 +624,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
+            // Mensajes - mostrar si al menos una función de chat está activa
+            if (_primaryPermissions != null && (
+              (_primaryPermissions!['chatEntreRes'] ?? false) ||
+              (_primaryPermissions!['chatGrupal'] ?? false) ||
+              (_primaryPermissions!['chatAdministrador'] ?? false) ||
+              (_primaryPermissions!['chatConserjeria'] ?? false) ||
+              (_primaryPermissions!['chatPrivado'] ?? false)
+            ))
             ListTile(
               leading: const Icon(Icons.message),
               title: const Text('Mensajes'),
@@ -602,6 +645,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
+            // Gestión de Multas - requiere permiso 'multas'
+            if (_primaryPermissions != null && (_primaryPermissions!['multas'] ?? false))
             ListTile(
               leading: const Icon(Icons.gavel),
               title: const Text('Gestión de Multas'),
@@ -616,6 +661,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
+            // Gestión de Publicaciones - requiere permiso 'publicaciones'
+            if (_primaryPermissions != null && (_primaryPermissions!['publicaciones'] ?? false))
             ListTile(
               leading: const Icon(Icons.article),
               title: const Text('Gestión de Publicaciones'),
@@ -629,6 +676,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
+            // Gastos Comunes - requiere permiso 'gastosComunes'
+            if (_primaryPermissions != null && (_primaryPermissions!['gastosComunes'] ?? false))
             ListTile(
               leading: const Icon(Icons.account_balance_wallet),
               title: const Text('Gastos Comunes'),
@@ -643,7 +692,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
-            // Nueva opción para administradores - Gestión de Reclamos
+            // Gestión de Reclamos - requiere permiso 'reclamos'
+            if (_primaryPermissions != null && (_primaryPermissions!['reclamos'] ?? false))
             ListTile(
               leading: const Icon(Icons.report_problem),
               title: const Text('Gestión de Reclamos'),
@@ -658,7 +708,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
-            // Nueva opción para administradores - Espacios Comunes
+            // Espacios Comunes - requiere permiso 'espaciosComunes'
+            if (_primaryPermissions != null && (_primaryPermissions!['espaciosComunes'] ?? false))
             ListTile(
               leading: const Icon(Icons.business),
               title: const Text('Espacios Comunes'),
@@ -673,7 +724,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
-            // Nueva opción para administradores - Bloqueo de Visitas
+            // Bloqueo de Visitas - requiere permiso 'bloqueoVisitas'
+            if (_primaryPermissions != null && (_primaryPermissions!['bloqueoVisitas'] ?? false))
             ListTile(
               leading: const Icon(Icons.block),
               title: const Text('Bloqueo de Visitas'),
@@ -688,7 +740,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
-            // Nueva opción para administradores - Correspondencias
+            // Correspondencias - requiere permiso 'correspondencia'
+            if (_primaryPermissions != null && (_primaryPermissions!['correspondencia'] ?? false))
             ListTile(
               leading: const Icon(Icons.mail),
               title: const Text('Correspondencias'),
@@ -703,8 +756,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
-            // Nueva opción para administradores - Estacionamientos (solo si están activos)
-             if (_estacionamientosActivos)
+            // Estacionamientos - requiere permiso 'gestionEstacionamientos' y que estén activos
+             if (_estacionamientosActivos && _primaryPermissions != null && (_primaryPermissions!['gestionEstacionamientos'] ?? false))
                ListTile(
                  leading: const Icon(Icons.local_parking),
                  title: const Text('Estacionamientos'),
@@ -719,7 +772,8 @@ class _HomeScreenState extends State<HomeScreen> {
                    );
                  },
                ),
-            // Nueva opción para administradores - Control de Acceso
+            // Control de Acceso - requiere permiso 'controlAcceso'
+            if (_primaryPermissions != null && (_primaryPermissions!['controlAcceso'] ?? false))
             ListTile(
               leading: const Icon(Icons.security),
               title: const Text('Control de Acceso'),
@@ -734,7 +788,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
-            // Nueva opción para administradores - Gestión de Turnos
+            // Gestión de Turnos - requiere permiso 'turnosTrabajadores'
+            if (_primaryPermissions != null && (_primaryPermissions!['turnosTrabajadores'] ?? false))
             ListTile(
               leading: const Icon(Icons.schedule),
               title: const Text('Gestión de Turnos'),
@@ -749,7 +804,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
-            // Nueva opción para administradores - Registro Diario
+            // Registro Diario - requiere permiso 'registroDiario'
+            if (_primaryPermissions != null && (_primaryPermissions!['registroDiario'] ?? false))
             ListTile(
               leading: const Icon(Icons.assignment),
               title: const Text('Registro Diario'),
@@ -788,6 +844,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // Opciones específicas para residentes (no comité)
           if (user.tipoUsuario == UserType.residente && user.esComite != true) ...[            
+            // Mensajes - mostrar si al menos una función de chat está activa
+            if (_primaryPermissions != null && (
+              _primaryPermissions!['chatEntreRes'] == true ||
+              _primaryPermissions!['chatGrupal'] == true ||
+              _primaryPermissions!['chatAdministrador'] == true ||
+              _primaryPermissions!['chatConserjeria'] == true ||
+              _primaryPermissions!['chatPrivado'] == true
+            ))
             ListTile(
               leading: const Icon(Icons.message),
               title: const Text('Mensajes'),
@@ -801,6 +865,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
+            // Mis Gastos Comunes - requiere permiso gastosComunes
+            if (_primaryPermissions != null && _primaryPermissions!['gastosComunes'] == true)
             ListTile(
               leading: const Icon(Icons.account_balance_wallet),
               title: const Text('Mis Gastos Comunes'),
@@ -814,6 +880,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
+            // Mis Multas - requiere permiso multas
+            if (_primaryPermissions != null && _primaryPermissions!['multas'] == true)
             ListTile(
               leading: const Icon(Icons.receipt_long),
               title: const Text('Mis Multas'),
@@ -828,6 +896,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
+            // Publicaciones - requiere permiso publicaciones
+            if (_primaryPermissions != null && _primaryPermissions!['publicaciones'] == true)
             ListTile(
               leading: const Icon(Icons.article),
               title: const Text('Publicaciones'),
@@ -841,6 +911,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
+            // Mis Reclamos - requiere permiso reclamos
+            if (_primaryPermissions != null && _primaryPermissions!['reclamos'] == true)
             // Nueva opción para residentes - Mis Reclamos
             ListTile(
               leading: const Icon(Icons.comment),
@@ -855,6 +927,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
+            // Espacios Comunes - requiere permiso espaciosComunes
+            if (_primaryPermissions != null && _primaryPermissions!['espaciosComunes'] == true)
             // Nueva opción para residentes - Espacios Comunes
             ListTile(
               leading: const Icon(Icons.business),
@@ -869,21 +943,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
-            // Nueva opción para residentes - Estacionamientos (solo si están activos)
-              if (_estacionamientosActivos)
-                ListTile(
-                  leading: const Icon(Icons.local_parking),
-                  title: const Text('Estacionamientos'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    // TODO: Implementar EstacionamientosResidenteScreen
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Funcionalidad en desarrollo'),
-                      ),
-                    );
-                  },
-                ),
+            // Estacionamientos - requiere permiso gestionEstacionamientos y que estén activos
+            if (_primaryPermissions != null && _primaryPermissions!['gestionEstacionamientos'] == true && _estacionamientosActivos)
+            ListTile(
+              leading: const Icon(Icons.local_parking),
+              title: const Text('Estacionamientos'),
+              onTap: () {
+                Navigator.pop(context);
+                // TODO: Implementar EstacionamientosResidenteScreen
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Funcionalidad en desarrollo'),
+                  ),
+                );
+              },
+            ),
+            // Registro de Acceso - requiere permiso controlAcceso
+            if (_primaryPermissions != null && _primaryPermissions!['controlAcceso'] == true)
             // Nueva opción para residentes - Registro de Acceso
             ListTile(
               leading: const Icon(Icons.login),
@@ -898,6 +974,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
+            // Visitas Bloqueadas - requiere permiso bloqueoVisitas y que haya visitas bloqueadas
+            if (_primaryPermissions != null && _primaryPermissions!['bloqueoVisitas'] == true)
             // Nueva opción para residentes - Visitas Bloqueadas (solo si hay más de 1)
             StreamBuilder<int>(
               stream: _visitasBloqueadasStream,
@@ -953,9 +1031,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     'historialCorrespondencias'
                   ];
                   
-                  bool tienePermisosCorrespondencia = funcionesCorrespondencia.any(
-                    (funcion) => trabajador.funcionesDisponibles[funcion] == true
-                  );
+                  bool tienePermisosCorrespondencia = (_primaryPermissions?['correspondencia'] == true) && 
+                    funcionesCorrespondencia.any(
+                      (funcion) => trabajador.funcionesDisponibles[funcion] == true
+                    );
                   
                   // Verificar permisos de control de acceso
                   final funcionesControlAcceso = [
@@ -966,9 +1045,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     'historialControlAcceso'
                   ];
                   
-                  bool tienePermisosControlAcceso = funcionesControlAcceso.any(
-                    (funcion) => trabajador.funcionesDisponibles[funcion] == true
-                  );
+                  bool tienePermisosControlAcceso = (_primaryPermissions?['controlAcceso'] == true) && 
+                    funcionesControlAcceso.any(
+                      (funcion) => trabajador.funcionesDisponibles[funcion] == true
+                    );
                   
                   // Verificar permisos de gestión de estacionamientos
                   final funcionesEstacionamientos = [
@@ -978,9 +1058,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     'estacionamientosVisitas'
                   ];
                   
-                  bool tienePermisosEstacionamientos = funcionesEstacionamientos.any(
-                    (funcion) => trabajador.funcionesDisponibles[funcion] == true
-                  );
+                  bool tienePermisosEstacionamientos = (_primaryPermissions?['estacionamientos'] == true) && 
+                    funcionesEstacionamientos.any(
+                      (funcion) => trabajador.funcionesDisponibles[funcion] == true
+                    );
                   
                   // Verificar permisos de gestión de espacios comunes
                   final funcionesEspaciosComunes = [
@@ -991,9 +1072,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     'historialRevisiones'
                   ];
                   
-                  bool tienePermisosEspaciosComunes = funcionesEspaciosComunes.any(
-                    (funcion) => trabajador.funcionesDisponibles[funcion] == true
-                  );
+                  bool tienePermisosEspaciosComunes = (_primaryPermissions?['espaciosComunes'] == true) && 
+                    funcionesEspaciosComunes.any(
+                      (funcion) => trabajador.funcionesDisponibles[funcion] == true
+                    );
                   
                   // Verificar permisos de gestión de gastos comunes
                   final funcionesGastosComunes = [
@@ -1004,9 +1086,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     'gastosAdicionales'
                   ];
                   
-                  bool tienePermisosGastosComunes = funcionesGastosComunes.any(
-                    (funcion) => trabajador.funcionesDisponibles[funcion] == true
-                  );
+                  bool tienePermisosGastosComunes = (_primaryPermissions?['gastosComunes'] == true) && 
+                    funcionesGastosComunes.any(
+                      (funcion) => trabajador.funcionesDisponibles[funcion] == true
+                    );
                   
                   // Verificar permisos de gestión de multas
                   final funcionesMultas = [
@@ -1015,9 +1098,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     'historialMultas'
                   ];
                   
-                  bool tienePermisosMultas = funcionesMultas.any(
-                    (funcion) => trabajador.funcionesDisponibles[funcion] == true
-                  );
+                  bool tienePermisosMultas = (_primaryPermissions?['multas'] == true) && 
+                    funcionesMultas.any(
+                      (funcion) => trabajador.funcionesDisponibles[funcion] == true
+                    );
                   
                   // Verificar permisos de gestión de reclamos
                   final funcionesReclamos = [
@@ -1025,9 +1109,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     'gestionTiposReclamos'
                   ];
                   
-                  bool tienePermisosReclamos = funcionesReclamos.any(
-                    (funcion) => trabajador.funcionesDisponibles[funcion] == true
-                  );
+                  bool tienePermisosReclamos = (_primaryPermissions?['reclamos'] == true) && 
+                    funcionesReclamos.any(
+                      (funcion) => trabajador.funcionesDisponibles[funcion] == true
+                    );
                   
                   // Verificar permisos de registro diario
                   final funcionesRegistroDiario = [
@@ -1036,15 +1121,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     'historialRegistros'
                   ];
                   
-                  bool tienePermisosRegistroDiario = funcionesRegistroDiario.any(
-                    (funcion) => trabajador.funcionesDisponibles[funcion] == true
-                  );
+                  bool tienePermisosRegistroDiario = (_primaryPermissions?['registroDiario'] == true) && 
+                    funcionesRegistroDiario.any(
+                      (funcion) => trabajador.funcionesDisponibles[funcion] == true
+                    );
                   
                   // Verificar permisos de gestión de publicaciones
-                  bool tieneGestionPublicaciones = trabajador.funcionesDisponibles['gestionPublicaciones'] == true;
+                  bool tieneGestionPublicaciones = (_primaryPermissions?['publicaciones'] == true) && 
+                    (trabajador.funcionesDisponibles['gestionPublicaciones'] == true);
                   
                   // Verificar permisos de ver publicaciones
-                  bool tieneVerPublicaciones = trabajador.funcionesDisponibles['verPublicaciones'] == true;
+                  bool tieneVerPublicaciones = (_primaryPermissions?['publicaciones'] == true) && 
+                    (trabajador.funcionesDisponibles['verPublicaciones'] == true);
                   
                   // Verificar permisos de bloqueo de visitas
                   final funcionesBloqueoVisitas = [
@@ -1052,9 +1140,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     'visualizarVisitasBloqueadas'
                   ];
                   
-                  bool tienePermisosBloqueoVisitas = funcionesBloqueoVisitas.any(
-                    (funcion) => trabajador.funcionesDisponibles[funcion] == true
-                  );
+                  bool tienePermisosBloqueoVisitas = (_primaryPermissions?['bloqueoVisitas'] == true) && 
+                    funcionesBloqueoVisitas.any(
+                      (funcion) => trabajador.funcionesDisponibles[funcion] == true
+                    );
                   
                   // Verificar permisos de mensajes
                   final funcionesMensajes = [
@@ -1064,9 +1153,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     'chatAdministrador'
                   ];
                   
-                  bool tienePermisosMensajes = funcionesMensajes.any(
-                    (funcion) => trabajador.funcionesDisponibles[funcion] == true
-                  );
+                  bool tienePermisosMensajes = (_primaryPermissions?['mensajes'] == true) && 
+                    funcionesMensajes.any(
+                      (funcion) => trabajador.funcionesDisponibles[funcion] == true
+                    );
                   
                   return Column(
                     children: [
@@ -1282,9 +1372,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     'historialCorrespondencias'
                   ];
                   
-                  bool tienePermisosCorrespondencia = funcionesCorrespondencia.any(
-                    (funcion) => comite.funcionesDisponibles[funcion] == true
-                  );
+                  bool tienePermisosCorrespondencia = (_primaryPermissions?['correspondencia'] == true) && 
+                    funcionesCorrespondencia.any(
+                      (funcion) => comite.funcionesDisponibles[funcion] == true
+                    );
                   
                   // Verificar permisos de control de acceso
                   final funcionesControlAcceso = [
@@ -1295,9 +1386,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     'historialControlAcceso'
                   ];
                   
-                  bool tienePermisosControlAcceso = funcionesControlAcceso.any(
-                    (funcion) => comite.funcionesDisponibles[funcion] == true
-                  );
+                  bool tienePermisosControlAcceso = (_primaryPermissions?['controlAcceso'] == true) && 
+                    funcionesControlAcceso.any(
+                      (funcion) => comite.funcionesDisponibles[funcion] == true
+                    );
                   
                   // Verificar permisos de gestión de estacionamientos
                   final funcionesEstacionamientos = [
@@ -1307,9 +1399,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     'estacionamientosVisitas'
                   ];
                   
-                  bool tienePermisosEstacionamientos = funcionesEstacionamientos.any(
-                    (funcion) => comite.funcionesDisponibles[funcion] == true
-                  );
+                  bool tienePermisosEstacionamientos = (_primaryPermissions?['estacionamientos'] == true) && 
+                    funcionesEstacionamientos.any(
+                      (funcion) => comite.funcionesDisponibles[funcion] == true
+                    );
                   
                   // Verificar permisos de gestión de espacios comunes
                   final funcionesEspaciosComunes = [
@@ -1320,9 +1413,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     'historialRevisiones'
                   ];
                   
-                  bool tienePermisosEspaciosComunes = funcionesEspaciosComunes.any(
-                    (funcion) => comite.funcionesDisponibles[funcion] == true
-                  );
+                  bool tienePermisosEspaciosComunes = (_primaryPermissions?['espaciosComunes'] == true) && 
+                    funcionesEspaciosComunes.any(
+                      (funcion) => comite.funcionesDisponibles[funcion] == true
+                    );
                   
                   // Verificar permisos de gestión de gastos comunes
                   final funcionesGastosComunes = [
@@ -1333,9 +1427,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     'gastosAdicionales'
                   ];
                   
-                  bool tienePermisosGastosComunes = funcionesGastosComunes.any(
-                    (funcion) => comite.funcionesDisponibles[funcion] == true
-                  );
+                  bool tienePermisosGastosComunes = (_primaryPermissions?['gastosComunes'] == true) && 
+                    funcionesGastosComunes.any(
+                      (funcion) => comite.funcionesDisponibles[funcion] == true
+                    );
                   
                   // Verificar permisos de gestión de multas
                   final funcionesMultas = [
@@ -1344,9 +1439,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     'historialMultas'
                   ];
                   
-                  bool tienePermisosMultas = funcionesMultas.any(
-                    (funcion) => comite.funcionesDisponibles[funcion] == true
-                  );
+                  bool tienePermisosMultas = (_primaryPermissions?['multas'] == true) && 
+                    funcionesMultas.any(
+                      (funcion) => comite.funcionesDisponibles[funcion] == true
+                    );
                   
                   // Verificar permisos de gestión de reclamos
                   final funcionesReclamos = [
@@ -1354,9 +1450,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     'gestionTiposReclamos'
                   ];
                   
-                  bool tienePermisosReclamos = funcionesReclamos.any(
-                    (funcion) => comite.funcionesDisponibles[funcion] == true
-                  );
+                  bool tienePermisosReclamos = (_primaryPermissions?['reclamos'] == true) && 
+                    funcionesReclamos.any(
+                      (funcion) => comite.funcionesDisponibles[funcion] == true
+                    );
                   
                   // Verificar permisos de registro diario
                   final funcionesRegistroDiario = [
@@ -1365,15 +1462,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     'historialRegistros'
                   ];
                   
-                  bool tienePermisosRegistroDiario = funcionesRegistroDiario.any(
-                    (funcion) => comite.funcionesDisponibles[funcion] == true
-                  );
+                  bool tienePermisosRegistroDiario = (_primaryPermissions?['registroDiario'] == true) && 
+                    funcionesRegistroDiario.any(
+                      (funcion) => comite.funcionesDisponibles[funcion] == true
+                    );
                   
                   // Verificar permisos de gestión de publicaciones
-                  bool tieneGestionPublicaciones = comite.funcionesDisponibles['gestionPublicaciones'] == true;
+                  bool tieneGestionPublicaciones = (_primaryPermissions?['publicaciones'] == true) && 
+                    (comite.funcionesDisponibles['gestionPublicaciones'] == true);
                   
                   // Verificar permisos de ver publicaciones
-                  bool tieneVerPublicaciones = comite.funcionesDisponibles['verPublicaciones'] == true;
+                  bool tieneVerPublicaciones = (_primaryPermissions?['publicaciones'] == true) && 
+                    (comite.funcionesDisponibles['verPublicaciones'] == true);
                   
                   // Verificar permisos de bloqueo de visitas
                   final funcionesBloqueoVisitas = [
@@ -1381,9 +1481,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     'visualizarVisitasBloqueadas'
                   ];
                   
-                  bool tienePermisosBloqueoVisitas = funcionesBloqueoVisitas.any(
-                    (funcion) => comite.funcionesDisponibles[funcion] == true
-                  );
+                  bool tienePermisosBloqueoVisitas = (_primaryPermissions?['bloqueoVisitas'] == true) && 
+                    funcionesBloqueoVisitas.any(
+                      (funcion) => comite.funcionesDisponibles[funcion] == true
+                    );
                   
                   return Column(
                     children: [
@@ -1698,5 +1799,11 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _primaryPermissionsSubscription?.cancel();
+    super.dispose();
   }
 }

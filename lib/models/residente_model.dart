@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'user_model.dart';
 
 class ResidenteModel {
   final String uid;
@@ -140,6 +141,18 @@ class ResidenteModel {
       etiquetaEdificio: etiquetaEdificio ?? this.etiquetaEdificio,
       numeroDepartamento: numeroDepartamento ?? this.numeroDepartamento,
       viviendaSeleccionada: viviendaSeleccionada ?? this.viviendaSeleccionada,
+    );
+  }
+
+  // Método para convertir ResidenteModel a UserModel
+  UserModel toUserModel() {
+    return UserModel(
+      uid: uid,
+      email: email,
+      nombre: nombre,
+      tipoUsuario: esComite ? UserType.comite : UserType.residente,
+      condominioId: condominioId,
+      esComite: esComite,
     );
   }
 }

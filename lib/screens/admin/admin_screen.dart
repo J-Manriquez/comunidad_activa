@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../models/condominio_model.dart';
+import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
+import '../../services/auth_service.dart';
 import '../../services/notification_service.dart';
 import '../../widgets/notification_card_widget.dart';
+import '../../widgets/test/screen_navigator_widget.dart';
 import 'comunicaciones/admin_notifications_screen.dart';
 
 class AdminScreen extends StatefulWidget {
@@ -17,8 +20,10 @@ class AdminScreen extends StatefulWidget {
 
 class _AdminScreenState extends State<AdminScreen> {
   final FirestoreService _firestoreService = FirestoreService();
+  final AuthService _authService = AuthService();
   final NotificationService _notificationService = NotificationService();
   CondominioModel? _condominio;
+  UserModel? _currentUser;
   int _residentes = 0;
   int _comite = 0;
   int _trabajadores = 0;
@@ -28,6 +33,20 @@ class _AdminScreenState extends State<AdminScreen> {
   void initState() {
     super.initState();
     _loadCondominioData();
+    _loadCurrentUser();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    try {
+      final user = await _authService.getCurrentUserData();
+      if (mounted) {
+        setState(() {
+          _currentUser = user;
+        });
+      }
+    } catch (e) {
+      print('Error al cargar usuario actual: $e');
+    }
   }
 
   Future<void> _loadCondominioData() async {
@@ -181,6 +200,29 @@ class _AdminScreenState extends State<AdminScreen> {
                   _buildStatisticTile('Comité', _comite, Icons.group),
                   const Divider(),
                   _buildStatisticTile('Trabajadores', _trabajadores, Icons.work),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Widget de navegación de pantallas
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Navegación de pantallas',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    height: 400,
+                    child: _currentUser != null 
+                        ? ScreenNavigatorWidget(currentUser: _currentUser!)
+                        : const Center(child: CircularProgressIndicator()),
+                  ),
                 ],
               ),
             ),
